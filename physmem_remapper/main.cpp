@@ -1,0 +1,45 @@
+#include "physmem/physmem.hpp"
+#include "../communication/comm.hpp"
+
+/*
+	For Information as to why it was a pain to implement
+	please consult the sdm Volume 3: 4.10.2.4 (Global Pages)
+*/
+
+void init() {
+	// Example usage
+	physmem* instance = physmem::get_physmem_instance();
+
+	// First see whether initialization worked
+	if (!instance) {
+		dbg_log("Failed to setup the physmem instance");
+		return;
+	}
+	
+	// Define the physmem_test if you really want the test to be executed
+	if (!physmem_experiment()) {
+		dbg_log("Failed to successfully execute the physmem experiment");
+		return;
+	}
+
+	// Replace a .data ptr with a ptr to a write cr3 gadget that then calls our handler
+	if (!init_communication()) {
+		dbg_log("Failed to init communication");
+		return;
+	}
+
+	dbg_log("Driver initialized successfully!");
+}
+
+NTSTATUS driver_entry(PDRIVER_OBJECT driver_object, PUNICODE_STRING registry_path) {
+	UNREFERENCED_PARAMETER(driver_object);
+	UNREFERENCED_PARAMETER(registry_path);
+
+	HANDLE thread;
+	CLIENT_ID thread_id;
+
+	PsCreateSystemThread(&thread, STANDARD_RIGHTS_ALL, NULL, NULL, &thread_id, (PKSTART_ROUTINE)init, (void*)0);
+	ZwClose(thread);
+
+	return STATUS_SUCCESS;
+}

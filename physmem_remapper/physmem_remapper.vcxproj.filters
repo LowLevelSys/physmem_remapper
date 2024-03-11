@@ -1,0 +1,81 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="physmem">
+      <UniqueIdentifier>{16e3c820-044a-457e-9f8c-72a9c5188e8f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="physmem\remapping">
+      <UniqueIdentifier>{c62926dd-7ffa-4101-bd98-07c129ed6980}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="physmem\singleton">
+      <UniqueIdentifier>{577e533b-e078-4a71-aabf-679ba0135a37}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="physmem\assembly">
+      <UniqueIdentifier>{f8ae2849-6c37-4a67-8fb2-cf04bdcf9a18}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="physmem\structs">
+      <UniqueIdentifier>{58ce7664-df29-4fa2-a51f-bd0c17f23e8b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="physmem\includes">
+      <UniqueIdentifier>{84e5a69b-d347-4934-8af0-4c296068f710}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="communication">
+      <UniqueIdentifier>{3c3c8b60-eff6-448a-8f46-e81c5e10d762}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="physmem\experiment">
+      <UniqueIdentifier>{e08bba6b-2acc-4863-8b32-4d2f45259cc1}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="physmem\physmem.cpp">
+      <Filter>physmem</Filter>
+    </ClCompile>
+    <ClCompile Include="physmem\remapping.cpp">
+      <Filter>physmem\remapping</Filter>
+    </ClCompile>
+    <ClCompile Include="physmem\physmem_experiment.cpp">
+      <Filter>physmem\experiment</Filter>
+    </ClCompile>
+    <ClCompile Include="communication\comm.cpp">
+      <Filter>communication</Filter>
+    </ClCompile>
+    <ClCompile Include="communication\handler.cpp">
+      <Filter>communication</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="physmem\physmem.hpp">
+      <Filter>physmem</Filter>
+    </ClInclude>
+    <ClInclude Include="physmem\remapping.hpp">
+      <Filter>physmem\remapping</Filter>
+    </ClInclude>
+    <ClInclude Include="physmem\singleton.hpp">
+      <Filter>physmem\singleton</Filter>
+    </ClInclude>
+    <ClInclude Include="physmem\physmem_structs.hpp">
+      <Filter>physmem\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="physmem\includes\crt.hpp">
+      <Filter>physmem\includes</Filter>
+    </ClInclude>
+    <ClInclude Include="physmem\includes\includes.hpp">
+      <Filter>physmem\includes</Filter>
+    </ClInclude>
+    <ClInclude Include="communication\comm.hpp">
+      <Filter>communication</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="physmem\experiment.asm">
+      <Filter>physmem\assembly</Filter>
+    </MASM>
+  </ItemGroup>
+</Project>

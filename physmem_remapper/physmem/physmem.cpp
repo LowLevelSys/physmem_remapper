@@ -1,0 +1,568 @@
+#include "physmem.hpp"
+
+// We love compilers
+physmem* physmem::physmem_instance = 0;
+
+uint32_t find_free_pml4e_index(paging_structs::pml4e_64* pml4e_table) {
+    for (uint32_t i = 0; i < 512; i++) {
+        if (!pml4e_table[i].present) {
+            return i;
+        }
+    }
+    return 0xdead;
+}
+
+uint32_t find_free_pdpte_1gb_index(paging_structs::pdpte_1gb_64* pdpte_1gb_table) {
+    for (uint32_t i = 0; i < 512; i++) {
+        if (!pdpte_1gb_table[i].present) {
+            return i;
+        }
+    }
+
+    return 0xdead;
+}
+
+uint32_t find_free_pde_2mb_index(paging_structs::pde_2mb_64* pde_2mb_table) {
+    for (uint32_t i = 0; i < 512; i++) {
+        if (!pde_2mb_table[i].present) {
+            return i;
+        }
+    }
+
+    return 0xdead;
+}
+
+uint32_t find_free_pte_index(paging_structs::pte_64* pte_table) {
+    for (uint32_t i = 0; i < 512; i++) {
+        if (!pte_table[i].present) {
+            return i;
+        }
+    }
+
+    return 0xdead;
+}
+
+void free_pml4e_entries_except(paging_structs::pml4e_64* pml4e_table, uint64_t curr_index) {
+    for (uint32_t i = 0; i < 512; i++) {
+        if (i != curr_index) {
+            pml4e_table[i].present = false;
+        }
+    }
+}
+
+void free_pdpte_1gb_entries_except(paging_structs::pdpte_1gb_64* pdpte_1gb_table, uint64_t curr_index) {
+    for (uint32_t i = 0; i < 512; i++) {
+        if (i != curr_index) {
+            pdpte_1gb_table[i].present = false;
+        }
+    }
+}
+
+void free_pde_2mb_entries_except(paging_structs::pde_2mb_64* pde_2mb_table, uint64_t curr_index) {
+    for (uint32_t i = 0; i < 512; i++) {
+        if (i != curr_index) {
+            pde_2mb_table[i].present = false;
+        }
+    }
+}
+
+void free_pte_entries_except(paging_structs::pte_64* pte_table, uint64_t curr_index) {
+    for (uint32_t i = 0; i < 512; i++) {
+        if (i != curr_index) {
+            pte_table[i].present = false;
+        }
+    }
+}
+
+// Maps a given virtual address into our cr3
+uint64_t physmem::map_outside_virtual_addr(uint64_t outside_va, paging_structs::cr3 outside_cr3, uint64_t* offset_to_next_page) {
+    virtual_address vaddr = { outside_va };
+    paging_structs::pml4e_64* pml4e_table = (paging_structs::pml4e_64*)(get_virtual_address(outside_cr3.address_of_page_directory << 12));
+    paging_structs::pml4e_64 pml4e = pml4e_table[vaddr.pml4_idx];
+
+    if (!pml4e.present) {
+        dbg_log("Pml4 entry not present");
+        return 0;
+    }
+
+    paging_structs::pdpte_64* pdpt_table = (paging_structs::pdpte_64*)(get_virtual_address(pml4e.page_frame_number << 12));
+    paging_structs::pdpte_64 pdpte = pdpt_table[vaddr.pdpt_idx];
+
+    if (!pdpte.present) {
+        dbg_log("Pdpte entry not present");
+        return 0;
+    }
+    
+    if (pdpte.large_page) {
+        paging_structs::pdpte_1gb_64 pdpte_1gb;
+        pdpte_1gb.flags = pdpte.flags;
+
+        uint64_t offset = (vaddr.pd_idx << 21) + (vaddr.pt_idx << 12) + vaddr.offset;
+
+        if (offset_to_next_page)
+            *offset_to_next_page = 0x40000000 - offset;
+
+        virtual_address generated_virtual_address = { 0 };
+        generated_virtual_address.offset = vaddr.offset;
+        generated_virtual_address.pml4_idx = free_pml4_index;
+        generated_virtual_address.pdpt_idx = find_free_pdpte_1gb_index(page_tables->pdpt_1gb_table[MEMORY_COPYING_SLOT]);
+        // Pd and pt index don't matter as they won't ever be used
+
+        if (generated_virtual_address.pdpt_idx == 0xdead) {
+            free_pdpte_1gb_entries_except(page_tables->pdpt_1gb_table[MEMORY_COPYING_SLOT], curr_pdpt_1gb_index);
+            generated_virtual_address.pdpt_idx = find_free_pdpte_1gb_index(page_tables->pdpt_1gb_table[MEMORY_COPYING_SLOT]);
+        }
+
+        if (generated_virtual_address.pdpt_idx == 0xdead)
+            return 0;
+
+        // Copy over the flags and force the write flag
+        page_tables->pdpt_1gb_table[MEMORY_COPYING_SLOT][generated_virtual_address.pdpt_idx].flags = pdpte_1gb.flags;
+        page_tables->pdpt_1gb_table[MEMORY_COPYING_SLOT][generated_virtual_address.pdpt_idx].write = true;
+
+        curr_pdpt_1gb_index = generated_virtual_address.pdpt_idx;
+
+        return generated_virtual_address.address;
+    }
+
+    paging_structs::pde_64* pd_table = (paging_structs::pde_64*)(get_virtual_address((pdpte.page_frame_number << 12)));
+    paging_structs::pde_64 pde = pd_table[vaddr.pd_idx];
+
+    if (!pde.present) {
+        dbg_log("Pde entry not present");
+        return 0;
+    }
+    
+    if (pde.large_page) {
+        paging_structs::pde_2mb_64 pde_2mb;
+        pde_2mb.flags = pde.flags;
+
+        uint64_t offset = (vaddr.pt_idx << 12) + vaddr.offset;
+
+        if (offset_to_next_page)
+            *offset_to_next_page = 0x200000 - offset;
+
+        virtual_address generated_virtual_address = { 0 };
+        generated_virtual_address.offset = vaddr.offset;
+        generated_virtual_address.pml4_idx = free_pml4_index;
+        generated_virtual_address.pdpt_idx = NORMAL_PAGE_ENTRY;
+        generated_virtual_address.pd_idx = find_free_pde_2mb_index(page_tables->pde_2mb_table[MEMORY_COPYING_SLOT]);
+        // Pd and pt index don't matter as they won't ever be used
+
+        if (generated_virtual_address.pd_idx == 0xdead) {
+            free_pde_2mb_entries_except(page_tables->pde_2mb_table[MEMORY_COPYING_SLOT], curr_pde_2mb_index);
+            generated_virtual_address.pd_idx = find_free_pde_2mb_index(page_tables->pde_2mb_table[MEMORY_COPYING_SLOT]);
+        }
+
+        if (generated_virtual_address.pd_idx == 0xdead)
+            return 0;
+
+        // Copy over the flags and force the write flag
+        page_tables->pde_2mb_table[MEMORY_COPYING_SLOT][generated_virtual_address.pd_idx].flags = pde_2mb.flags;
+        page_tables->pde_2mb_table[MEMORY_COPYING_SLOT][generated_virtual_address.pd_idx].write = true;
+
+        curr_pde_2mb_index = generated_virtual_address.pd_idx;
+
+        return generated_virtual_address.address;
+    }
+
+    paging_structs::pte_64* pt_table = (paging_structs::pte_64*)(get_virtual_address((pde.page_frame_number << 12)));
+    paging_structs::pte_64 pte = pt_table[vaddr.pt_idx];
+
+    if (!pte.present) {
+        dbg_log("Pte entry not present");
+        return 0;
+    }
+
+    if (offset_to_next_page)
+        *offset_to_next_page = 0x1000 - vaddr.offset;
+
+    virtual_address generated_virtual_address = { 0 };
+
+    generated_virtual_address.offset = vaddr.offset;
+    generated_virtual_address.pml4_idx = free_pml4_index;
+    generated_virtual_address.pdpt_idx = NORMAL_PAGE_ENTRY;
+    generated_virtual_address.pd_idx = NORMAL_PAGE_ENTRY;
+    generated_virtual_address.pt_idx = find_free_pte_index(&page_tables->pte_table[MEMORY_COPYING_SLOT][0]);
+
+    if (generated_virtual_address.pt_idx == 0xdead) {
+        free_pte_entries_except(&page_tables->pte_table[MEMORY_COPYING_SLOT][0], curr_pte_index);
+        generated_virtual_address.pt_idx = find_free_pte_index(&page_tables->pte_table[MEMORY_COPYING_SLOT][0]);
+    }
+
+    if (generated_virtual_address.pt_idx == 0xdead)
+        return 0;
+
+    // Copy over the flags and force the write flag
+    page_tables->pte_table[MEMORY_COPYING_SLOT][generated_virtual_address.pt_idx].flags = pte.flags;
+    page_tables->pte_table[MEMORY_COPYING_SLOT][generated_virtual_address.pt_idx].write = true;
+
+    // Save the current index
+    curr_pte_index = generated_virtual_address.pt_idx;
+
+    return generated_virtual_address.address;
+}
+
+// Maps a given physical address into our cr3 and returns a va for it
+uint64_t physmem::map_outside_physical_addr(uint64_t outside_pa, uint64_t* offset_to_next_page) {
+
+    virtual_address generated_virtual_address = { 0 };
+    uint64_t page_boundary = (uint64_t)PAGE_ALIGN((void*)outside_pa);
+
+    generated_virtual_address.offset = outside_pa - page_boundary;
+    generated_virtual_address.pml4_idx = free_pml4_index;
+    generated_virtual_address.pdpt_idx = NORMAL_PAGE_ENTRY;
+    generated_virtual_address.pd_idx = NORMAL_PAGE_ENTRY; 
+    generated_virtual_address.pt_idx = find_free_pte_index(page_tables->pte_table[MEMORY_COPYING_SLOT]);
+
+    if (generated_virtual_address.pt_idx == 0xdead) {
+        free_pte_entries_except(page_tables->pte_table[MEMORY_COPYING_SLOT], curr_pte_index);
+        generated_virtual_address.pt_idx = find_free_pte_index(page_tables->pte_table[MEMORY_COPYING_SLOT]);
+    }
+
+    if (generated_virtual_address.pt_idx == 0xdead)
+        return 0;
+    
+    paging_structs::pte_64& pte = page_tables->pte_table[MEMORY_COPYING_SLOT][generated_virtual_address.pt_idx];
+
+    pte.present = true;
+    pte.write = true;
+    pte.page_frame_number = page_boundary >> 12;
+
+    curr_pte_index = generated_virtual_address.pt_idx;
+
+    // Calculate the offset to the next page boundary
+    if (offset_to_next_page) {
+        *offset_to_next_page = PAGE_SIZE - generated_virtual_address.offset;
+    }
+
+    return generated_virtual_address.address;
+}
+
+// Copies memory from one va to another based on cr3 without accessing eithers va
+uint64_t physmem::copy_virtual_memory(paging_structs::cr3 source_cr3, uint64_t source, paging_structs::cr3 destination_cr3, uint64_t destination, uint64_t size)
+{
+    uint64_t bytes_read = 0;
+
+    paging_structs::cr3 kernel_cr3 = { 0 };
+    kernel_cr3.flags = __readcr3();
+
+    while (bytes_read < size)
+    {
+        uint64_t src_remaining = 0;
+        uint64_t dst_remaining = 0;
+
+        // Map both the source and destination and source into our cr3
+        uint64_t curr_src = map_outside_virtual_addr(source + bytes_read, source_cr3, &src_remaining);
+        uint64_t curr_dst = map_outside_virtual_addr(destination + bytes_read, destination_cr3, &dst_remaining);
+
+        if (!curr_src || !curr_dst) {
+            _mm_lfence();
+            __writecr3(kernel_cr3.flags);
+            dbg_log("Failed to map src: %p and dst %p", curr_src, curr_dst);
+            return bytes_read;
+        }
+
+        // Get the max size that is copyable at once
+        uint64_t curr_size = min(size - bytes_read, src_remaining);
+        curr_size = min(curr_size, dst_remaining);
+
+        // Make sure everything is executed before switching to our cr3
+        _mm_lfence();
+        __writecr3(my_cr3.flags);
+        _mm_lfence();
+
+        __invlpg((void*)curr_src);
+        __invlpg((void*)curr_dst);
+
+        crt::memcpy((void*)curr_dst, (void*)curr_src, curr_size);
+
+        // Make sure everything is executed before switching back to the kernel cr3
+        _mm_lfence();
+        __writecr3(kernel_cr3.flags);
+        _mm_lfence();
+
+        __invlpg((void*)curr_src);
+        __invlpg((void*)curr_dst);
+
+        bytes_read += curr_size;
+    }
+
+    // Make sure everything is executed before switching back to the kernel cr3
+    _mm_lfence();
+    __writecr3(kernel_cr3.flags);
+
+    return bytes_read;
+}
+
+bool log_paging_hierarchy(uint64_t va, paging_structs::cr3 target_cr3);
+
+// Copies memory from one pa to another pa
+uint64_t physmem::copy_physical_memory(uint64_t source_physaddr, uint64_t destination_physaddr, uint64_t size)
+{
+    uint64_t bytes_read = 0;
+
+    if (!source_physaddr || !destination_physaddr)
+        return bytes_read;
+
+    paging_structs::cr3 kernel_cr3 = { 0 };
+    kernel_cr3.flags = __readcr3();
+
+    while (bytes_read < size)
+    {
+        uint64_t src_remaining = 0;
+        uint64_t dst_remaining = 0;
+
+        // Map both the source and destination and source into our cr3
+        uint64_t curr_src = map_outside_physical_addr(source_physaddr + bytes_read, &src_remaining);
+        uint64_t curr_dst = map_outside_physical_addr(destination_physaddr + bytes_read, &dst_remaining);
+
+        if (!curr_src || !curr_dst) {
+            _mm_lfence();
+            __writecr3(kernel_cr3.flags);
+            return bytes_read;
+        }
+
+        // Get the max size that is copyable at once
+        uint64_t curr_size = min(size - bytes_read, src_remaining);
+        curr_size = min(curr_size, dst_remaining);
+
+        // Make sure everything is executed before switching to our cr3
+        _mm_lfence();
+        __writecr3(my_cr3.flags);
+        _mm_lfence();
+
+        crt::memcpy((void*)curr_dst, (void*)curr_src, curr_size);
+
+        // Make sure everything is executed before switching back to the kernel cr3
+        _mm_lfence();
+        __writecr3(kernel_cr3.flags);
+        _mm_lfence();
+
+        bytes_read += curr_size;
+    }
+
+    // Make sure everything is executed before switching back to the kernel cr3
+    _mm_lfence();
+    __writecr3(kernel_cr3.flags);
+
+    return bytes_read;
+}
+
+bool log_paging_hierarchy(uint64_t va, paging_structs::cr3 target_cr3);
+
+// Tests whether copying memory is working
+bool physmem::test_page_tables(void) {
+    paging_structs::cr3 kernel_cr3 = { 0 };
+    kernel_cr3.flags = __readcr3();
+
+    // Test setup (allocating mem)
+    uint64_t mem_a = (uint64_t)ExAllocatePool(NonPagedPool, PAGE_SIZE);
+    uint64_t mem_b = (uint64_t)ExAllocatePool(NonPagedPool, PAGE_SIZE);
+    if (!mem_a || !mem_b)
+        return false;
+
+    // Set 1 pool of mem to some value
+    crt::memset((void*)mem_a, 0xaa, PAGE_SIZE);
+
+    // Copy it over via virtual memory copying
+    if (PAGE_SIZE != copy_virtual_memory(kernel_cr3, mem_a, kernel_cr3, mem_b, PAGE_SIZE)) {
+        dbg_log("Failed to copy virtual memory");
+        ExFreePool((void*)mem_a);
+        ExFreePool((void*)mem_b);
+        return false;
+    }
+
+    // Check whether the content of the pages are the same
+    bool has_same_content = crt::memcmp((void*)mem_a, (void*)mem_b, PAGE_SIZE) == 0;
+    if (!has_same_content) {
+        dbg_log("Failed comparison 1");
+        ExFreePool((void*)mem_a);
+        ExFreePool((void*)mem_b);
+        return false;
+    }
+
+    // Set 1 pool of mem to some value
+    crt::memset((void*)mem_a, 0xbb, PAGE_SIZE);
+    
+    // Copy it over via physical memory copying
+    if (PAGE_SIZE != copy_physical_memory(get_physical_address((void*)mem_a), get_physical_address((void*)mem_b), PAGE_SIZE)) {
+        dbg_log("Failed to copy physical memory");
+        ExFreePool((void*)mem_a);
+        ExFreePool((void*)mem_b);
+        return false;
+    }
+    
+    // Check whether the content of the pages are the same
+    has_same_content = crt::memcmp((void*)mem_a, (void*)mem_b, PAGE_SIZE) == 0;
+    if (!has_same_content) {
+        dbg_log("Failed comparison 2");
+        ExFreePool((void*)mem_a);
+        ExFreePool((void*)mem_b);
+        return false;
+    }
+
+    ExFreePool((void*)mem_a);
+    ExFreePool((void*)mem_b);
+
+    return true;
+}
+
+// Returns the cr3 in the current physmem instance
+paging_structs::cr3 physmem::get_my_cr3() {
+    return physmem_instance->my_cr3;
+}
+
+// Sets up our paging hierachy for memory copying
+bool physmem::setup_paging_hierachy(void) {
+
+    // Find a free pml4 slot index
+    uint32_t free_index = find_free_pml4e_index(page_tables->pml4_table);
+    if (free_index == 0xdead) {
+        dbg_log("No free Pml4 index left; Weird");
+        return false;
+    }
+
+    free_pml4_index = free_index;
+
+    // Use the just determined free pml4 paging slot
+    paging_structs::pml4e_64& free_pml4_slot = page_tables->pml4_table[free_index];
+
+    free_pml4_slot.present = true;
+    free_pml4_slot.write = true;
+    free_pml4_slot.page_frame_number = get_physical_address(&page_tables->pdpt_table[MEMORY_COPYING_SLOT][0]) >> 12;
+
+    // Use the first entry for the 1gb large page
+    paging_structs::pdpte_1gb_64& pdpte_1gb_slot = page_tables->pdpt_1gb_table[MEMORY_COPYING_SLOT][LARGE_PAGE_ENTRY];
+
+    pdpte_1gb_slot.present = true;
+    pdpte_1gb_slot.write = true;
+    pdpte_1gb_slot.large_page = true;
+    pdpte_1gb_slot.page_frame_number = 0; // Has to be set when trying to copy memory from a 1gb large page
+
+    // Use the second entry for the normal page
+    paging_structs::pdpte_64& pdpte_64_slot = page_tables->pdpt_table[MEMORY_COPYING_SLOT][NORMAL_PAGE_ENTRY];
+
+    pdpte_64_slot.present = true;
+    pdpte_64_slot.write = true;
+    // Point it to our pde table
+    pdpte_64_slot.page_frame_number = get_physical_address(&page_tables->pde_table[MEMORY_COPYING_SLOT][0]) >> 12;
+
+    // Use the first entry for the 2mb large page
+    paging_structs::pde_2mb_64& pde_2mb_slot = page_tables->pde_2mb_table[MEMORY_COPYING_SLOT][LARGE_PAGE_ENTRY];
+
+    pde_2mb_slot.present = true;
+    pde_2mb_slot.write = true;
+    pde_2mb_slot.large_page = true;
+    pde_2mb_slot.page_frame_number = 0; // Has to be set when trying to copy memory from a 2mb large page
+
+    // Use the second entry for the normal page
+    paging_structs::pde_64& pde_slot = page_tables->pde_table[MEMORY_COPYING_SLOT][NORMAL_PAGE_ENTRY];
+
+    pde_slot.present = true;
+    pde_slot.write = true;
+    pde_slot.page_frame_number = get_physical_address(&page_tables->pte_table[MEMORY_COPYING_SLOT][0]) >> 12;
+
+    // On this one you could use both normal and large page slot; it doesn't matter
+    paging_structs::pte_64& pte_slot = page_tables->pte_table[MEMORY_COPYING_SLOT][NORMAL_PAGE_ENTRY];
+
+    pte_slot.present = true;
+    pte_slot.write = true;
+    pte_slot.page_frame_number = 0; // Has to be set when trying to copy memory from a normal page
+
+    // Set the first slots all to occupied
+    page_tables->is_pdpt_table_occupied[MEMORY_COPYING_SLOT] = true;
+    page_tables->is_pde_table_occupied[MEMORY_COPYING_SLOT] = true;
+    page_tables->is_pte_table_occupied[MEMORY_COPYING_SLOT] = true;
+
+    return true;
+}
+
+// Returns the current physmem instance
+physmem* physmem::get_physmem_instance(void) {
+
+    if (physmem_instance)
+        return physmem_instance;
+
+    physmem_instance = (physmem*)ExAllocatePool(NonPagedPool, sizeof(physmem));
+    if (!physmem_instance)
+        return 0;
+
+    // Backup the inst before clearing the mem
+    auto inst = physmem_instance;
+
+    // Clear the mem
+    crt::memset(physmem_instance, 0, sizeof(physmem));
+
+    // Restore the inst after clearing the mem
+    physmem_instance = inst;
+
+    physmem_instance->page_tables = (page_table_t*)ExAllocatePool(NonPagedPool, sizeof(page_table_t));
+    if (!physmem_instance->page_tables)
+        return 0;
+
+    crt::memset(physmem_instance->page_tables, 0, sizeof(page_table_t));
+
+    physmem_instance->page_tables->pml4_table = (paging_structs::pml4e_64*)ExAllocatePool(NonPagedPool, PAGE_SIZE);
+    if (!physmem_instance->page_tables->pml4_table) {
+        dbg_log("Failed to alloc mem");
+        return 0;
+    }
+
+    crt::memset(physmem_instance->page_tables->pml4_table, 0, PAGE_SIZE);
+
+    for (uint64_t i = 0; i < TABLE_COUNT; i++) {
+        physmem_instance->page_tables->pdpt_table[i] = (paging_structs::pdpte_64*)ExAllocatePool(NonPagedPool, PAGE_SIZE);
+        physmem_instance->page_tables->pde_table[i] = (paging_structs::pde_64*)ExAllocatePool(NonPagedPool, PAGE_SIZE);
+        physmem_instance->page_tables->pte_table[i] = (paging_structs::pte_64*)ExAllocatePool(NonPagedPool, PAGE_SIZE);
+
+        if (!physmem_instance->page_tables->pdpt_table[i] ||
+            !physmem_instance->page_tables->pde_table[i] ||
+            !physmem_instance->page_tables->pte_table[i]) {
+            dbg_log("Failed to alloc mem");
+            return 0;
+        }
+
+        crt::memset(physmem_instance->page_tables->pdpt_table[i], 0, PAGE_SIZE);
+        crt::memset(physmem_instance->page_tables->pde_table[i], 0, PAGE_SIZE);
+        crt::memset(physmem_instance->page_tables->pte_table[i], 0, PAGE_SIZE);
+    }
+
+    paging_structs::pml4e_64* kernel_pml4_page_table = 0;
+    paging_structs::cr3 kernel_cr3 = { 0 };
+    kernel_cr3.flags = __readcr3();
+
+    kernel_pml4_page_table = (paging_structs::pml4e_64*)get_virtual_address(kernel_cr3.address_of_page_directory << 12);
+
+    //Copy the top most layer of pml4 because that's the kernel and we need that
+    crt::memcpy(physmem_instance->page_tables->pml4_table, kernel_pml4_page_table, sizeof(paging_structs::pml4e_64) * 512);
+
+    physmem_instance->my_cr3.flags = kernel_cr3.flags;
+    physmem_instance->my_cr3.address_of_page_directory = get_physical_address(physmem_instance->page_tables->pml4_table) >> 12;
+
+    if (!physmem_instance->setup_paging_hierachy()) {
+        dbg_log("Setting up the paging hierachy failed");
+        return 0;
+    }
+
+#ifdef ENABLE_PHYSMEM_LOGGING
+    dbg_log("Successfully set up paging hierachy");
+#endif // ENABLE_PHYSMEM_LOGGING
+
+#ifdef ENABLE_PHYSMEM_TESTS
+
+    if (!physmem_instance->test_page_tables()) {
+        dbg_log("Testing memory copying failed");
+        return 0;
+    }
+
+#ifdef ENABLE_PHYSMEM_LOGGING
+    dbg_log("Tests regarding memory copying succeeded");
+#endif // ENABLE_PHYSMEM_LOGGING
+
+#endif // ENABLE_PHYSMEM_TESTS
+
+    physmem_instance->inited = true;
+
+    return physmem_instance;
+}
