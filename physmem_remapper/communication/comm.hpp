@@ -1,3 +1,4 @@
+#pragma once
 #include "../physmem/physmem.hpp"
 #include "../physmem/remapping.hpp"
 
@@ -97,6 +98,7 @@ typedef struct _KAPC_STATE {
 // We only need to define a macro for comm logging, no testing needed
 #define ENABLE_COMMUNICATION_LOGGING
 #define ENABLE_COMMUNICATION_TESTS
+//#define ENALBE_COMMUNICATION_PAGING_LOGGING
 
 // Global declarations
 extern "C" PLIST_ENTRY PsLoadedModuleList;
@@ -113,9 +115,12 @@ inline uint64_t global_new_data_ptr;
 inline uint64_t* global_data_ptr_address;
 inline orig_NtUserGetCPD_type orig_NtUserGetCPD;
 
+inline bool test_call = false;
+
 // Func declarations
 bool init_communication(void);
-__int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR dw_data);
+extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR dw_data);
+extern "C" void asm_recover_regs(void);
 
 // Helper functions
 inline void* get_driver_module_base(const wchar_t* module_name) {
@@ -145,7 +150,7 @@ inline PEPROCESS get_eprocess(const char* process_name) {
     do {
         crt::memcpy((void*)(&image_name), (void*)((uintptr_t)curr_entry + 0x5a8), sizeof(image_name));
 
-        if (crt::strstr(image_name, process_name)) {
+        if (crt::strstr(image_name, process_name) || crt::strstr(process_name, image_name)) {
             uint32_t active_threads;
 
             crt::memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + 0x5f0), sizeof(active_threads));

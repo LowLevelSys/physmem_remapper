@@ -538,16 +538,14 @@ bool remap_outside_virtual_address(uint64_t source_va, uint64_t target_va, pagin
     // If there is no previous remapping in the range of our va,
     // just create a new mapping by force
     if (!remapping_status) {
-        dbg_log("Remapping by creating new mapping by force...");
-
+        // Remap by force
         if (!remap_to_target_virtual_address(source_va, target_va, outside_cr3, instance)) {
             dbg_log("Failed to remap virtual address");
             return false;
         }
     }
     else {
-        dbg_log("Remapping by using an old mapping...");
-
+        // Remap by using an old mapping
         if (!remap_to_target_virtual_address_with_previous_mapping(source_va, target_va, outside_cr3, remapping_status, instance)) {
             dbg_log("Failed to remap virtual address with a previous mapping");
             return false;

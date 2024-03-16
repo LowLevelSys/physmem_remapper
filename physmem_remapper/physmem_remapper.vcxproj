@@ -127,6 +127,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="communication\comm.hpp" />
+    <ClInclude Include="communication\comm_util.hpp" />
+    <ClInclude Include="communication\shared.hpp" />
     <ClInclude Include="physmem\includes\crt.hpp" />
     <ClInclude Include="physmem\includes\includes.hpp" />
     <ClInclude Include="physmem\remapping.hpp" />
