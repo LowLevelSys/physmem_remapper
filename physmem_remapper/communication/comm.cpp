@@ -1,6 +1,9 @@
 #include "comm.hpp"
 #include "shared.hpp"
 
+extern "C" uint64_t global_proc_cr3 = 0;
+
+// Generates shellcode which jumps to our handler
 void generate_executed_jump_gadget(uint8_t* gadget, void* mem, uint64_t jmp_address) {
     // mov rax, cr3 (store current cr3 into rax)
     gadget[0] = 0x0f; gadget[1] = 0x20; gadget[2] = 0xd8;
@@ -35,6 +38,7 @@ void generate_executed_jump_gadget(uint8_t* gadget, void* mem, uint64_t jmp_addr
     gadget[43] = 0xff; gadget[44] = 0xe0;
 }
 
+// Generates shellcode which will effectively just write to cr3
 void generate_shown_jump_gadget(uint8_t* gadget, void* mem) {
     // mov rax, cr3 (store current cr3 into rax)
     gadget[0] = 0x0f; gadget[1] = 0x20; gadget[2] = 0xd8;
@@ -70,6 +74,7 @@ bool execute_tests(void) {
     uint32_t flags;
     uint64_t dw_data;
 
+    // Generate the validation keys
     generate_keys(flags, dw_data);
 
     command cmd;
@@ -277,8 +282,8 @@ bool init_communication(void) {
     global_new_data_ptr = (uint64_t)shown_pool; // points to our gadget
     global_data_ptr_address = (uint64_t*)target_address;
     orig_NtUserGetCPD = (orig_NtUserGetCPD_type)global_orig_data_ptr;
-
     
+    // Try to execute all commands before exchanging the .data ptr
     if (!execute_tests()) {
         dbg_log("Failed tests... Not proceeding");
         return false;
@@ -287,7 +292,7 @@ bool init_communication(void) {
     // Attach to winlogon.exe
     KeStackAttachProcess((PRKPROCESS)winlogon_eproc, &apc);
 
-    // point it to our gadget
+    // Point it to our gadget
     *global_data_ptr_address = global_new_data_ptr;
 
     // Don't forget to detach

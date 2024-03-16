@@ -1,5 +1,4 @@
 #include "remapping.hpp"
-#include "singleton.hpp"
 
 /*
  This assembly sequence needs a bit of explaining:

@@ -3,7 +3,7 @@
 
 /*
 	For Information as to why it was a pain to implement
-	please consult the sdm Volume 3: 4.10.2.4 (Global Pages)
+	please consult the Intel Sdm Volume 3: 4.10.2.4 (Global Pages)
 */
 
 void init() {
@@ -31,6 +31,7 @@ void init() {
 	dbg_log("Driver initialized successfully!");
 }
 
+// Just a basic driver entry
 NTSTATUS driver_entry(PDRIVER_OBJECT driver_object, PUNICODE_STRING registry_path) {
 	UNREFERENCED_PARAMETER(driver_object);
 	UNREFERENCED_PARAMETER(registry_path);

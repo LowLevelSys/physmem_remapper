@@ -134,7 +134,6 @@
     <ClInclude Include="physmem\remapping.hpp" />
     <ClInclude Include="physmem\physmem.hpp" />
     <ClInclude Include="physmem\physmem_structs.hpp" />
-    <ClInclude Include="physmem\singleton.hpp" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="physmem\experiment.asm" />

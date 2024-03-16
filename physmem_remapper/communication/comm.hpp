@@ -95,17 +95,39 @@ typedef struct _KAPC_STATE {
     };
 } KAPC_STATE, * PKAPC_STATE, * PRKAPC_STATE;
 
-// We only need to define a macro for comm logging, no testing needed
-#define ENABLE_COMMUNICATION_LOGGING
+typedef struct {
+    ULONG Length;                                                           //0x0
+    UCHAR Initialized;                                                      //0x4
+    VOID* SsHandle;                                                         //0x8
+    struct _LIST_ENTRY InLoadOrderModuleList;                               //0x10
+    struct _LIST_ENTRY InMemoryOrderModuleList;                             //0x20
+    struct _LIST_ENTRY InInitializationOrderModuleList;                     //0x30
+    VOID* EntryInProgress;                                                  //0x40
+    UCHAR ShutdownInProgress;                                               //0x48
+    VOID* ShutdownThreadId;                                                 //0x50
+}PEB_LDR_DATA;
+
+
+// Definitions
+// #define ENABLE_COMMUNICATION_LOGGING
+// #define ENABLE_HANDLER_LOGGING
 #define ENABLE_COMMUNICATION_TESTS
-//#define ENALBE_COMMUNICATION_PAGING_LOGGING
+// #define ENABLE_COMMUNICATION_PAGING_LOGGING
+
+#ifdef ENABLE_HANDLER_LOGGING
+#define dbg_log_handler(fmt, ...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, fmt, ##__VA_ARGS__)
+#else
+#define dbg_log_handler(fmt, ...) (void)0
+#endif
 
 // Global declarations
 extern "C" PLIST_ENTRY PsLoadedModuleList;
 extern "C" NTKERNELAPI VOID KeStackAttachProcess(PRKPROCESS PROCESS, PKAPC_STATE ApcState);
 extern "C" NTKERNELAPI VOID KeUnstackDetachProcess(PKAPC_STATE ApcState);
 
+// Function types
 typedef __int64(__fastcall* orig_NtUserGetCPD_type)(uint64_t hwnd, uint32_t flags, ULONG_PTR dw_data);
+
 
 // Global variables
 inline paging_structs::cr3 global_kernel_cr3;
@@ -120,7 +142,6 @@ inline bool test_call = false;
 // Func declarations
 bool init_communication(void);
 extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR dw_data);
-extern "C" void asm_recover_regs(void);
 
 // Helper functions
 inline void* get_driver_module_base(const wchar_t* module_name) {
@@ -141,6 +162,7 @@ inline void* get_driver_module_base(const wchar_t* module_name) {
     return 0;
 }
 
+// Gets an eproc based on a name
 inline PEPROCESS get_eprocess(const char* process_name) {
     PEPROCESS sys_process = PsInitialSystemProcess;
     PEPROCESS curr_entry = sys_process;
@@ -166,6 +188,7 @@ inline PEPROCESS get_eprocess(const char* process_name) {
     return 0;
 }
 
+// Finds a pattern within a certain range
 inline uintptr_t find_pattern_in_range(uintptr_t region_base, size_t region_size, const char* pattern, size_t pattern_size, char wildcard) {
     // Ensure there are enough bytes left to check the pattern
     char* region_end = (char*)region_base + region_size - pattern_size + 1;
@@ -189,6 +212,7 @@ inline uintptr_t find_pattern_in_range(uintptr_t region_base, size_t region_size
     return 0;
 }
 
+// Finds a pattern in a given section based on the name of the section, the pattern and the base of the image
 inline uintptr_t search_pattern_in_section(void* module_handle, const char* section_name, const char* pattern, uint64_t pattern_size, char wildcard) {
 
     IMAGE_DOS_HEADER* dos_header = (IMAGE_DOS_HEADER*)module_handle;

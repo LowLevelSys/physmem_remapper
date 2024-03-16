@@ -68,10 +68,13 @@ public:
         return physmem_instance->inited;
     }
 
+    // Returns the kernel cr3
     uint64_t get_kernel_cr3(void) {
+        // If it is not yet populated, we are also no yet inited, so we can just read the kernel cr3 
+        // from cr3 because we are executing in a kernel context
         if (!global_kernel_cr3.flags)
             global_kernel_cr3.flags = __readcr3();
 
-        return  global_kernel_cr3.flags;
+        return global_kernel_cr3.flags;
     }
 };

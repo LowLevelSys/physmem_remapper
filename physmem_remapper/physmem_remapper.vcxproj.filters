@@ -11,9 +11,6 @@
     <Filter Include="physmem\remapping">
       <UniqueIdentifier>{c62926dd-7ffa-4101-bd98-07c129ed6980}</UniqueIdentifier>
     </Filter>
-    <Filter Include="physmem\singleton">
-      <UniqueIdentifier>{577e533b-e078-4a71-aabf-679ba0135a37}</UniqueIdentifier>
-    </Filter>
     <Filter Include="physmem\assembly">
       <UniqueIdentifier>{f8ae2849-6c37-4a67-8fb2-cf04bdcf9a18}</UniqueIdentifier>
     </Filter>
@@ -56,9 +53,6 @@
     </ClInclude>
     <ClInclude Include="physmem\remapping.hpp">
       <Filter>physmem\remapping</Filter>
-    </ClInclude>
-    <ClInclude Include="physmem\singleton.hpp">
-      <Filter>physmem\singleton</Filter>
     </ClInclude>
     <ClInclude Include="physmem\physmem_structs.hpp">
       <Filter>physmem\structs</Filter>
