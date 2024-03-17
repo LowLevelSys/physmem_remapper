@@ -1,4 +1,8 @@
 #pragma once
+// In UM we need to include intrin.h
+#ifndef _KERNEL_MODE
+#include <intrin.h>
+#endif // _KERNEL_MODE
 
 // Designed to be a standalone, includable .hpp, thus we need to make our own definitions etc.
 
@@ -84,6 +88,18 @@ struct get_pid_by_name_struct {
     uint64_t pid;
 };
 
+struct get_driver_info_struct {
+    // Ouput
+    uint64_t base;
+    uint64_t size;
+};
+
+struct remove_system_mapping_struct {
+    // Input
+    uint64_t physical_base;
+    uint64_t size;
+};
+
 enum command_type {
     cmd_allocate_memory,
     cmd_free_memory,
@@ -94,13 +110,16 @@ enum command_type {
     cmd_get_pid_by_name,
     cmd_get_physical_address,
     cmd_get_virtual_address,
-    cmd_comm_test,
+    cmd_ensure_mapping,
+    cmd_get_driver_info,
+    cmd_remove_system_mapping,
+    cmd_comm_init,
 };
 
 struct command {
-	bool result;
-	uint64_t command_number;
-	void* sub_command_ptr;
+    bool result;
+    uint64_t command_number;
+    void* sub_command_ptr;
 };
 
 

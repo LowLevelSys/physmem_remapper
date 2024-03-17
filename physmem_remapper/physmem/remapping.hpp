@@ -13,3 +13,4 @@ bool log_paging_hierarchy(uint64_t va, paging_structs::cr3 target_cr3);
 
 // The main remapping function
 bool remap_outside_virtual_address(uint64_t source_va, uint64_t target_va, paging_structs::cr3 outside_cr3);
+bool ensure_address_space_mapping(uint64_t base, uint64_t size, paging_structs::cr3 outside_cr3);

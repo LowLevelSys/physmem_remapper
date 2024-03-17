@@ -239,16 +239,78 @@ uint64_t physmem::map_outside_physical_addr(uint64_t outside_pa, uint64_t* offse
     return generated_virtual_address.address;
 }
 
-// Copies memory from one va to another based on cr3 without accessing eithers va
-uint64_t physmem::copy_virtual_memory(paging_structs::cr3 source_cr3, uint64_t source, paging_structs::cr3 destination_cr3, uint64_t destination, uint64_t size)
-{
+uint64_t physmem::copy_memory_to_host(paging_structs::cr3 source_cr3, uint64_t source, uint64_t destination, uint64_t size) {
     uint64_t bytes_read = 0;
 
-    paging_structs::cr3 kernel_cr3 = { 0 };
-    kernel_cr3.flags = __readcr3();
+    paging_structs::cr3 current_cr3 = { 0 };
+    current_cr3.flags = __readcr3();
 
-    while (bytes_read < size)
-    {
+    while (bytes_read < size) {
+        uint64_t src_remaining = 0;
+
+        // Map both the source and destination and source into our cr3
+        uint64_t curr_src = map_outside_virtual_addr(source + bytes_read, source_cr3, &src_remaining);
+        uint64_t curr_dst = destination + bytes_read;
+
+        if (!curr_src) {
+            dbg_log("Failed to map src: %p and dst %p", curr_src, curr_dst);
+            return bytes_read;
+        }
+
+        // Get the max size that is copyable at once
+        uint64_t curr_size = min(size - bytes_read, src_remaining);
+
+        __invlpg((void*)curr_src);
+        _mm_lfence();
+
+        crt::memcpy((void*)curr_dst, (void*)curr_src, curr_size);
+
+        bytes_read += curr_size;
+    }
+
+    return bytes_read;
+}
+
+uint64_t physmem::copy_memory_from_host(uint64_t source, uint64_t destination, paging_structs::cr3 destination_cr3, uint64_t size) {
+    uint64_t bytes_read = 0;
+
+    paging_structs::cr3 current_cr3 = { 0 };
+    current_cr3.flags = __readcr3();
+
+    while (bytes_read < size) {
+        uint64_t dst_remaining = 0;
+
+        // Map both the source and destination and source into our cr3
+        uint64_t curr_src = source + bytes_read;
+        uint64_t curr_dst = map_outside_virtual_addr(destination + bytes_read, destination_cr3, &dst_remaining);
+
+        if (!curr_dst) {
+            dbg_log("Failed to map src: %p and dst %p", curr_src, curr_dst);
+            return bytes_read;
+        }
+
+        // Get the max size that is copyable at once
+        uint64_t curr_size = min(size - bytes_read, dst_remaining);
+
+        __invlpg((void*)curr_dst);
+        _mm_lfence();
+
+        crt::memcpy((void*)curr_dst, (void*)curr_src, curr_size);
+
+        bytes_read += curr_size;
+    }
+
+    return bytes_read;
+}
+
+// Copies memory from one va to another based on cr3 without accessing eithers va
+uint64_t physmem::copy_virtual_memory(paging_structs::cr3 source_cr3, uint64_t source, paging_structs::cr3 destination_cr3, uint64_t destination, uint64_t size) {
+    uint64_t bytes_read = 0;
+
+    paging_structs::cr3 current_cr3 = { 0 };
+    current_cr3.flags = __readcr3();
+
+    while (bytes_read < size) {
         uint64_t src_remaining = 0;
         uint64_t dst_remaining = 0;
 
@@ -258,7 +320,7 @@ uint64_t physmem::copy_virtual_memory(paging_structs::cr3 source_cr3, uint64_t s
 
         if (!curr_src || !curr_dst) {
             _mm_lfence();
-            __writecr3(kernel_cr3.flags);
+            __writecr3(current_cr3.flags);
             dbg_log("Failed to map src: %p and dst %p", curr_src, curr_dst);
             return bytes_read;
         }
@@ -274,12 +336,13 @@ uint64_t physmem::copy_virtual_memory(paging_structs::cr3 source_cr3, uint64_t s
 
         __invlpg((void*)curr_src);
         __invlpg((void*)curr_dst);
+        _mm_lfence();
 
         crt::memcpy((void*)curr_dst, (void*)curr_src, curr_size);
 
         // Make sure everything is executed before switching back to the kernel cr3
         _mm_lfence();
-        __writecr3(kernel_cr3.flags);
+        __writecr3(current_cr3.flags);
         _mm_lfence();
 
         __invlpg((void*)curr_src);
@@ -290,7 +353,7 @@ uint64_t physmem::copy_virtual_memory(paging_structs::cr3 source_cr3, uint64_t s
 
     // Make sure everything is executed before switching back to the kernel cr3
     _mm_lfence();
-    __writecr3(kernel_cr3.flags);
+    __writecr3(current_cr3.flags);
 
     return bytes_read;
 }
@@ -298,18 +361,16 @@ uint64_t physmem::copy_virtual_memory(paging_structs::cr3 source_cr3, uint64_t s
 bool log_paging_hierarchy(uint64_t va, paging_structs::cr3 target_cr3);
 
 // Copies memory from one pa to another pa
-uint64_t physmem::copy_physical_memory(uint64_t source_physaddr, uint64_t destination_physaddr, uint64_t size)
-{
+uint64_t physmem::copy_physical_memory(uint64_t source_physaddr, uint64_t destination_physaddr, uint64_t size) {
     uint64_t bytes_read = 0;
 
     if (!source_physaddr || !destination_physaddr)
         return bytes_read;
 
-    paging_structs::cr3 kernel_cr3 = { 0 };
-    kernel_cr3.flags = __readcr3();
+    paging_structs::cr3 current_cr3 = { 0 };
+    current_cr3.flags = __readcr3();
 
-    while (bytes_read < size)
-    {
+    while (bytes_read < size) {
         uint64_t src_remaining = 0;
         uint64_t dst_remaining = 0;
 
@@ -319,7 +380,7 @@ uint64_t physmem::copy_physical_memory(uint64_t source_physaddr, uint64_t destin
 
         if (!curr_src || !curr_dst) {
             _mm_lfence();
-            __writecr3(kernel_cr3.flags);
+            __writecr3(current_cr3.flags);
             return bytes_read;
         }
 
@@ -336,7 +397,7 @@ uint64_t physmem::copy_physical_memory(uint64_t source_physaddr, uint64_t destin
 
         // Make sure everything is executed before switching back to the kernel cr3
         _mm_lfence();
-        __writecr3(kernel_cr3.flags);
+        __writecr3(current_cr3.flags);
         _mm_lfence();
 
         bytes_read += curr_size;
@@ -344,7 +405,7 @@ uint64_t physmem::copy_physical_memory(uint64_t source_physaddr, uint64_t destin
 
     // Make sure everything is executed before switching back to the kernel cr3
     _mm_lfence();
-    __writecr3(kernel_cr3.flags);
+    __writecr3(current_cr3.flags);
 
     return bytes_read;
 }

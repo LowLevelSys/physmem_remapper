@@ -531,7 +531,6 @@ bool remap_outside_virtual_address(uint64_t source_va, uint64_t target_va, pagin
         return false;
     };
 
-
     page_table_t* instance = physmem::get_physmem_instance()->get_page_tables();
     remapped_va_t* remapping_status = is_already_remapped(target_va, instance);
 
@@ -548,6 +547,22 @@ bool remap_outside_virtual_address(uint64_t source_va, uint64_t target_va, pagin
         // Remap by using an old mapping
         if (!remap_to_target_virtual_address_with_previous_mapping(source_va, target_va, outside_cr3, remapping_status, instance)) {
             dbg_log("Failed to remap virtual address with a previous mapping");
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// Remaps a memory region to itself to ensure proper functionality after the physical memory
+// ranges that represent it are removed from the system address space
+bool ensure_address_space_mapping(uint64_t base, uint64_t size, paging_structs::cr3 outside_cr3) {
+    uint64_t aligned_base = (uint64_t)PAGE_ALIGN(base);
+    uint64_t top = base + size;
+
+    for (uint64_t curr_va = aligned_base; curr_va < top; curr_va += PAGE_SIZE) {
+        if (!remap_outside_virtual_address(curr_va, curr_va, outside_cr3)) {
+            dbg_log("Failed to ensure mapping for va %p at offset %p", curr_va, curr_va - aligned_base);
             return false;
         }
     }

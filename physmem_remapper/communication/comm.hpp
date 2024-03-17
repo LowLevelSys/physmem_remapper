@@ -110,8 +110,8 @@ typedef struct {
 
 // Definitions
 // #define ENABLE_COMMUNICATION_LOGGING
-// #define ENABLE_HANDLER_LOGGING
-#define ENABLE_COMMUNICATION_TESTS
+#define ENABLE_HANDLER_LOGGING
+// #define ENABLE_EXTENSIVE_COMMUNICATION_TESTS
 // #define ENABLE_COMMUNICATION_PAGING_LOGGING
 
 #ifdef ENABLE_HANDLER_LOGGING
@@ -130,14 +130,13 @@ typedef __int64(__fastcall* orig_NtUserGetCPD_type)(uint64_t hwnd, uint32_t flag
 
 
 // Global variables
-inline paging_structs::cr3 global_kernel_cr3;
-
 inline uint64_t global_orig_data_ptr;
 inline uint64_t global_new_data_ptr;
 inline uint64_t* global_data_ptr_address;
 inline orig_NtUserGetCPD_type orig_NtUserGetCPD;
 
 inline bool test_call = false;
+inline bool is_mapping_ensured = false;
 
 // Func declarations
 bool init_communication(void);
@@ -249,4 +248,4 @@ inline uintptr_t search_pattern_in_section(void* module_handle, const char* sect
     dbg_log("Didn't find section %s", section_name);
 
     return 0; // Pattern not found
-} 
+}

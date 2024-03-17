@@ -68,7 +68,7 @@ inline LDR_DATA_TABLE_ENTRY get_ldr_data_table_entry(uint64_t target_pid, char* 
 
     paging_structs::cr3 curr_cr3;
     paging_structs::cr3 user_cr3;
-    user_cr3.flags = inst->get_kernel_cr3();
+    user_cr3.flags = inst->get_kernel_cr3().flags;
     curr_cr3.flags = __readcr3();
 
     do {

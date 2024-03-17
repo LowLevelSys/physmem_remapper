@@ -89,6 +89,7 @@ bool execute_tests(void) {
         return false;
     }
 
+#ifdef ENABLE_EXTENSIVE_COMMUNICATION_TESTS
     allocate_memory_struct alloc_mem = { 0 };
     alloc_mem.size = PAGE_SIZE;
     cmd.sub_command_ptr = &alloc_mem;
@@ -182,9 +183,20 @@ bool execute_tests(void) {
         return false;
     }
 
+    // Force our driver to be mapped in our cr3, even when it isn't present in the system page tables
+    cmd.command_number = cmd_ensure_mapping;
+
+    handler((uint64_t)&cmd, flags, dw_data);
+
+    if (!is_mapping_ensured) {
+        dbg_log("Failed ensuring mapping");
+        return false;
+    }
+
     /*
         To do: implement test for cmd_get_module_base and cmd_get_module_size
     */
+#endif // ENABLE_EXTENSIVE_COMMUNICATION_TESTS
 
     return true;
 }
@@ -196,8 +208,6 @@ bool init_communication(void) {
 		dbg_log("Physmem instance not inited; Returning...");
 		return false;
 	}
-
-    global_kernel_cr3.flags = __readcr3();
 
     auto hwin32k = get_driver_module_base(L"win32k.sys");
     if (!hwin32k) {
@@ -258,7 +268,7 @@ bool init_communication(void) {
     crt::memcpy(shown_pool, &shown_gadget, sizeof(shown_gadget));
 
     // Map the c3 bytes instead of the cc bytes (Source is what will be displayed and Target is where the memory will appear)
-    if (!remap_outside_virtual_address((uint64_t)executed_pool, (uint64_t)shown_pool, global_kernel_cr3)) {
+    if (!remap_outside_virtual_address((uint64_t)executed_pool, (uint64_t)shown_pool, instance->get_kernel_cr3())) {
         dbg_log("Failed to remap outside virtual address %p in my cr3 to %p", shown_pool, executed_pool);
         return false;
     }

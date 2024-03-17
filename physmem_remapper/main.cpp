@@ -32,9 +32,10 @@ void init() {
 }
 
 // Just a basic driver entry
-NTSTATUS driver_entry(PDRIVER_OBJECT driver_object, PUNICODE_STRING registry_path) {
-	UNREFERENCED_PARAMETER(driver_object);
-	UNREFERENCED_PARAMETER(registry_path);
+NTSTATUS driver_entry(uint64_t base, uint64_t size) {
+
+	driver_base = base;
+	driver_size = size;
 
 	HANDLE thread;
 	CLIENT_ID thread_id;
