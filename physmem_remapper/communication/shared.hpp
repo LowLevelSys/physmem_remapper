@@ -113,7 +113,7 @@ enum command_type {
     cmd_ensure_mapping,
     cmd_get_driver_info,
     cmd_remove_system_mapping,
-    cmd_comm_init,
+    cmd_comm_test,
 };
 
 struct command {

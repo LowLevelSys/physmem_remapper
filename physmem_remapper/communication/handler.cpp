@@ -11,13 +11,13 @@
 template<typename T>
 bool copy_to_host(const paging_structs::cr3& proc_cr3, uint64_t src, T& dest) {
     physmem* inst = physmem::get_physmem_instance();
-    return sizeof(T) == inst->copy_memory_to_host(proc_cr3, src, reinterpret_cast<uint64_t>(&dest), sizeof(T));
+    return sizeof(T) == inst->copy_memory_to_inside(proc_cr3, src, reinterpret_cast<uint64_t>(&dest), sizeof(T));
 }
 
 template<typename T>
 bool copy_from_host(uint64_t dest, const T& src, const paging_structs::cr3& proc_cr3) {
     physmem* inst = physmem::get_physmem_instance();
-    return sizeof(T) == inst->copy_memory_from_host(reinterpret_cast<const uint64_t>(&src), dest, proc_cr3, sizeof(T));
+    return sizeof(T) == inst->copy_memory_from_inside(reinterpret_cast<const uint64_t>(&src), dest, proc_cr3, sizeof(T));
 }
 
 /*
@@ -45,7 +45,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
     paging_structs::cr3 proc_cr3 = { 0 };
     proc_cr3.flags = safed_proc_cr3;
 
-    if (sizeof(cmd) != inst->copy_memory_to_host(proc_cr3, (uint64_t)cmd_ptr, (uint64_t)&cmd, sizeof(cmd))) {
+    if (sizeof(cmd) != inst->copy_memory_to_inside(proc_cr3, (uint64_t)cmd_ptr, (uint64_t)&cmd, sizeof(cmd))) {
         dbg_log_handler("Failed to copy main cmd");
         __writecr3(safed_proc_cr3);
         return 0;
@@ -317,7 +317,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
     } break;
     }
 
-    if (sizeof(cmd) != inst->copy_memory_from_host((uint64_t)&cmd, (uint64_t)cmd_ptr, proc_cr3, sizeof(cmd))) 
+    if (sizeof(cmd) != inst->copy_memory_from_inside((uint64_t)&cmd, (uint64_t)cmd_ptr, proc_cr3, sizeof(cmd))) 
         dbg_log_handler("Failed to copy back main cmd");
     
     __writecr3(safed_proc_cr3);
