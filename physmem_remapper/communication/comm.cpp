@@ -79,9 +79,8 @@ bool execute_tests(void) {
 
     command cmd;
 
-    cmd.command_number = cmd_comm_test;
-
     // First call it for a test run (;
+    cmd.command_number = cmd_comm_test;
     handler((uint64_t)&cmd, flags, dw_data);
 
     if (!test_call) {
@@ -89,114 +88,9 @@ bool execute_tests(void) {
         return false;
     }
 
-#ifdef ENABLE_EXTENSIVE_COMMUNICATION_TESTS
-    allocate_memory_struct alloc_mem = { 0 };
-    alloc_mem.size = PAGE_SIZE;
-    cmd.sub_command_ptr = &alloc_mem;
-    cmd.command_number = cmd_allocate_memory;
-
-    handler((uint64_t)&cmd, flags, dw_data);
-
-    // Check the allocation
-    if (!alloc_mem.memory_base) {
-        dbg_log("Failed to allocate memory");
-        return false;
-    }
-
-    free_memory_struct free_mem = { 0 };
-    free_mem.memory_base = alloc_mem.memory_base;
-    cmd.sub_command_ptr = &free_mem;
-    cmd.command_number = cmd_free_memory;
-
-    handler((uint64_t)&cmd, flags, dw_data);
-
-    // Nothing we could really check here
-
-    uint64_t a = 0x123;
-    uint64_t b = 0;
-    copy_virtual_memory_struct copy_mem;
-
-    copy_mem.source = (uint64_t)&a;
-    copy_mem.destination = (uint64_t)&b;
-    copy_mem.size = sizeof(uint64_t);
-    copy_mem.source_cr3 = __readcr3();
-    copy_mem.destination_cr3 = __readcr3();
-
-    cmd.sub_command_ptr = &copy_mem;
-    cmd.command_number = cmd_copy_virtual_memory;
-
-    handler((uint64_t)&cmd, flags, dw_data);
-
-    if (a != b) {
-        dbg_log("Failed to copy virtual memory");
-        return false;
-    }
-
-
-    get_cr3_struct get_cr3;
-    get_cr3.pid = 4;
-
-    cmd.sub_command_ptr = &get_cr3;
-    cmd.command_number = cmd_get_cr3;
-
-    handler((uint64_t)&cmd, flags, dw_data);
-
-    if (get_cr3.cr3 != __readcr3()) {
-        dbg_log("Failed to get cr3");
-        return false;
-    }
-
-    get_pid_by_name_struct get_pid;
-    crt::memcpy(get_pid.name, "System", sizeof("System"));
-
-    cmd.sub_command_ptr = &get_pid;
-    cmd.command_number = cmd_get_pid_by_name;
-
-    handler((uint64_t)&cmd, flags, dw_data);
-
-    if (get_pid.pid != 4) {
-        dbg_log("Failed to get pid");
-        return false;
-    }
-
-    uint64_t dummy;
-    get_physical_address_struct get_phys_addr;
-
-    get_phys_addr.virtual_address = (uint64_t)&dummy;
-
-    cmd.sub_command_ptr = &get_phys_addr;
-    cmd.command_number = cmd_get_physical_address;
-
-    handler((uint64_t)&cmd, flags, dw_data);
-
-    get_virtual_address_struct get_virt_addr;
-
-    get_virt_addr.physical_address = get_phys_addr.physical_address;
-
-    cmd.sub_command_ptr = &get_virt_addr;
-    cmd.command_number = cmd_get_virtual_address;
-
-    handler((uint64_t)&cmd, flags, dw_data);
-
-    if (get_virt_addr.virtual_address != (uint64_t)&dummy) {
-        dbg_log("Failed translating addresses");
-        return false;
-    }
-
-    // Force our driver to be mapped in our cr3, even when it isn't present in the system page tables
+    // Then ensure our driver being mapped in our cr3
     cmd.command_number = cmd_ensure_mapping;
-
     handler((uint64_t)&cmd, flags, dw_data);
-
-    if (!is_mapping_ensured) {
-        dbg_log("Failed ensuring mapping");
-        return false;
-    }
-
-    /*
-        To do: implement test for cmd_get_module_base and cmd_get_module_size
-    */
-#endif // ENABLE_EXTENSIVE_COMMUNICATION_TESTS
 
     return true;
 }

@@ -66,6 +66,7 @@ struct get_module_size_struct {
 struct get_physical_address_struct {
     // Input
     uint64_t virtual_address;
+    uint64_t cr3;
 
     // Ouput
     uint64_t physical_address;

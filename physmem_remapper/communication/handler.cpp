@@ -10,14 +10,14 @@
 
 template<typename T>
 bool copy_to_host(const paging_structs::cr3& proc_cr3, uint64_t src, T& dest) {
-    physmem* inst = physmem::get_physmem_instance();
-    return sizeof(T) == inst->copy_memory_to_inside(proc_cr3, src, reinterpret_cast<uint64_t>(&dest), sizeof(T));
+    physmem* instance = physmem::get_physmem_instance();
+    return sizeof(T) == instance->copy_memory_to_inside(proc_cr3, src, reinterpret_cast<uint64_t>(&dest), sizeof(T));
 }
 
 template<typename T>
 bool copy_from_host(uint64_t dest, const T& src, const paging_structs::cr3& proc_cr3) {
-    physmem* inst = physmem::get_physmem_instance();
-    return sizeof(T) == inst->copy_memory_from_inside(reinterpret_cast<const uint64_t>(&src), dest, proc_cr3, sizeof(T));
+    physmem* instance = physmem::get_physmem_instance();
+    return sizeof(T) == instance->copy_memory_from_inside(reinterpret_cast<const uint64_t>(&src), dest, proc_cr3, sizeof(T));
 }
 
 /*
@@ -38,14 +38,14 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         return orig_NtUserGetCPD(hwnd, flags, dw_data);
     }
 
-    physmem* inst = physmem::get_physmem_instance();
+    physmem* instance = physmem::get_physmem_instance();
     command* cmd_ptr = (command*)hwnd;
     command cmd;
 
     paging_structs::cr3 proc_cr3 = { 0 };
     proc_cr3.flags = safed_proc_cr3;
 
-    if (sizeof(cmd) != inst->copy_memory_to_inside(proc_cr3, (uint64_t)cmd_ptr, (uint64_t)&cmd, sizeof(cmd))) {
+    if (sizeof(cmd) != instance->copy_memory_to_inside(proc_cr3, (uint64_t)cmd_ptr, (uint64_t)&cmd, sizeof(cmd))) {
         dbg_log_handler("Failed to copy main cmd");
         __writecr3(safed_proc_cr3);
         return 0;
@@ -62,8 +62,11 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
             break;
         }
 
+        PHYSICAL_ADDRESS max_addr = { 0 };
+        max_addr.QuadPart = MAXULONG64;
+
         // Allocate memory
-        sub_cmd.memory_base = ExAllocatePool(NonPagedPool, sub_cmd.size);
+        sub_cmd.memory_base = MmAllocateContiguousMemory(sub_cmd.size, max_addr);
         cmd.result = (sub_cmd.memory_base != 0);
         
         if (cmd.result) 
@@ -75,7 +78,6 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         if (!copy_from_host((uint64_t)cmd.sub_command_ptr, sub_cmd, proc_cr3)) 
             dbg_log_handler("Failed to copy back allocate_memory_struct");
         
-
     } break;
 
     case cmd_free_memory: {
@@ -87,13 +89,13 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
 
         // Free memory if the base is valid
         cmd.result = (sub_cmd.memory_base != 0);
+
         if (cmd.result) {
-            ExFreePool(sub_cmd.memory_base);
+            MmFreeContiguousMemory(sub_cmd.memory_base);
             dbg_log_handler("Freed memory at %p", sub_cmd.memory_base);
         }
         else 
             dbg_log_handler("Invalid argument for freeing memory");
-        
 
     } break;
 
@@ -108,7 +110,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         paging_structs::cr3 destination_cr3 = { .flags = sub_cmd.destination_cr3 };
 
         // Copy virtual memory from a to b
-        cmd.result = (sub_cmd.size == inst->copy_virtual_memory(source_cr3, sub_cmd.source, destination_cr3, sub_cmd.destination, sub_cmd.size));
+        cmd.result = (sub_cmd.size == instance->copy_virtual_memory(source_cr3, sub_cmd.source, destination_cr3, sub_cmd.destination, sub_cmd.size));
         if (!cmd.result) 
             dbg_log_handler("Failed to copy virtual memory");
         
@@ -205,8 +207,11 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
             break;
         }
 
+        paging_structs::cr3 target_cr3 = { 0 };
+        target_cr3.flags = sub_cmd.cr3;
+
         // Get the physical address
-        sub_cmd.physical_address = get_physical_address((void*)sub_cmd.virtual_address);
+        sub_cmd.physical_address = instance->get_outside_physical_addr(sub_cmd.virtual_address, target_cr3);
 
         if (!sub_cmd.physical_address) {
             dbg_log_handler("Failed getting PA from VA %p", sub_cmd.virtual_address);
@@ -217,6 +222,8 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
 
         if (!copy_from_host((uint64_t)cmd.sub_command_ptr, sub_cmd, proc_cr3))
             dbg_log_handler("Failed to copy back get_physical_address_struct");
+
+        dbg_log("Translated virtual address %p in cr3 %p to %p", sub_cmd.virtual_address, sub_cmd.cr3, sub_cmd.physical_address);
         
     } break;
 
@@ -239,16 +246,19 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         if (!copy_from_host((uint64_t)cmd.sub_command_ptr, sub_cmd, proc_cr3))
             dbg_log_handler("Failed to copy back get_virtual_address_struct");
         
+        dbg_log("Translated physical address to kernel va %p", sub_cmd.physical_address, sub_cmd.virtual_address);
+
     } break;
 
     case cmd_ensure_mapping: {
 
         if (is_mapping_ensured) {
+            cmd.result = true;
             dbg_log_handler("Mapping is already ensured");
             break;
         }
 
-        if (!ensure_address_space_mapping(driver_base, driver_size, inst->get_kernel_cr3())) {
+        if (!ensure_address_space_mapping(driver_base, driver_size, instance->get_kernel_cr3())) {
             dbg_log_handler("Failed to ensure address space mapping from %p to %p", driver_base, driver_base + driver_size);
             break;
         }
@@ -289,15 +299,18 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         physical_base.QuadPart =  sub_cmd.physical_base;
         size.QuadPart =  sub_cmd.size;
 
+        // Then remove them from the system page tables
+        NTSTATUS status = MmRemovePhysicalMemory(&physical_base, &size);
+
         // Remove the pool from physical memory
-        if (!NT_SUCCESS(MmRemovePhysicalMemory(&physical_base, &size))) {
+        if (!NT_SUCCESS(status)) {
             dbg_log("Failed to remove physical memory range %p to %p from system mappings", physical_base.QuadPart, physical_base.QuadPart + size.QuadPart);
+            dbg_log("NT_STATUS: 0x%X", status);
             break;
         }
 
-        test_call = true;
-        dbg_log("Removed  physical memory range %p to %p from system mappings", physical_base.QuadPart, physical_base.QuadPart + size.QuadPart);
-
+        dbg_log("Removed physical memory range %p to %p from system mappings", physical_base.QuadPart, physical_base.QuadPart + size.QuadPart);
+        
         if (!copy_from_host((uint64_t)cmd.sub_command_ptr, sub_cmd, proc_cr3))
             dbg_log_handler("Failed to copy back remove_system_mapping_struct");
 
@@ -309,7 +322,6 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         
         cmd.result = true;
 
-        dbg_log_handler("Test called");
     } break;
 
     default: {
@@ -317,7 +329,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
     } break;
     }
 
-    if (sizeof(cmd) != inst->copy_memory_from_inside((uint64_t)&cmd, (uint64_t)cmd_ptr, proc_cr3, sizeof(cmd))) 
+    if (sizeof(cmd) != instance->copy_memory_from_inside((uint64_t)&cmd, (uint64_t)cmd_ptr, proc_cr3, sizeof(cmd))) 
         dbg_log_handler("Failed to copy back main cmd");
     
     __writecr3(safed_proc_cr3);

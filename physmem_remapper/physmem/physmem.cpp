@@ -76,10 +76,10 @@ void free_pte_entries_except(paging_structs::pte_64* pte_table, uint64_t curr_in
 
 // Maps a given virtual address into our cr3
 uint64_t physmem::map_outside_virtual_addr(uint64_t outside_va, paging_structs::cr3 outside_cr3, uint64_t* offset_to_next_page) {
-    if (__readcr3() != my_cr3.flags) {
-        dbg_log("Only call this function in host mode");
-        return 0;
-    }
+    uint64_t curr;
+    curr = __readcr3();
+
+    __writecr3(my_cr3.flags);
 
     uint64_t dummy;
     virtual_address vaddr = { outside_va };
@@ -88,6 +88,7 @@ uint64_t physmem::map_outside_virtual_addr(uint64_t outside_va, paging_structs::
 
     if (!pml4e.present) {
         dbg_log("Pml4 entry not present");
+        __writecr3(curr);
         return 0;
     }
 
@@ -96,6 +97,7 @@ uint64_t physmem::map_outside_virtual_addr(uint64_t outside_va, paging_structs::
 
     if (!pdpte.present) {
         dbg_log("Pdpte entry not present");
+        __writecr3(curr);
         return 0;
     }
     
@@ -119,8 +121,11 @@ uint64_t physmem::map_outside_virtual_addr(uint64_t outside_va, paging_structs::
             generated_virtual_address.pdpt_idx = find_free_pdpte_1gb_index(page_tables->pdpt_1gb_table[MEMORY_COPYING_SLOT]);
         }
 
-        if (generated_virtual_address.pdpt_idx == 0xdead)
+        if (generated_virtual_address.pdpt_idx == 0xdead) {
+            __writecr3(curr);
+            dbg_log("No free pdpt slots!");
             return 0;
+        }
 
         // Copy over the flags and force the write flag
         page_tables->pdpt_1gb_table[MEMORY_COPYING_SLOT][generated_virtual_address.pdpt_idx].flags = pdpte_1gb.flags;
@@ -128,14 +133,8 @@ uint64_t physmem::map_outside_virtual_addr(uint64_t outside_va, paging_structs::
 
         curr_pdpt_1gb_index = generated_virtual_address.pdpt_idx;
 
-        paging_structs::cr3 current_cr3 = { 0 };
-        current_cr3.flags = __readcr3();
-
-        __writecr3(my_cr3.flags);
-        _mm_lfence();
         __invlpg((void*)generated_virtual_address.address);
-        _mm_lfence();
-        __writecr3(current_cr3.flags);
+        __writecr3(curr);
 
         return generated_virtual_address.address;
     }
@@ -145,6 +144,7 @@ uint64_t physmem::map_outside_virtual_addr(uint64_t outside_va, paging_structs::
 
     if (!pde.present) {
         dbg_log("Pde entry not present");
+        __writecr3(curr);
         return 0;
     }
     
@@ -169,8 +169,11 @@ uint64_t physmem::map_outside_virtual_addr(uint64_t outside_va, paging_structs::
             generated_virtual_address.pd_idx = find_free_pde_2mb_index(page_tables->pde_2mb_table[MEMORY_COPYING_SLOT]);
         }
 
-        if (generated_virtual_address.pd_idx == 0xdead)
+        if (generated_virtual_address.pd_idx == 0xdead) {
+            __writecr3(curr);
+            dbg_log("No free pde slots!");
             return 0;
+        }
 
         // Copy over the flags and force the write flag
         page_tables->pde_2mb_table[MEMORY_COPYING_SLOT][generated_virtual_address.pd_idx].flags = pde_2mb.flags;
@@ -178,14 +181,8 @@ uint64_t physmem::map_outside_virtual_addr(uint64_t outside_va, paging_structs::
 
         curr_pde_2mb_index = generated_virtual_address.pd_idx;
 
-        paging_structs::cr3 current_cr3 = { 0 };
-        current_cr3.flags = __readcr3();
-
-        __writecr3(my_cr3.flags);
-        _mm_lfence();
         __invlpg((void*)generated_virtual_address.address);
-        _mm_lfence();
-        __writecr3(current_cr3.flags);
+        __writecr3(curr);
 
         return generated_virtual_address.address;
     }
@@ -195,6 +192,7 @@ uint64_t physmem::map_outside_virtual_addr(uint64_t outside_va, paging_structs::
 
     if (!pte.present) {
         dbg_log("Pte entry not present");
+        __writecr3(curr);
         return 0;
     }
 
@@ -214,8 +212,11 @@ uint64_t physmem::map_outside_virtual_addr(uint64_t outside_va, paging_structs::
         generated_virtual_address.pt_idx = find_free_pte_index(&page_tables->pte_table[MEMORY_COPYING_SLOT][0]);
     }
 
-    if (generated_virtual_address.pt_idx == 0xdead)
+    if (generated_virtual_address.pt_idx == 0xdead) {
+        dbg_log("No free pte slots!");
+        __writecr3(curr);
         return 0;
+    }
 
     // Copy over the flags and force the write flag
     page_tables->pte_table[MEMORY_COPYING_SLOT][generated_virtual_address.pt_idx].flags = pte.flags;
@@ -224,14 +225,8 @@ uint64_t physmem::map_outside_virtual_addr(uint64_t outside_va, paging_structs::
     // Save the current index
     curr_pte_index = generated_virtual_address.pt_idx;
 
-    paging_structs::cr3 current_cr3 = { 0 };
-    current_cr3.flags = __readcr3();
-
-    __writecr3(my_cr3.flags);
-    _mm_lfence();
     __invlpg((void*)generated_virtual_address.address);
-    _mm_lfence();
-    __writecr3(current_cr3.flags);
+    __writecr3(curr);
 
     return generated_virtual_address.address;
 }
@@ -273,7 +268,9 @@ uint64_t physmem::map_outside_physical_addr(uint64_t outside_pa, uint64_t* offse
 
     __writecr3(my_cr3.flags);
     _mm_lfence();
+
     __invlpg((void*)generated_virtual_address.address);
+
     _mm_lfence();
     __writecr3(current_cr3.flags);
 
@@ -283,6 +280,8 @@ uint64_t physmem::map_outside_physical_addr(uint64_t outside_pa, uint64_t* offse
 uint64_t physmem::copy_memory_to_inside(paging_structs::cr3 source_cr3, uint64_t source, uint64_t destination, uint64_t size) {
     uint64_t bytes_read = 0;
 
+    // This barrier is placed to force the caller to be in host mode to copy mem into host
+    // as he might otherwise try to access that mem even in non host mode
     if (__readcr3() != my_cr3.flags) {
         dbg_log("Only call this function in host mode");
         return 0;
@@ -316,11 +315,10 @@ uint64_t physmem::copy_memory_to_inside(paging_structs::cr3 source_cr3, uint64_t
 
 uint64_t physmem::copy_memory_from_inside(uint64_t source, uint64_t destination, paging_structs::cr3 destination_cr3, uint64_t size) {
     uint64_t bytes_read = 0;
+    uint64_t curr;
+    curr = __readcr3();
 
-    if (__readcr3() != my_cr3.flags) {
-        dbg_log("Only call this function in host mode");
-        return 0;
-    }
+    __writecr3(my_cr3.flags);
 
     while (bytes_read < size) {
         uint64_t dst_remaining = 0;
@@ -331,6 +329,7 @@ uint64_t physmem::copy_memory_from_inside(uint64_t source, uint64_t destination,
 
         if (!curr_dst) {
             dbg_log("Failed to map src: %p and dst %p", curr_src, curr_dst);
+            __writecr3(curr);
             return bytes_read;
         }
 
@@ -345,6 +344,7 @@ uint64_t physmem::copy_memory_from_inside(uint64_t source, uint64_t destination,
         bytes_read += curr_size;
     }
 
+    __writecr3(curr);
     return bytes_read;
 }
 
@@ -359,7 +359,7 @@ uint64_t physmem::get_outside_physical_addr(uint64_t outside_va, paging_structs:
     paging_structs::pml4e_64* pml4_table = (paging_structs::pml4e_64*)map_outside_physical_addr(outside_cr3.address_of_page_directory << 12, &dummy);
 
     if (!pml4_table) {
-        dbg_log("Failed to get the address of the pml4 table");
+        dbg_log("PML4 table not found");
         __writecr3(curr_cr3);
         return 0;
     }
@@ -381,7 +381,11 @@ uint64_t physmem::get_outside_physical_addr(uint64_t outside_va, paging_structs:
 
         uint64_t offset = (vaddr.pd_idx << 21) + (vaddr.pt_idx << 12) + vaddr.offset;
 
-        return (pdpte_1gb.page_frame_number << 30) + offset;
+        uint64_t address = (pdpte_1gb.page_frame_number << 30) + offset;
+
+        __writecr3(curr_cr3);
+
+        return address;
     }
 
     paging_structs::pde_64* pde_table = (paging_structs::pde_64*)map_outside_physical_addr(pdpt_entry.page_frame_number << 12, &dummy);
@@ -399,7 +403,11 @@ uint64_t physmem::get_outside_physical_addr(uint64_t outside_va, paging_structs:
 
         uint64_t offset = (vaddr.pt_idx << 12) + vaddr.offset;
 
-        return (pde_2mb_entry.page_frame_number << 21) + offset;
+        uint64_t address = (pde_2mb_entry.page_frame_number << 21) + offset;
+
+        __writecr3(curr_cr3);
+
+        return address;
     }
 
     paging_structs::pte_64* pte_table = (paging_structs::pte_64*)map_outside_physical_addr(pde_entry.page_frame_number << 12, &dummy);
@@ -411,7 +419,11 @@ uint64_t physmem::get_outside_physical_addr(uint64_t outside_va, paging_structs:
 
     paging_structs::pte_64 pte_entry = pte_table[vaddr.pt_idx];
 
-    return (pte_entry.page_frame_number << 12) + vaddr.offset;
+    uint64_t address = (pte_entry.page_frame_number << 12) + vaddr.offset;
+
+    __writecr3(curr_cr3);
+
+    return address;
 }
 
 
