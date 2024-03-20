@@ -2,35 +2,6 @@
 #include "../communication/comm.hpp"
 
 /*
-NTSTATUS MmAllocateCopyRemove
-(
-	_In_ ULONG DataSize,
-	_Out_ PPHYSICAL_ADDRESS PhysPtr
-)
-{
-	LARGE_INTEGER AllocSize;
-	PHYSICAL_ADDRESS MaxPhys;
-
-	PVOID Alloc = NULL;
-	MaxPhys.QuadPart = MAXLONG64;
-	AllocSize.QuadPart = DataSize;
-	Alloc = MmAllocateContiguousMemory(DataSize, MaxPhys);
-
-	dbg_log("Alloc at %p", Alloc);
-
-	if (!Alloc)
-		return STATUS_FAIL_CHECK;
-
-	*PhysPtr = MmGetPhysicalAddress(Alloc);
-
-	dbg_log("Physmem at %p", *PhysPtr);
-
-	MmFreeContiguousMemory(Alloc);
-	return MmRemovePhysicalMemory(PhysPtr, &AllocSize);
-}
-*/
-
-/*
 	For Information as to why it was a pain to implement
 	please consult the Intel Sdm Volume 3: 4.10.2.4 (Global Pages)
 */
