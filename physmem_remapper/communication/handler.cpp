@@ -298,25 +298,25 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
             dbg_log_handler("Failed to copy get_virtual_address_struct");
             break;
         }
-        
+
         PHYSICAL_ADDRESS physical_base = { 0 };
         LARGE_INTEGER size = { 0 };
 
-        physical_base.QuadPart =  sub_cmd.physical_base;
-        size.QuadPart =  sub_cmd.size;
+        physical_base.QuadPart = sub_cmd.physical_base;
+        size.QuadPart = sub_cmd.size;
 
         // Then remove them from the system page tables
         NTSTATUS status = MmRemovePhysicalMemory(&physical_base, &size);
 
         // Remove the pool from physical memory
         if (!NT_SUCCESS(status)) {
-            dbg_log("Failed to remove physical memory range %p to %p from system mappings", physical_base.QuadPart, physical_base.QuadPart + size.QuadPart);
-            dbg_log("NT_STATUS: 0x%X", status);
+            dbg_log_handler("Failed to remove physical memory range %p to %p from system mappings", physical_base.QuadPart, physical_base.QuadPart + size.QuadPart);
+            dbg_log_handler("NT_STATUS: 0x%X", status);
             break;
         }
 
-        dbg_log("Removed physical memory range %p to %p from system mappings", physical_base.QuadPart, physical_base.QuadPart + size.QuadPart);
-        
+        dbg_log_handler("Removed physical memory range %p to %p from system mappings", physical_base.QuadPart, physical_base.QuadPart + size.QuadPart);
+
         if (!copy_from_host((uint64_t)cmd.sub_command_ptr, sub_cmd, proc_cr3))
             dbg_log_handler("Failed to copy back remove_system_mapping_struct");
 
