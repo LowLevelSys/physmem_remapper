@@ -41,7 +41,7 @@ bool log_paging_hierarchy(uint64_t va, paging_structs::cr3 target_cr3) {
         if (!entry.present)
             return;
 
-        dbg_log("%s - Present: %u, Write: %u, Supervisor: %u, Page Frame Number: %u, Execute Disable: %u, Index: %u",
+        dbg_log_remapping("%s - Present: %u, Write: %u, Supervisor: %u, Page Frame Number: %u, Execute Disable: %u, Index: %u",
             name, entry.present, entry.write, entry.supervisor, entry.page_frame_number, entry.execute_disable, index);
     };
 
@@ -50,7 +50,7 @@ bool log_paging_hierarchy(uint64_t va, paging_structs::cr3 target_cr3) {
             return;
         }
 
-        dbg_log("%s - Present: %u, Write: %u, Supervisor: %u, Large Page: %u, Page Frame Number: %u, Execute Disable: %u, Index: %u ",
+        dbg_log_remapping("%s - Present: %u, Write: %u, Supervisor: %u, Large Page: %u, Page Frame Number: %u, Execute Disable: %u, Index: %u ",
             name, entry.present, entry.write, entry.supervisor, entry.large_page, entry.page_frame_number, entry.execute_disable, index);
     };
 
@@ -59,7 +59,7 @@ bool log_paging_hierarchy(uint64_t va, paging_structs::cr3 target_cr3) {
             return;
         }
 
-        dbg_log("%s - Present: %u, Write: %u, Supervisor: %u, Large Page: %u, Page Frame Number: %u, Execute Disable: %u, Index: %u",
+        dbg_log_remapping("%s - Present: %u, Write: %u, Supervisor: %u, Large Page: %u, Page Frame Number: %u, Execute Disable: %u, Index: %u",
             name, entry.present, entry.write, entry.supervisor, entry.large_page, entry.page_frame_number, entry.execute_disable, index);
     };
 
@@ -68,7 +68,7 @@ bool log_paging_hierarchy(uint64_t va, paging_structs::cr3 target_cr3) {
             return;
         }
 
-        dbg_log("%s - Present: %u, Write: %u, User/Supervisor: %u, Page Frame Number: %u, Index %u",
+        dbg_log_remapping("%s - Present: %u, Write: %u, User/Supervisor: %u, Page Frame Number: %u, Index %u",
             name, entry.present, entry.write, entry.supervisor, entry.page_frame_number, index);
     };
 
@@ -80,16 +80,16 @@ bool log_paging_hierarchy(uint64_t va, paging_structs::cr3 target_cr3) {
 
     // Extract indices for each level of the page table
     virtual_address vaddr = { va };
-    dbg_log("Logging paging hierachy for va %p in cr3 %p", va, target_cr3.flags);
-    dbg_log("Pml4 idx: %u", vaddr.pml4_idx);
-    dbg_log("Pdpt idx: %u", vaddr.pdpt_idx);
-    dbg_log("Pde idx: %u", vaddr.pd_idx);
-    dbg_log("Pte idx: %u", vaddr.pt_idx);
+    dbg_log_remapping("Logging paging hierachy for va %p in cr3 %p", va, target_cr3.flags);
+    dbg_log_remapping("Pml4 idx: %u", vaddr.pml4_idx);
+    dbg_log_remapping("Pdpt idx: %u", vaddr.pdpt_idx);
+    dbg_log_remapping("Pde idx: %u", vaddr.pd_idx);
+    dbg_log_remapping("Pte idx: %u", vaddr.pt_idx);
 
     paging_structs::pml4e_64* pml4_table = (paging_structs::pml4e_64*)instance->map_outside_physical_addr(target_cr3.address_of_page_directory << 12, &dummy);
 
     if (!pml4_table) {
-        dbg_log("Failed to get the address of the pml4 table");
+        dbg_log_remapping("Failed to get the address of the pml4 table");
         __writecr3(curr);
         return false;
     }
@@ -100,7 +100,7 @@ bool log_paging_hierarchy(uint64_t va, paging_structs::cr3 target_cr3) {
 
     paging_structs::pdpte_64* pdpt_table = (paging_structs::pdpte_64*)instance->map_outside_physical_addr(pml4_entry.page_frame_number << 12, &dummy);
     if (!pdpt_table) {
-        dbg_log("PDPT table not found");
+        dbg_log_remapping("PDPT table not found");
         __writecr3(curr);
         return false;
     }
@@ -117,7 +117,7 @@ bool log_paging_hierarchy(uint64_t va, paging_structs::cr3 target_cr3) {
 
     paging_structs::pde_64* pde_table = (paging_structs::pde_64*)instance->map_outside_physical_addr(pdpt_entry.page_frame_number << 12, &dummy);
     if (!pde_table) {
-        dbg_log("PDE table not found");
+        dbg_log_remapping("PDE table not found");
         __writecr3(curr);
         return false;
     }
@@ -134,7 +134,7 @@ bool log_paging_hierarchy(uint64_t va, paging_structs::cr3 target_cr3) {
 
     paging_structs::pte_64* pte_table = (paging_structs::pte_64*)instance->map_outside_physical_addr(pde_entry.page_frame_number << 12, &dummy);
     if (!pte_table) {
-        dbg_log("PTE table not found");
+        dbg_log_remapping("PTE table not found");
         __writecr3(curr);
         return false;
     }
@@ -273,7 +273,7 @@ bool remap_to_target_virtual_address(uint64_t source_va, uint64_t target_va, pag
     uint64_t dummy;
 
     if (target_vaddr.offset != source_vaddr.offset) {
-        dbg_log("Addresses with different offsets are currently not supported");
+        dbg_log_remapping("Addresses with different offsets are currently not supported");
         return false;
     }
 
@@ -426,7 +426,7 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
     uint64_t dummy;
 
     if (target_vaddr.offset != source_vaddr.offset) {
-        dbg_log("Addresses with different offsets are currently not supported");
+        dbg_log_remapping("Addresses with different offsets are currently not supported");
         return false;
     }
 
@@ -436,7 +436,7 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
 
     usable_until max_usable = get_max_usable_mapping_level(remapping_status, target_va);
     if (max_usable == non_valid) {
-        dbg_log("Entry that should already be remapped isn't");
+        dbg_log_remapping("Entry that should already be remapped isn't");
         __writecr3(curr);
         return remap_to_target_virtual_address(source_va, target_va, outside_cr3);
     }
@@ -468,7 +468,7 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
             return true;
         }
         default: {
-            dbg_log("Wtf happened here??");
+            dbg_log_remapping("Wtf happened here??");
             __writecr3(curr);
             return false;
         }
@@ -484,7 +484,7 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
 
                 uint32_t free_pde_table_index = get_free_pde_table_index(page_tables);
                 if (free_pde_table_index == 0xdead) {
-                    dbg_log("Failed to get free pde index");
+                    dbg_log_remapping("Failed to get free pde index");
                     __writecr3(curr);
                     return false;
                 }
@@ -541,7 +541,7 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
                 return true;
             }
             default: {
-                dbg_log("Wtf happened here??");
+                dbg_log_remapping("Wtf happened here??");
                 __writecr3(curr);
                 return false;
             }
@@ -557,7 +557,7 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
 
             uint32_t free_pde_table_index = get_free_pde_table_index(page_tables);
             if (free_pde_table_index == 0xdead) {
-                dbg_log("Failed to get free pde index");
+                dbg_log_remapping("Failed to get free pde index");
                 __writecr3(curr);
                 return false;
             }
@@ -571,7 +571,7 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
             crt::memcpy(my_pde_table, pde_table, sizeof(paging_structs::pde_64) * 512);
             uint32_t free_pte_table_index = get_free_pte_table_index(page_tables);
             if (free_pte_table_index == 0xdead) {
-                dbg_log("Failed to get free pde index");
+                dbg_log_remapping("Failed to get free pde index");
                 __writecr3(curr);
                 return false;
             }
@@ -613,7 +613,7 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
 
             uint32_t free_pte_table_index = get_free_pte_table_index(page_tables);
             if (free_pte_table_index == 0xdead) {
-                dbg_log("Failed to get free pde index");
+                dbg_log_remapping("Failed to get free pde index");
                 __writecr3(curr);
                 return false;
             }
@@ -688,14 +688,14 @@ bool remap_outside_virtual_address(uint64_t source_va, uint64_t target_va, pagin
     if (!remapping_status) {
         // Remap by force
         if (!remap_to_target_virtual_address(source_va, target_va, outside_cr3)) {
-            dbg_log("Failed to remap virtual address");
+            dbg_log_remapping("Failed to remap virtual address");
             return false;
         }
     }
     else {
         // Remap by using an old mapping
         if (!remap_to_target_virtual_address_with_previous_mapping(source_va, target_va, outside_cr3, remapping_status)) {
-            dbg_log("Failed to remap virtual address with a previous mapping");
+            dbg_log_remapping("Failed to remap virtual address with a previous mapping");
             return false;
         }
     }
@@ -711,7 +711,7 @@ bool ensure_address_space_mapping(uint64_t base, uint64_t size, paging_structs::
 
     for (uint64_t curr_va = aligned_base; curr_va < top; curr_va += PAGE_SIZE) {
         if (!remap_outside_virtual_address(curr_va, curr_va, outside_cr3)) {
-            dbg_log("Failed to ensure mapping for va %p at offset %p", curr_va, curr_va - aligned_base);
+            dbg_log_remapping("Failed to ensure mapping for va %p at offset %p", curr_va, curr_va - aligned_base);
             return false;
         }
     }

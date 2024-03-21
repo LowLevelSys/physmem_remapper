@@ -26,6 +26,9 @@
     <Filter Include="physmem\experiment">
       <UniqueIdentifier>{e08bba6b-2acc-4863-8b32-4d2f45259cc1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="idt">
+      <UniqueIdentifier>{8841c95c-25fa-4b51-9cd9-92d7bb9c529a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -45,6 +48,9 @@
     </ClCompile>
     <ClCompile Include="communication\handler.cpp">
       <Filter>communication</Filter>
+    </ClCompile>
+    <ClCompile Include="idt\idt.cpp">
+      <Filter>idt</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -72,10 +78,16 @@
     <ClInclude Include="communication\comm_util.hpp">
       <Filter>communication</Filter>
     </ClInclude>
+    <ClInclude Include="idt\idt.hpp">
+      <Filter>idt</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="physmem\experiment.asm">
       <Filter>physmem\assembly</Filter>
+    </MASM>
+    <MASM Include="idt\idt_assembly.asm">
+      <Filter>idt</Filter>
     </MASM>
   </ItemGroup>
 </Project>

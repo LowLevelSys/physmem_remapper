@@ -2,6 +2,8 @@
 
 ; If there are two calls at the same time from different processes we are screwed
 extern global_proc_cr3:qword
+
+; C handler for the data ptr
 extern handler:proc
 
 ; Results are returned in rax, so no need to do anything

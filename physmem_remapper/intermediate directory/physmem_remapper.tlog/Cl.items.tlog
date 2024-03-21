@@ -1,5 +1,6 @@
 C:\Users\cool_guy\source\repos\physmem_remapper\physmem_remapper\communication\comm.cpp;C:\Users\cool_guy\source\repos\physmem_remapper\physmem_remapper\intermediate directory\comm.obj
 C:\Users\cool_guy\source\repos\physmem_remapper\physmem_remapper\communication\handler.cpp;C:\Users\cool_guy\source\repos\physmem_remapper\physmem_remapper\intermediate directory\handler.obj
+C:\Users\cool_guy\source\repos\physmem_remapper\physmem_remapper\idt\idt.cpp;C:\Users\cool_guy\source\repos\physmem_remapper\physmem_remapper\intermediate directory\idt.obj
 C:\Users\cool_guy\source\repos\physmem_remapper\physmem_remapper\main.cpp;C:\Users\cool_guy\source\repos\physmem_remapper\physmem_remapper\intermediate directory\main.obj
 C:\Users\cool_guy\source\repos\physmem_remapper\physmem_remapper\physmem\physmem_experiment.cpp;C:\Users\cool_guy\source\repos\physmem_remapper\physmem_remapper\intermediate directory\physmem_experiment.obj
 C:\Users\cool_guy\source\repos\physmem_remapper\physmem_remapper\physmem\remapping.cpp;C:\Users\cool_guy\source\repos\physmem_remapper\physmem_remapper\intermediate directory\remapping.obj

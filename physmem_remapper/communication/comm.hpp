@@ -1,6 +1,7 @@
 #pragma once
 #include "../physmem/physmem.hpp"
 #include "../physmem/remapping.hpp"
+#include "../idt/idt.hpp"
 
 #include <ntimage.h>
 
@@ -109,15 +110,24 @@ typedef struct {
 
 
 // Definitions
-// #define ENABLE_COMMUNICATION_LOGGING
-#define ENABLE_HANDLER_LOGGING
+#define ENABLE_COMMUNICATION_LOGGING
+// #define ENABLE_HANDLER_LOGGING
 // #define ENABLE_EXTENSIVE_COMMUNICATION_TESTS
 // #define ENABLE_COMMUNICATION_PAGING_LOGGING
 
+// We can only allow logging in "host mode" if we are partially using the system idt
 #ifdef ENABLE_HANDLER_LOGGING
-#define dbg_log_handler(fmt, ...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, fmt, ##__VA_ARGS__)
+#ifdef PARTIALLY_USE_SYSTEM_IDT
+#define dbg_log_handler(fmt, ...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL,"[HANDLER] " fmt, ##__VA_ARGS__)
+#endif // PARTIALLY_USE_SYSTEM_IDT
 #else
 #define dbg_log_handler(fmt, ...) (void)0
+#endif
+
+#ifdef ENABLE_COMMUNICATION_LOGGING
+#define dbg_log_communication(fmt, ...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL,"[COMMUNICATION] " fmt, ##__VA_ARGS__)
+#else
+#define dbg_log_communication(fmt, ...) (void)0
 #endif
 
 // Global declarations
@@ -127,7 +137,6 @@ extern "C" NTKERNELAPI VOID KeUnstackDetachProcess(PKAPC_STATE ApcState);
 
 // Function types
 typedef __int64(__fastcall* orig_NtUserGetCPD_type)(uint64_t hwnd, uint32_t flags, ULONG_PTR dw_data);
-
 
 // Global variables
 inline uint64_t global_orig_data_ptr;

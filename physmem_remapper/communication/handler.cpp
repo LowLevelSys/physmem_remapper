@@ -1,6 +1,8 @@
 #include "comm.hpp"
 #include "shared.hpp"
 #include "comm_util.hpp"
+#include "../idt/idt.hpp"
+
 #include "../physmem/physmem.hpp"
 
 /*
@@ -30,11 +32,14 @@ bool copy_from_host(uint64_t dest, const T& src, const paging_structs::cr3& proc
 extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR dw_data) {
     // In case another call happens during the execution of our handler, make a backup now
     uint64_t safed_proc_cr3 = global_proc_cr3;
+    idt_ptr_t safed_proc_idt = { 0 };
+    crt::memcpy(&safed_proc_idt, &idt_storing_region, sizeof(idt_ptr_t));
 
     // If the calculated hash doesn't match the given one
     // it is a random call, so just return the orig function
     if (!check_keys(flags, dw_data)) {
         __writecr3(safed_proc_cr3);
+        __lidt(&safed_proc_idt);
         return orig_NtUserGetCPD(hwnd, flags, dw_data);
     }
 
@@ -48,6 +53,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
     if (sizeof(cmd) != instance->copy_memory_to_inside(proc_cr3, (uint64_t)cmd_ptr, (uint64_t)&cmd, sizeof(cmd))) {
         dbg_log_handler("Failed to copy main cmd");
         __writecr3(safed_proc_cr3);
+        __lidt(&safed_proc_idt);
         return 0;
     }
 
@@ -331,8 +337,11 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
 
     if (sizeof(cmd) != instance->copy_memory_from_inside((uint64_t)&cmd, (uint64_t)cmd_ptr, proc_cr3, sizeof(cmd))) 
         dbg_log_handler("Failed to copy back main cmd");
-    
+
+    // Return back to normal
     __writecr3(safed_proc_cr3);
+    __lidt(&safed_proc_idt);
 
     return 0;
+
 }

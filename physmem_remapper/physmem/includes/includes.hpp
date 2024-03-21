@@ -15,5 +15,5 @@ using uint64_t = unsigned long long;
 extern "C" uint64_t __read_rax(void);
 extern "C" void asm_recover_regs(void);
 
-// Asssemblyy variables declarations
+// Asssembly variables declarations
 extern "C" uint64_t global_proc_cr3;

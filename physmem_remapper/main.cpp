@@ -1,5 +1,6 @@
 #include "physmem/physmem.hpp"
 #include "../communication/comm.hpp"
+#include "../idt/idt.hpp"
 
 /*
 	For Information as to why it was a pain to implement
@@ -12,23 +13,25 @@ void init() {
 
 	// First see whether initialization worked
 	if (!instance) {
-		dbg_log("Failed to setup the physmem instance");
+		dbg_log_main("Failed to setup the physmem instance");
 		return;
 	}
 	
+	init_idt();
+
 	// Define the physmem_test if you really want the test to be executed
 	if (!physmem_experiment()) {
-		dbg_log("Failed to successfully execute the physmem experiment");
+		dbg_log_main("Failed to successfully execute the physmem experiment");
 		return;
 	}
 
 	// Replace a .data ptr with a ptr to a write cr3 gadget that then calls our handler
 	if (!init_communication()) {
-		dbg_log("Failed to init communication");
+		dbg_log_main("Failed to init communication");
 		return;
 	}
 
-	dbg_log("Driver initialized successfully!");
+	dbg_log_main("Driver initialized successfully!");
 }
 
 // Just a basic driver entry
