@@ -14,6 +14,7 @@ using uint64_t = unsigned long long;
 // Assembly function declarations
 extern "C" uint64_t __read_rax(void);
 extern "C" void asm_recover_regs(void);
+extern "C" uint32_t asm_get_curr_processor_number(void);
 
 // Asssembly variables declarations
 extern "C" uint64_t global_proc_cr3;

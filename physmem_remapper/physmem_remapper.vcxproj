@@ -120,6 +120,7 @@
   <ItemGroup>
     <ClCompile Include="communication\comm.cpp" />
     <ClCompile Include="communication\handler.cpp" />
+    <ClCompile Include="gdt\gdt.cpp" />
     <ClCompile Include="idt\idt.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="physmem\physmem_experiment.cpp" />
@@ -130,6 +131,7 @@
     <ClInclude Include="communication\comm.hpp" />
     <ClInclude Include="communication\comm_util.hpp" />
     <ClInclude Include="communication\shared.hpp" />
+    <ClInclude Include="gdt\gdt.hpp" />
     <ClInclude Include="idt\idt.hpp" />
     <ClInclude Include="physmem\includes\crt.hpp" />
     <ClInclude Include="physmem\includes\includes.hpp" />
@@ -138,6 +140,7 @@
     <ClInclude Include="physmem\physmem_structs.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <MASM Include="gdt\gdt_assembly.asm" />
     <MASM Include="idt\idt_assembly.asm" />
     <MASM Include="physmem\experiment.asm" />
   </ItemGroup>

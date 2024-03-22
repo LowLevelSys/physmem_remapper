@@ -1,10 +1,11 @@
 #pragma once
 #include "../physmem/physmem.hpp"
 #include "../physmem/remapping.hpp"
+#include "../gdt/gdt.hpp"
 
 #include <ntimage.h>
 
-// #define PARTIALLY_USE_SYSTEM_IDT
+#define PARTIALLY_USE_SYSTEM_IDT
 #define ENABLE_IDT_LOGGING
 #define EXTENSIVE_IDT_LOGGING
 
@@ -76,6 +77,7 @@ struct idt_ptr_t {
 
 inline idt_ptr_t my_idt_ptr;
 inline idt_ptr_t idt_storing_region;
+
 inline idt_entry_t my_idt_table[256];
 
 void init_idt(void);

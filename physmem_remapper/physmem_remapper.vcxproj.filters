@@ -29,6 +29,9 @@
     <Filter Include="idt">
       <UniqueIdentifier>{8841c95c-25fa-4b51-9cd9-92d7bb9c529a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="gdt">
+      <UniqueIdentifier>{7198a9ea-38f1-473a-b8fe-727e0ab6e2e7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -51,6 +54,9 @@
     </ClCompile>
     <ClCompile Include="idt\idt.cpp">
       <Filter>idt</Filter>
+    </ClCompile>
+    <ClCompile Include="gdt\gdt.cpp">
+      <Filter>gdt</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -81,6 +87,9 @@
     <ClInclude Include="idt\idt.hpp">
       <Filter>idt</Filter>
     </ClInclude>
+    <ClInclude Include="gdt\gdt.hpp">
+      <Filter>gdt</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="physmem\experiment.asm">
@@ -88,6 +97,9 @@
     </MASM>
     <MASM Include="idt\idt_assembly.asm">
       <Filter>idt</Filter>
+    </MASM>
+    <MASM Include="gdt\gdt_assembly.asm">
+      <Filter>gdt</Filter>
     </MASM>
   </ItemGroup>
 </Project>

@@ -1,6 +1,7 @@
 #include "physmem/physmem.hpp"
 #include "../communication/comm.hpp"
 #include "../idt/idt.hpp"
+#include "../gdt/gdt.hpp"
 
 /*
 	For Information as to why it was a pain to implement
@@ -18,6 +19,11 @@ void init() {
 	}
 	
 	init_idt();
+
+	if (!init_gdt()) {
+		dbg_log_main("Failed to successfully init my gdt");
+		return;
+	}
 
 	// Define the physmem_test if you really want the test to be executed
 	if (!physmem_experiment()) {

@@ -16,4 +16,10 @@ asm_recover_regs proc
     jmp handler 
 asm_recover_regs endp  
 
+asm_get_curr_processor_number proc
+    mov rax, gs:[20h]
+    mov eax, [rax+24h]
+    ret
+asm_get_curr_processor_number endp
+
 end

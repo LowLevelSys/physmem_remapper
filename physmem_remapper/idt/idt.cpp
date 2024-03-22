@@ -51,6 +51,9 @@ void init_idt(void) {
 	my_idt_ptr = get_idt_ptr();
 
 #ifdef EXTENSIVE_IDT_LOGGING
+#ifndef PARTIALLY_USE_SYSTEM_IDT
+
+
 	dbg_log_idt("Idt initialized \n");
 
 	for (uint64_t i = 0; i < 256; i++) {
@@ -63,5 +66,6 @@ void init_idt(void) {
 	}
 
 	dbg_log("\n");
+#endif // !PARTIALLY_USE_SYSTEM_IDT
 #endif // EXTENSIVE_IDT_LOGGING
 }

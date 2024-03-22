@@ -6,52 +6,114 @@ extern "C" uint64_t global_proc_cr3 = 0;
 extern "C" uint64_t global_proc_idt = 0;
 
 // Generates shellcode which jumps to our handler
-void generate_executed_jump_gadget(uint8_t* gadget, void* mem, uint64_t jmp_address, idt_ptr_t* my_idt, idt_ptr_t* my_idt_storing_region) {
+void generate_executed_jump_gadget(uint8_t* gadget, void* mem, uint64_t jmp_address, 
+                                   idt_ptr_t* my_idt, idt_ptr_t* my_idt_storing_region, 
+                                   gdt_ptr_t* my_gdt_ptrs, gdt_ptr_t* my_gdt_storing_region) {
+    uint32_t index = 0;
+
     // Store the current cr3
     // mov rax, cr3
-    gadget[0] = 0x0f; gadget[1] = 0x20; gadget[2] = 0xd8;
+    gadget[index++] = 0x0f; gadget[index++] = 0x20; gadget[index++] = 0xd8;
     // push rax
-    gadget[3] = 0x50;
+    gadget[index++] = 0x50;
 
     // Write my cr3 to cr3
     // mov rax, imm64 (move my cr3 value into rax)
-    gadget[4] = 0x48; gadget[5] = 0xb8;
+    gadget[index++] = 0x48; gadget[index++] = 0xb8;
     uint64_t cr3_value = physmem::get_physmem_instance()->get_my_cr3().flags;
-    *reinterpret_cast<uint64_t*>(&gadget[6]) = cr3_value;
+    *reinterpret_cast<uint64_t*>(&gadget[index]) = cr3_value;
+    index += 8;
     // mov cr3, rax
-    gadget[14] = 0x0f; gadget[15] = 0x22; gadget[16] = 0xd8;
+    gadget[index++] = 0x0f; gadget[index++] = 0x22; gadget[index++] = 0xd8;
 
     // Force this page to be reloaded
     // mov rax, imm64
-    gadget[17] = 0x48; gadget[18] = 0xb8;
+    gadget[index++] = 0x48; gadget[index++] = 0xb8;
     uint64_t pool_addr = reinterpret_cast<uint64_t>(mem);
-    *reinterpret_cast<uint64_t*>(&gadget[19]) = pool_addr;
+    *reinterpret_cast<uint64_t*>(&gadget[index]) = pool_addr;
+    index += 8;
     // invlpg [rax]
-    gadget[27] = 0x0f; gadget[28] = 0x01; gadget[29] = 0x38;
+    gadget[index++] = 0x0f; gadget[index++] = 0x01; gadget[index++] = 0x38;
 
     // mfence
-    gadget[30] = 0x0f; gadget[31] = 0xae; gadget[32] = 0xf0;
+    gadget[index++] = 0x0f; gadget[index++] = 0xae; gadget[index++] = 0xf0;
+
+    // This is basically mov eax, curr_processor_number (Ty KeGetCurrentProcessorNumberEx)
+    // mov rax, gs:[20h]
+    gadget[index++] = 0x65; gadget[index++] = 0x48; gadget[index++] = 0x8B; gadget[index++] = 0x04;
+    gadget[index++] = 0x25; gadget[index++] = 0x20; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+
+    // mov eax, [rax+24h]
+    gadget[index++] = 0x8B; gadget[index++] = 0x80; gadget[index++] = 0x24; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+
+    // Clear the top 32 bits of rax to ensure proper address calculation
+    // mov eax, eax
+    gadget[index++] = 0x89; gadget[index++] = 0xc0;
+
+    // Calculate the byte offset of base (using processor_index * 10)
+    // imul eax, eax, 10
+    gadget[index++] = 0x48; gadget[index++] = 0x6b;
+    gadget[index++] = 0xc0; gadget[index++] = 0x0a;
+
+    // push rdx
+    gadget[index++] = 0x52;
+
+    // push rax
+    gadget[index++] = 0x50;
+
+    // mov rdx, imm64
+    gadget[index++] = 0x48; gadget[index++] = 0xba;
+    *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)my_gdt_storing_region;
+    index += 8;
+
+    // lea rax, [rdx + rax]
+    gadget[index++] = 0x48; gadget[index++] = 0x8d;
+    gadget[index++] = 0x04; gadget[index++] = 0x02;
+
+    // sgdt [rax]
+    gadget[index++] = 0x0f; gadget[index++] = 0x01; gadget[index++] = 0x00;
+
+    // pop rax
+    gadget[index++] = 0x58;
+
+    // mov rdx, imm64
+    gadget[index++] = 0x48; gadget[index++] = 0xba;
+    *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)my_gdt_ptrs;
+    index += 8;
+
+    // lea rax, [rdx + rax]
+    gadget[index++] = 0x48; gadget[index++] = 0x8d;
+    gadget[index++] = 0x04; gadget[index++] = 0x02;
+
+    // lgdt [rax]
+    gadget[index++] = 0x0f; gadget[index++] = 0x01; gadget[index++] = 0x10;
+
+    // pop rdx
+    gadget[index++] = 0x5a;
 
     // Store the current idt in idt_storing_region
     // mov rax, imm64
-    gadget[33] = 0x48; gadget[34] = 0xb8;
-    *reinterpret_cast<uint64_t*>(&gadget[35]) = (uint64_t)my_idt_storing_region;
+    gadget[index++] = 0x48; gadget[index++] = 0xb8;
+    *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)my_idt_storing_region;
+    index += 8;
     // sidt [rax]
-    gadget[43] = 0x0F; gadget[44] = 0x01; gadget[45] = 0x08;
+    gadget[index++] = 0x0F; gadget[index++] = 0x01; gadget[index++] = 0x08;
 
     // Load our idt handler from my_idt
     // mov rax, imm64
-    gadget[46] = 0x48; gadget[47] = 0xB8;
-    *reinterpret_cast<uint64_t*>(&gadget[48]) = (uint64_t)my_idt;
+    gadget[index++] = 0x48; gadget[index++] = 0xB8;
+    *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)my_idt;
+    index += 8;
     // lidt [rax]
-    gadget[56] = 0x0F; gadget[57] = 0x01; gadget[58] = 0x18;
+    gadget[index++] = 0x0F; gadget[index++] = 0x01; gadget[index++] = 0x18;
 
     // Jump to our handler
     // mov rax, imm64
-    gadget[59] = 0x48; gadget[60] = 0xb8;
-    *reinterpret_cast<uint64_t*>(&gadget[61]) = jmp_address;
+    gadget[index++] = 0x48; gadget[index++] = 0xb8;
+    *reinterpret_cast<uint64_t*>(&gadget[index]) = jmp_address;
+    index += 8;
     // jmp rax
-    gadget[69] = 0xff; gadget[70] = 0xe0;
+    gadget[index++] = 0xff; gadget[index++] = 0xe0;
 }
 
 // Generates shellcode which will effectively just write to cr3
@@ -167,7 +229,7 @@ bool init_communication(void) {
     crt::memset(shown_pool, 0, PAGE_SIZE);
 
     // We need to set the va for executed 
-    generate_executed_jump_gadget((uint8_t*)executed_pool, shown_pool, (uint64_t)asm_recover_regs, &my_idt_ptr, &idt_storing_region);
+    generate_executed_jump_gadget((uint8_t*)executed_pool, shown_pool, (uint64_t)asm_recover_regs, &my_idt_ptr, &idt_storing_region, gdt_ptrs, gdt_storing_region);
     generate_shown_jump_gadget((uint8_t*)shown_pool, shown_pool);
     
     // Map the c3 bytes instead of the cc bytes (Source is what will be displayed and Target is where the memory will appear)
@@ -195,13 +257,15 @@ bool init_communication(void) {
     global_new_data_ptr = (uint64_t)shown_pool; // points to our gadget
     global_data_ptr_address = (uint64_t*)target_address;
     orig_NtUserGetCPD = (orig_NtUserGetCPD_type)global_orig_data_ptr;
-
+    
+    
     // Try to execute all commands before exchanging the .data ptr
     if (!execute_tests()) {
         dbg_log_communication("Failed tests... Not proceeding");
         return false;
     }
 
+    /*
     // Attach to winlogon.exe
     KeStackAttachProcess((PRKPROCESS)winlogon_eproc, &apc);
 
@@ -210,6 +274,7 @@ bool init_communication(void) {
 
     // Don't forget to detach
     KeUnstackDetachProcess(&apc);
+    */
 
     return true;
 }

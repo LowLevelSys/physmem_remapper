@@ -657,10 +657,13 @@ bool physmem::setup_paging_hierachy(void) {
 // Returns the current physmem instance
 physmem* physmem::get_physmem_instance(void) {
 
+    PHYSICAL_ADDRESS max_addr = { 0 };
+    max_addr.QuadPart = MAXULONG64;
+
     if (physmem_instance)
         return physmem_instance;
 
-    physmem_instance = (physmem*)ExAllocatePool(NonPagedPool, sizeof(physmem));
+    physmem_instance = (physmem*)MmAllocateContiguousMemory(sizeof(physmem), max_addr);
     if (!physmem_instance)
         return 0;
 
@@ -673,13 +676,13 @@ physmem* physmem::get_physmem_instance(void) {
     // Restore the inst after clearing the mem
     physmem_instance = inst;
 
-    physmem_instance->page_tables = (page_table_t*)ExAllocatePool(NonPagedPool, sizeof(page_table_t));
+    physmem_instance->page_tables = (page_table_t*)MmAllocateContiguousMemory(sizeof(page_table_t), max_addr);
     if (!physmem_instance->page_tables)
         return 0;
 
     crt::memset(physmem_instance->page_tables, 0, sizeof(page_table_t));
 
-    physmem_instance->page_tables->pml4_table = (paging_structs::pml4e_64*)ExAllocatePool(NonPagedPool, PAGE_SIZE);
+    physmem_instance->page_tables->pml4_table = (paging_structs::pml4e_64*)MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
     if (!physmem_instance->page_tables->pml4_table) {
         dbg_log("Failed to alloc mem");
         return 0;
@@ -688,9 +691,9 @@ physmem* physmem::get_physmem_instance(void) {
     crt::memset(physmem_instance->page_tables->pml4_table, 0, PAGE_SIZE);
 
     for (uint64_t i = 0; i < TABLE_COUNT; i++) {
-        physmem_instance->page_tables->pdpt_table[i] = (paging_structs::pdpte_64*)ExAllocatePool(NonPagedPool, PAGE_SIZE);
-        physmem_instance->page_tables->pde_table[i] = (paging_structs::pde_64*)ExAllocatePool(NonPagedPool, PAGE_SIZE);
-        physmem_instance->page_tables->pte_table[i] = (paging_structs::pte_64*)ExAllocatePool(NonPagedPool, PAGE_SIZE);
+        physmem_instance->page_tables->pdpt_table[i] = (paging_structs::pdpte_64*)MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
+        physmem_instance->page_tables->pde_table[i] = (paging_structs::pde_64*)MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
+        physmem_instance->page_tables->pte_table[i] = (paging_structs::pte_64*)MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
 
         if (!physmem_instance->page_tables->pdpt_table[i] ||
             !physmem_instance->page_tables->pde_table[i] ||
