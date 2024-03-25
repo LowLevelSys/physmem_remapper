@@ -24,11 +24,6 @@ trap_frame struct
   $vector qword ?
 trap_frame ends
 
-__read_cs proc
-    mov     rax, cs
-    ret
-__read_cs endp
-
 asm_non_maskable_interrupt_handler proc
 
     push 2 ; interrupt vector (which is 2 for nmis)

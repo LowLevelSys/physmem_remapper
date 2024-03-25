@@ -81,5 +81,4 @@ inline idt_ptr_t idt_storing_region;
 inline idt_entry_t my_idt_table[256];
 
 void init_idt(void);
-extern "C" uint64_t __read_cs(void);
 extern "C" void asm_non_maskable_interrupt_handler(void);

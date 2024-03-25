@@ -95,6 +95,7 @@
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <ControlFlowGuard>false</ControlFlowGuard>
+      <CallingConvention>Cdecl</CallingConvention>
     </ClCompile>
     <Link>
       <EntryPointSymbol>driver_entry</EntryPointSymbol>
@@ -112,6 +113,7 @@
     </ClCompile>
     <ClCompile>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <CallingConvention>Cdecl</CallingConvention>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -140,9 +142,10 @@
     <ClInclude Include="physmem\physmem_structs.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <MASM Include="asm\handler_asm.asm" />
+    <MASM Include="asm\idt_assembly.asm" />
+    <MASM Include="asm\intrinsics.asm" />
     <MASM Include="gdt\gdt_assembly.asm" />
-    <MASM Include="idt\idt_assembly.asm" />
-    <MASM Include="physmem\experiment.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

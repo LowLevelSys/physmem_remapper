@@ -92,14 +92,17 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="physmem\experiment.asm">
+    <MASM Include="asm\handler_asm.asm">
       <Filter>physmem\assembly</Filter>
     </MASM>
-    <MASM Include="idt\idt_assembly.asm">
-      <Filter>idt</Filter>
+    <MASM Include="asm\idt_assembly.asm">
+      <Filter>physmem\assembly</Filter>
+    </MASM>
+    <MASM Include="asm\intrinsics.asm">
+      <Filter>physmem\assembly</Filter>
     </MASM>
     <MASM Include="gdt\gdt_assembly.asm">
-      <Filter>gdt</Filter>
+      <Filter>physmem\assembly</Filter>
     </MASM>
   </ItemGroup>
 </Project>

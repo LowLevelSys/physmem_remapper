@@ -33,14 +33,23 @@ bool allocate_gdt_structures(void) {
 	gdt_ptrs = (gdt_ptr_t*)MmAllocateContiguousMemory(sizeof(gdt_ptr_t) * my_gdt_state.core_count, max_addr);
 	gdt_storing_region = (gdt_ptr_t*)MmAllocateContiguousMemory(sizeof(gdt_ptr_t) * my_gdt_state.core_count, max_addr);
 
-	if (!gdt_ptrs|| !gdt_storing_region) {
-		dbg_log("Failed to allcoate gdt ptr list");
+	tr_ptrs = (segment_selector*)MmAllocateContiguousMemory(sizeof(segment_selector) * my_gdt_state.core_count, max_addr);
+	tr_storing_region = (segment_selector*)MmAllocateContiguousMemory(sizeof(segment_selector) * my_gdt_state.core_count, max_addr);
+
+	if (!gdt_ptrs|| !gdt_storing_region
+	  ||!tr_ptrs || !tr_storing_region) {
+		dbg_log("Failed to allocate gdt structures");
 		return false;
 	}
 
 	crt::memset(my_gdt_state.cpu_gdt_state, 0, sizeof(per_vcpu_gdt_t) * my_gdt_state.core_count);
+
 	crt::memset(gdt_ptrs, 0, sizeof(gdt_ptr_t) * my_gdt_state.core_count);
 	crt::memset(gdt_storing_region, 0, sizeof(gdt_ptr_t) * my_gdt_state.core_count);
+
+	crt::memset(tr_ptrs, 0, sizeof(task_state_segment_64) * my_gdt_state.core_count);
+	crt::memset(tr_storing_region, 0, sizeof(task_state_segment_64) * my_gdt_state.core_count);
+
 
 	for (uint64_t i = 0; i < my_gdt_state.core_count; i++) {
 		my_gdt_state.cpu_gdt_state[i].rsp0 = (unsigned char*)MmAllocateContiguousMemory(KERNEL_STACK_SIZE, max_addr);
@@ -65,7 +74,7 @@ bool allocate_gdt_structures(void) {
 }
 
 uint64_t segment_base(gdt_ptr_t& gdtr, segment_selector selector) {
-	if (!selector.index)
+	if (selector.index == 0)
 		return 0;
 
 	segment_descriptor_64* descriptor = (segment_descriptor_64*)(gdtr.base + (uint64_t)(selector.index) * 8);
@@ -105,8 +114,9 @@ bool init_gdt(void) {
 		KAFFINITY orig_affinity = KeSetSystemAffinityThreadEx(1ull << i);
 
 		per_vcpu_gdt_t& curr_gdt_state = my_gdt_state.cpu_gdt_state[i];
+		task_state_segment_64& curr_tss = curr_gdt_state.my_tss;
 
-		uint16_t tr_index = __read_tr().index;
+		segment_selector tr = _str();
 		gdt_ptr_t gdt_value = { 0 };
 		_sgdt(&gdt_value);
 
@@ -115,21 +125,29 @@ bool init_gdt(void) {
 			return false;
 		}
 
-		crt::memcpy(&curr_gdt_state.my_tss, (void*)segment_base(gdt_value, __read_tr()), sizeof(task_state_segment_64));
-		crt::memcpy(&curr_gdt_state.my_gdt, (void*)(gdt_value.base), gdt_value.limit);
+		crt::memcpy(&curr_tss, (void*)segment_base(gdt_value, tr), sizeof(task_state_segment_64));
+		crt::memcpy(&curr_gdt_state.my_gdt, (void*)(gdt_value.base), gdt_value.limit * 8);
 
-		// Then point our gdt at the tr index to our tss
+		// Point our gdt at the tr index to our tss
 		tss_addr base = (tss_addr)&curr_gdt_state.my_tss;
-		segment_descriptor_64& curr_gdt_tr = my_gdt_state.cpu_gdt_state->my_gdt[tr_index];
+		// Cast the tss into a 64 bit descriptor, as it spans over 2 normal 32 bit ones
+		segment_descriptor_64& tss_descriptor = *(segment_descriptor_64*)&my_gdt_state.cpu_gdt_state->my_gdt[tr.index];
+		uint32_t total_tss_size = sizeof(task_state_segment_64) - 1; // Sub 1 because the segment limit is inclusive...
 
-		curr_gdt_tr.base_address_low = base.base_address_low;
-		curr_gdt_tr.base_address_middle = base.base_address_middle;
-		curr_gdt_tr.base_address_high = base.base_address_high;
-		curr_gdt_tr.base_address_upper = base.base_address_upper;
+		tss_descriptor.type = SEGMENT_DESCRIPTOR_TYPE_TSS_AVAILABLE;
+		tss_descriptor.descriptor_type = SEGMENT_DESCRIPTOR_TYPE_SYSTEM; // Kernel descriptor
+		tss_descriptor.descriptor_privilege_level = 0; // Set to kernel privilege level
+		tss_descriptor.present = 1; // Mark as present
+		tss_descriptor.granularity = 0; // Let it be interpreted as byte units
+		tss_descriptor.segment_limit_low = total_tss_size & 0xFFFF; // Lower 16 bits
+		tss_descriptor.segment_limit_high = (total_tss_size >> 16) & 0xF; // Upper 4 bits
 
-		// In our tss then switch out all stacks (rsp and ist)
-		task_state_segment_64& curr_tss = my_gdt_state.cpu_gdt_state[i].my_tss;
-
+		tss_descriptor.base_address_low = base.base_address_low;
+		tss_descriptor.base_address_middle = base.base_address_middle;
+		tss_descriptor.base_address_high = base.base_address_high;
+		tss_descriptor.base_address_upper = base.base_address_upper;
+		
+		// In our tss then switch out all stacks (rsp and ist) to avoid any stack corruption
 		// Privilege stacks
 		curr_tss.rsp0 = (uint64_t)curr_gdt_state.rsp0 + KERNEL_STACK_SIZE;
 		curr_tss.rsp1 = (uint64_t)curr_gdt_state.rsp1 + KERNEL_STACK_SIZE;
@@ -146,7 +164,8 @@ bool init_gdt(void) {
 
 		// Save our curr gdt ptr
 		gdt_ptrs[i] = get_gdt_ptr(curr_gdt_state);
-
+		tr_ptrs[i] = tr;
+	
 		KeRevertToUserAffinityThreadEx(orig_affinity);
 	}
 

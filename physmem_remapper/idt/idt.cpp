@@ -26,7 +26,7 @@ idt_entry_t create_interrupt_gate(void* handler_address) {
 	entry.offset_middle = (offset >> 16) & 0xFFFF;
 	entry.offset_high = (offset >> 32) & 0xFFFFFFFF;
 
-	entry.segment_selector = __read_cs();
+	entry.segment_selector = __read_cs().flags;
 	entry.gate_type = SEGMENT_DESCRIPTOR_TYPE_INTERRUPT_GATE;
 	entry.present = true;
 

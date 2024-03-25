@@ -35,6 +35,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
     uint64_t safed_proc_cr3 = global_proc_cr3;
     idt_ptr_t safed_proc_idt = { 0 };
     gdt_ptr_t safed_proc_gdt = { 0 };
+    segment_selector safed_proc_tr = { 0 };
 
     // Copy over proc idt value
     crt::memcpy(&safed_proc_idt, &idt_storing_region, sizeof(idt_ptr_t));
@@ -42,11 +43,16 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
     // Copy over the current gdt for the current core
     crt::memcpy(&safed_proc_gdt, &gdt_storing_region[asm_get_curr_processor_number()], sizeof(gdt_ptr_t));
 
+    // Copy over the current gdt for the current core
+    crt::memcpy(&safed_proc_tr, &tr_storing_region[asm_get_curr_processor_number()], sizeof(segment_selector));
+
     // If the calculated hash doesn't match the given one
     // it is a random call, so just return the orig function
     if (!check_keys(flags, dw_data)) {
         __writecr3(safed_proc_cr3);
         _lgdt(&safed_proc_gdt);
+        set_tss_descriptor_available();
+        _ltr(safed_proc_tr.flags);
         __lidt(&safed_proc_idt);
         return orig_NtUserGetCPD(hwnd, flags, dw_data);
     }
@@ -62,6 +68,8 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         dbg_log_handler("Failed to copy main cmd");
         __writecr3(safed_proc_cr3);
         _lgdt(&safed_proc_gdt);
+        set_tss_descriptor_available();
+        _ltr(safed_proc_tr.flags);
         __lidt(&safed_proc_idt);
         return 0;
     }
@@ -350,6 +358,8 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
     // Return back to normal
     __writecr3(safed_proc_cr3);
     _lgdt(&safed_proc_gdt);
+    set_tss_descriptor_available();
+    _ltr(safed_proc_tr.flags);
     __lidt(&safed_proc_idt);
 
     return 0;
