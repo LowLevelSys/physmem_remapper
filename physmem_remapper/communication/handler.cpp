@@ -32,19 +32,22 @@ bool copy_from_host(uint64_t dest, const T& src, const paging_structs::cr3& proc
 */
 extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR dw_data) {
     // In case another call happens during the execution of our handler, make a backup now
-    uint64_t safed_proc_cr3 = global_proc_cr3;
+    uint64_t safed_proc_cr3 = 0;
     idt_ptr_t safed_proc_idt = { 0 };
     gdt_ptr_t safed_proc_gdt = { 0 };
     segment_selector safed_proc_tr = { 0 };
 
-    // Copy over proc idt value
-    crt::memcpy(&safed_proc_idt, &idt_storing_region, sizeof(idt_ptr_t));
+    // Copy over the current idt for the current core
+    crt::memcpy(&safed_proc_idt, &idt_storing_regions[asm_get_curr_processor_number()], sizeof(idt_ptr_t));
 
     // Copy over the current gdt for the current core
     crt::memcpy(&safed_proc_gdt, &gdt_storing_region[asm_get_curr_processor_number()], sizeof(gdt_ptr_t));
 
     // Copy over the current gdt for the current core
     crt::memcpy(&safed_proc_tr, &tr_storing_region[asm_get_curr_processor_number()], sizeof(segment_selector));
+
+    // Copy over the current cr3 value for the current core
+    crt::memcpy(&safed_proc_cr3, &cr3_storing_region[asm_get_curr_processor_number()], sizeof(uint64_t));
 
     // If the calculated hash doesn't match the given one
     // it is a random call, so just return the orig function

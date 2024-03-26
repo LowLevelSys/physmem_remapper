@@ -33,7 +33,7 @@ idt_entry_t create_interrupt_gate(void* handler_address) {
 	return entry;
 }
 
-void init_idt(void) {
+bool init_idt(void) {
 	idt_ptr_t idt;
 	__sidt(&idt);
 
@@ -68,4 +68,18 @@ void init_idt(void) {
 	dbg_log("\n");
 #endif // !PARTIALLY_USE_SYSTEM_IDT
 #endif // EXTENSIVE_IDT_LOGGING
+
+	uint64_t processor_count = KeQueryActiveProcessorCount(0);
+	PHYSICAL_ADDRESS max_addr = { 0 };
+	max_addr.QuadPart = MAXULONG64;
+
+	idt_storing_regions = (idt_ptr_t*)MmAllocateContiguousMemory(sizeof(idt_ptr_t) * processor_count, max_addr);
+	if (!idt_storing_regions) {
+		dbg_log_idt("Failed to allocate idt state");
+		return false;
+	}
+
+	crt::memset(idt_storing_regions, 0, sizeof(idt_ptr_t) * processor_count);
+
+	return true;
 }

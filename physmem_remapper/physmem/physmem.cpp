@@ -684,7 +684,7 @@ physmem* physmem::get_physmem_instance(void) {
 
     physmem_instance->page_tables->pml4_table = (paging_structs::pml4e_64*)MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
     if (!physmem_instance->page_tables->pml4_table) {
-        dbg_log("Failed to alloc mem");
+        dbg_log("Failed to alloc pml4 mem");
         return 0;
     }
 
@@ -698,7 +698,7 @@ physmem* physmem::get_physmem_instance(void) {
         if (!physmem_instance->page_tables->pdpt_table[i] ||
             !physmem_instance->page_tables->pde_table[i] ||
             !physmem_instance->page_tables->pte_table[i]) {
-            dbg_log("Failed to alloc mem");
+            dbg_log("Failed to alloc page table mem");
             return 0;
         }
 
@@ -706,6 +706,16 @@ physmem* physmem::get_physmem_instance(void) {
         crt::memset(physmem_instance->page_tables->pde_table[i], 0, PAGE_SIZE);
         crt::memset(physmem_instance->page_tables->pte_table[i], 0, PAGE_SIZE);
     }
+
+    uint64_t processor_count = KeQueryActiveProcessorCount(0);
+
+    cr3_storing_region = (uint64_t*)MmAllocateContiguousMemory(processor_count * sizeof(uint64_t), max_addr);
+    if(!cr3_storing_region) {
+        dbg_log("Failed to alloc cr3 storing region mem");
+        return 0;
+    }
+
+    crt::memset(cr3_storing_region, 0, processor_count * sizeof(uint64_t));
 
     paging_structs::pml4e_64* kernel_pml4_page_table = 0;
     paging_structs::cr3 kernel_cr3 = { 0 };

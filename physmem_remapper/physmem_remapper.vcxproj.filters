@@ -90,6 +90,12 @@
     <ClInclude Include="gdt\gdt.hpp">
       <Filter>gdt</Filter>
     </ClInclude>
+    <ClInclude Include="gdt\gdt_structs.hpp">
+      <Filter>gdt</Filter>
+    </ClInclude>
+    <ClInclude Include="idt\idt_structs.hpp">
+      <Filter>idt</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="asm\handler_asm.asm">
@@ -101,7 +107,7 @@
     <MASM Include="asm\intrinsics.asm">
       <Filter>physmem\assembly</Filter>
     </MASM>
-    <MASM Include="gdt\gdt_assembly.asm">
+    <MASM Include="asm\gdt_assembly.asm">
       <Filter>physmem\assembly</Filter>
     </MASM>
   </ItemGroup>

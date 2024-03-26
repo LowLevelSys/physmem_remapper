@@ -1,5 +1,5 @@
 #pragma once
-#include "includes/includes.hpp"
+#include "../includes/includes.hpp"
 #include "physmem_structs.hpp"
 
 // Undefine if you want to disable them
@@ -24,12 +24,18 @@
 #define dbg_log_main(fmt, ...) (void)0
 #endif
 
+// No need to store an array of our cr3
+// as that stays consistent across cores
+inline uint64_t* cr3_storing_region;
 
+// Safe driver base and size for later
 inline uint64_t driver_base;
 inline uint64_t driver_size;
 
+// Declaration of the experiment function
 bool physmem_experiment(void);
 
+// Helper functions
 // Function to retrieve the physical address of a virtual address
 inline uint64_t get_physical_address(void* virtual_address) {
     return MmGetPhysicalAddress(virtual_address).QuadPart;
