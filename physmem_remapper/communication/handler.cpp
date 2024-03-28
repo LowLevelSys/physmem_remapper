@@ -33,32 +33,15 @@ bool copy_from_host(uint64_t dest, const T& src, const paging_structs::cr3& proc
 extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR dw_data) {
     // In case another call happens during the execution of our handler, make a backup now
     uint64_t safed_proc_cr3 = 0;
-    idt_ptr_t safed_proc_idt = { 0 };
-    gdt_ptr_t safed_proc_gdt = { 0 };
-    segment_selector safed_proc_tr = { 0 };
-
-    // Copy over the current idt for the current core
-    crt::memcpy(&safed_proc_idt, &idt_storing_regions[asm_get_curr_processor_number()], sizeof(idt_ptr_t));
-
-    // Copy over the current gdt for the current core
-    crt::memcpy(&safed_proc_gdt, &gdt_storing_region[asm_get_curr_processor_number()], sizeof(gdt_ptr_t));
-
-    // Copy over the current gdt for the current core
-    crt::memcpy(&safed_proc_tr, &tr_storing_region[asm_get_curr_processor_number()], sizeof(segment_selector));
 
     // Copy over the current cr3 value for the current core
     crt::memcpy(&safed_proc_cr3, &cr3_storing_region[asm_get_curr_processor_number()], sizeof(uint64_t));
 
     // If the calculated hash doesn't match the given one
     // it is a random call, so just return the orig function
-    if (!check_keys(flags, dw_data)) {
-        __writecr3(safed_proc_cr3);
-        _lgdt(&safed_proc_gdt);
-        set_tss_descriptor_available();
-        _ltr(safed_proc_tr.flags);
-        __lidt(&safed_proc_idt);
-        return orig_NtUserGetCPD(hwnd, flags, dw_data);
-    }
+    if (!check_keys(flags, dw_data))
+        return CALL_ORIG_DATA_PTR;
+    
 
     physmem* instance = physmem::get_physmem_instance();
     command* cmd_ptr = (command*)hwnd;
@@ -69,12 +52,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
 
     if (sizeof(cmd) != instance->copy_memory_to_inside(proc_cr3, (uint64_t)cmd_ptr, (uint64_t)&cmd, sizeof(cmd))) {
         dbg_log_handler("Failed to copy main cmd");
-        __writecr3(safed_proc_cr3);
-        _lgdt(&safed_proc_gdt);
-        set_tss_descriptor_available();
-        _ltr(safed_proc_tr.flags);
-        __lidt(&safed_proc_idt);
-        return 0;
+        return SKIP_ORIG_DATA_PTR;
     }
 
     cmd.result = false;
@@ -358,13 +336,5 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
     if (sizeof(cmd) != instance->copy_memory_from_inside((uint64_t)&cmd, (uint64_t)cmd_ptr, proc_cr3, sizeof(cmd))) 
         dbg_log_handler("Failed to copy back main cmd");
 
-    // Return back to normal
-    __writecr3(safed_proc_cr3);
-    _lgdt(&safed_proc_gdt);
-    set_tss_descriptor_available();
-    _ltr(safed_proc_tr.flags);
-    __lidt(&safed_proc_idt);
-
-    return 0;
-
+    return SKIP_ORIG_DATA_PTR;
 }

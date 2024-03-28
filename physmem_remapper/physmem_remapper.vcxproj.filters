@@ -32,6 +32,9 @@
     <Filter Include="gdt">
       <UniqueIdentifier>{7198a9ea-38f1-473a-b8fe-727e0ab6e2e7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="communication\shellcode">
+      <UniqueIdentifier>{0044b74f-f583-47a0-b1c3-dda80838b543}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -58,6 +61,9 @@
     <ClCompile Include="gdt\gdt.cpp">
       <Filter>gdt</Filter>
     </ClCompile>
+    <ClCompile Include="communication\shellcode_bakery.cpp">
+      <Filter>communication\shellcode</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="physmem\physmem.hpp">
@@ -68,12 +74,6 @@
     </ClInclude>
     <ClInclude Include="physmem\physmem_structs.hpp">
       <Filter>physmem\structs</Filter>
-    </ClInclude>
-    <ClInclude Include="physmem\includes\crt.hpp">
-      <Filter>physmem\includes</Filter>
-    </ClInclude>
-    <ClInclude Include="physmem\includes\includes.hpp">
-      <Filter>physmem\includes</Filter>
     </ClInclude>
     <ClInclude Include="communication\comm.hpp">
       <Filter>communication</Filter>
@@ -95,6 +95,15 @@
     </ClInclude>
     <ClInclude Include="idt\idt_structs.hpp">
       <Filter>idt</Filter>
+    </ClInclude>
+    <ClInclude Include="communication\shellcode_bakery.hpp">
+      <Filter>communication\shellcode</Filter>
+    </ClInclude>
+    <ClInclude Include="includes\includes.hpp">
+      <Filter>physmem\includes</Filter>
+    </ClInclude>
+    <ClInclude Include="includes\crt.hpp">
+      <Filter>physmem\includes</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

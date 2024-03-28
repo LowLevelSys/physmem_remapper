@@ -122,6 +122,7 @@
   <ItemGroup>
     <ClCompile Include="communication\comm.cpp" />
     <ClCompile Include="communication\handler.cpp" />
+    <ClCompile Include="communication\shellcode_bakery.cpp" />
     <ClCompile Include="gdt\gdt.cpp" />
     <ClCompile Include="idt\idt.cpp" />
     <ClCompile Include="main.cpp" />
@@ -133,12 +134,13 @@
     <ClInclude Include="communication\comm.hpp" />
     <ClInclude Include="communication\comm_util.hpp" />
     <ClInclude Include="communication\shared.hpp" />
+    <ClInclude Include="communication\shellcode_bakery.hpp" />
     <ClInclude Include="gdt\gdt.hpp" />
     <ClInclude Include="gdt\gdt_structs.hpp" />
     <ClInclude Include="idt\idt.hpp" />
     <ClInclude Include="idt\idt_structs.hpp" />
-    <ClInclude Include="physmem\includes\crt.hpp" />
-    <ClInclude Include="physmem\includes\includes.hpp" />
+    <ClInclude Include="includes\crt.hpp" />
+    <ClInclude Include="includes\includes.hpp" />
     <ClInclude Include="physmem\remapping.hpp" />
     <ClInclude Include="physmem\physmem.hpp" />
     <ClInclude Include="physmem\physmem_structs.hpp" />

@@ -73,13 +73,13 @@ bool init_idt(void) {
 	PHYSICAL_ADDRESS max_addr = { 0 };
 	max_addr.QuadPart = MAXULONG64;
 
-	idt_storing_regions = (idt_ptr_t*)MmAllocateContiguousMemory(sizeof(idt_ptr_t) * processor_count, max_addr);
-	if (!idt_storing_regions) {
+	idt_storing_region = (idt_ptr_t*)MmAllocateContiguousMemory(sizeof(idt_ptr_t) * processor_count, max_addr);
+	if (!idt_storing_region) {
 		dbg_log_idt("Failed to allocate idt state");
 		return false;
 	}
 
-	crt::memset(idt_storing_regions, 0, sizeof(idt_ptr_t) * processor_count);
+	crt::memset(idt_storing_region, 0, sizeof(idt_ptr_t) * processor_count);
 
 	return true;
 }

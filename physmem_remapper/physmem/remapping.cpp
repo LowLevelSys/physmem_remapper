@@ -684,7 +684,6 @@ bool remap_outside_virtual_address(uint64_t source_va, uint64_t target_va, pagin
     physmem* physmem_instance = physmem::get_physmem_instance();
     remapped_va_t* remapping_status = is_already_remapped(target_va, physmem_instance->get_page_tables());
  
-
     if (!remapping_status) {
         // Remap by force
         if (!remap_to_target_virtual_address(source_va, target_va, outside_cr3)) {

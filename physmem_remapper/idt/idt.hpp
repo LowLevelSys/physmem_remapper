@@ -18,7 +18,7 @@
 #endif
 
 inline idt_ptr_t my_idt_ptr;
-inline idt_ptr_t* idt_storing_regions;
+inline idt_ptr_t* idt_storing_region;
 
 // Pointer to tables of 256 idt entries
 inline idt_entry_t my_idt_table[256];

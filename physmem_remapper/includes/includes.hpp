@@ -13,6 +13,8 @@ using uint64_t = unsigned long long;
 
 // Assembly function declarations
 extern "C" uint64_t __read_rax(void);
+extern "C" uint64_t __read_rcx(void);
+extern "C" void asm_handler(void);
 
 extern "C" uint16_t get_tr_index(void);
 extern "C" uint64_t get_current_gdt_base(void);
