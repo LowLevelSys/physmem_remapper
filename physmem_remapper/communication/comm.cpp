@@ -3,7 +3,7 @@
 #include "../idt/idt.hpp"
 #include "shellcode_bakery.hpp"
 
-extern uint64_t* cr3_storing_region = 0;
+uint64_t* cr3_storing_region = 0;
 extern "C" void* global_returning_shellcode = 0;
 
 bool execute_tests(void) {
@@ -15,15 +15,24 @@ bool execute_tests(void) {
     generate_keys(flags, dw_data);
 
     command cmd;
+    allocate_memory_struct alloc_mem = { 0 };
+    alloc_mem.size = PAGE_SIZE;
+    cmd.command_number = cmd_allocate_memory;
+    cmd.sub_command_ptr = &alloc_mem;
 
-    // First call it for a test run (;
-    cmd.command_number = cmd_comm_test;
     handler((uint64_t)&cmd, flags, dw_data);
 
-    if (!test_call) {
-        dbg_log_communication("Failed to do a test call");
+    if (!alloc_mem.memory_base) {
+        dbg_log_communication("Failed to allocate memory");
         return false;
     }
+
+    free_memory_struct free_mem = { 0 };
+    free_mem.memory_base = alloc_mem.memory_base;
+    cmd.command_number = cmd_free_memory;
+    cmd.sub_command_ptr = &free_mem;
+
+    handler((uint64_t)&cmd, flags, dw_data);
 
     return true;
 }
@@ -82,6 +91,7 @@ bool init_communication(void) {
     void* executed_pool = MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
     void* shown_pool = MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
     global_returning_shellcode = MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
+
     cr3_storing_region = (uint64_t*)MmAllocateContiguousMemory(processor_count * sizeof(uint64_t), max_addr);
 
     if (!executed_pool || !shown_pool || !global_returning_shellcode || !cr3_storing_region)
@@ -90,6 +100,7 @@ bool init_communication(void) {
     crt::memset(executed_pool, 0, PAGE_SIZE);
     crt::memset(shown_pool, 0, PAGE_SIZE);
     crt::memset(global_returning_shellcode, 0, PAGE_SIZE);
+
     crt::memset(cr3_storing_region, 0, processor_count * sizeof(uint64_t));
 
     // Generate all shellcode gadgets
@@ -110,6 +121,13 @@ bool init_communication(void) {
         dbg_log_communication("Failed to remap outside virtual address %p in my cr3 to %p", shown_pool, executed_pool);
         return false;
     }
+
+    // Mark driver pages as non global
+    if(!instance->set_address_range_not_global(driver_base, driver_size, instance->get_kernel_cr3())) {
+        dbg_log_communication("Failed to mark driver image range as non global");
+        return false;
+    }
+
     // Then ensure that even if the system removes our driver memory from the system page tables
     // we are still mapped in ours
     if (!ensure_address_space_mapping(driver_base, driver_size, instance->get_kernel_cr3())) {
@@ -117,6 +135,7 @@ bool init_communication(void) {
         return false;
     }
 
+    // Ensure mapping for all shellcodes (not the one that we overmap, cause there is no need to)
     if (!ensure_address_space_mapping((uint64_t)global_returning_shellcode, PAGE_SIZE, instance->get_kernel_cr3())) {
         dbg_log_communication("Failed to ensure driver address space mapping");
         return false;
@@ -125,7 +144,7 @@ bool init_communication(void) {
 
 #ifdef ENABLE_COMMUNICATION_LOGGING
     dbg_log_communication("Executed jump gadget at %p", executed_pool);
-    dbg_log_communication("Shown  jump gadget at %p \n", shown_pool);
+    dbg_log_communication("Shown jump gadget at %p \n", shown_pool);
     dbg_log_communication("Returning gadget at %p \n", global_returning_shellcode);
     dbg_log("\n");
 #endif
@@ -142,7 +161,6 @@ bool init_communication(void) {
     global_new_data_ptr = (uint64_t)shown_pool; // points to our gadget
     global_data_ptr_address = (uint64_t*)target_address;
     orig_NtUserGetCPD = (orig_NtUserGetCPD_type)global_orig_data_ptr;
-
 
     // Try to execute all commands before exchanging the .data ptr
     if (!execute_tests()) {

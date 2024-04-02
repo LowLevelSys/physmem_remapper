@@ -97,6 +97,10 @@ namespace executed_gadgets {
         // Gernate the main part of the gadget, which is writing to cr3 and forcing the page to be flushed
         uint8_t* generate_execute_jump_gadget_cr3(uint8_t* gadget, void* mem, uint64_t* my_cr3_storing_region) {
             uint32_t index = 0;
+
+            // cli
+            gadget[index++] = 0xfa;
+
             // This is basically mov eax, curr_processor_number (Ty KeGetCurrentProcessorNumberEx)
             // mov rax, gs:[20h]
             gadget[index++] = 0x65; gadget[index++] = 0x48; gadget[index++] = 0x8B; gadget[index++] = 0x04;
@@ -327,6 +331,10 @@ namespace executed_gadgets {
         // Generate the jmp rax part of the gadget
         uint8_t* generate_execute_jump_gadget_end(uint8_t* gadget, uint64_t jmp_address) {
             uint32_t index = 0;
+
+            // sti
+            gadget[index++] = 0xfb;
+
             // mov rax, imm64
             gadget[index++] = 0x48; gadget[index++] = 0xB8;
             *(uint64_t*)&gadget[index] = jmp_address;
@@ -531,6 +539,10 @@ namespace executed_gadgets {
             *gadget = 0x50;
             gadget++;
 
+            // cli
+            *gadget = 0xfa;
+            gadget++;
+
             // Assume these functions update 'gadget' correctly
             gadget = generate_restore_cr3(gadget, my_cr3_storing_region);
             gadget = generate_restore_gdt(gadget, my_gdt_storing_region);
@@ -538,6 +550,9 @@ namespace executed_gadgets {
             gadget = generate_restore_idt(gadget, my_idt_storing_region);
 
             uint32_t index = 0;
+
+            // sti
+            gadget[index++] = 0xfb;
 
             // pop rax
             gadget[index++] = 0x58;
@@ -567,6 +582,9 @@ namespace shown_gadgets {
     // Generates shellcode which will effectively just write to cr3
     void generate_shown_jump_gadget(uint8_t* gadget, void* mem, uint64_t* my_cr3_storing_region) {
         uint32_t index = 0;
+        // cli
+        gadget[index++] = 0xfa;
+
         // This is basically mov eax, curr_processor_number (Ty KeGetCurrentProcessorNumberEx)
         // mov rax, gs:[20h]
         gadget[index++] = 0x65; gadget[index++] = 0x48; gadget[index++] = 0x8B; gadget[index++] = 0x04;

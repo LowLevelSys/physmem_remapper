@@ -2,7 +2,6 @@
 
 // We love compilers
 physmem* physmem::physmem_instance = 0;
-extern uint64_t* cr3_storing_region;
 
 uint32_t find_free_pml4e_index(paging_structs::pml4e_64* pml4e_table) {
     for (uint32_t i = 0; i < 512; i++) {
@@ -427,6 +426,157 @@ uint64_t physmem::get_outside_physical_addr(uint64_t outside_va, paging_structs:
     return address;
 }
 
+paging_structs::pte_64 physmem::get_pte_entry(uint64_t outside_va, paging_structs::cr3 outside_cr3) {
+    virtual_address vaddr = { outside_va };
+    uint64_t dummy;
+
+    uint64_t curr_cr3 = __readcr3();
+
+    __writecr3(my_cr3.flags);
+
+    paging_structs::pml4e_64* pml4_table = (paging_structs::pml4e_64*)map_outside_physical_addr(outside_cr3.address_of_page_directory << 12, &dummy);
+
+    if (!pml4_table) {
+        dbg_log("PML4 table not found");
+        __writecr3(curr_cr3);
+        return { 0 };
+    }
+
+    paging_structs::pml4e_64 pml4_entry = pml4_table[vaddr.pml4_idx];
+
+    paging_structs::pdpte_64* pdpt_table = (paging_structs::pdpte_64*)map_outside_physical_addr(pml4_entry.page_frame_number << 12, &dummy);
+    if (!pdpt_table) {
+        dbg_log("PDPT table not found");
+        __writecr3(curr_cr3);
+        return { 0 };
+    }
+
+    paging_structs::pdpte_64 pdpt_entry = pdpt_table[vaddr.pdpt_idx];
+
+    if (pdpt_entry.large_page) {
+        dbg_log("Large Page");
+        __writecr3(curr_cr3);
+        return { 0 };
+    }
+
+    paging_structs::pde_64* pde_table = (paging_structs::pde_64*)map_outside_physical_addr(pdpt_entry.page_frame_number << 12, &dummy);
+    if (!pde_table) {
+        dbg_log("PDe table not found");
+        __writecr3(curr_cr3);
+        return { 0 };
+    }
+
+    paging_structs::pde_64 pde_entry = pde_table[vaddr.pd_idx];
+
+    if (pde_entry.large_page) {
+        dbg_log("Large Page");
+        __writecr3(curr_cr3);
+        return { 0 };
+    }
+
+    paging_structs::pte_64* pte_table = (paging_structs::pte_64*)map_outside_physical_addr(pde_entry.page_frame_number << 12, &dummy);
+    if (!pte_table) {
+        dbg_log("PTE table not found");
+        __writecr3(curr_cr3);
+        return { 0 };
+    }
+
+    paging_structs::pte_64 pte_entry = pte_table[vaddr.pt_idx];
+    __writecr3(curr_cr3);
+
+    return pte_entry;
+}
+
+
+bool physmem::set_pte_entry(uint64_t outside_va, paging_structs::cr3 outside_cr3, paging_structs::pte_64 new_ptr) {
+    virtual_address vaddr = { outside_va };
+    uint64_t dummy;
+
+    uint64_t curr_cr3 = __readcr3();
+
+    __writecr3(my_cr3.flags);
+
+    paging_structs::pml4e_64* pml4_table = (paging_structs::pml4e_64*)map_outside_physical_addr(outside_cr3.address_of_page_directory << 12, &dummy);
+
+    if (!pml4_table) {
+        dbg_log("PML4 table not found");
+        __writecr3(curr_cr3);
+        return false;
+    }
+
+    paging_structs::pml4e_64 pml4_entry = pml4_table[vaddr.pml4_idx];
+
+    paging_structs::pdpte_64* pdpt_table = (paging_structs::pdpte_64*)map_outside_physical_addr(pml4_entry.page_frame_number << 12, &dummy);
+    if (!pdpt_table) {
+        dbg_log("PDPT table not found");
+        __writecr3(curr_cr3);
+        return false;
+    }
+
+    paging_structs::pdpte_64 pdpt_entry = pdpt_table[vaddr.pdpt_idx];
+
+    if (pdpt_entry.large_page) {
+        dbg_log("Large Page");
+        __writecr3(curr_cr3);
+        return false;
+    }
+
+    paging_structs::pde_64* pde_table = (paging_structs::pde_64*)map_outside_physical_addr(pdpt_entry.page_frame_number << 12, &dummy);
+    if (!pde_table) {
+        dbg_log("PDe table not found");
+        __writecr3(curr_cr3);
+        return false;
+    }
+
+    paging_structs::pde_64 pde_entry = pde_table[vaddr.pd_idx];
+
+    if (pde_entry.large_page) {
+        dbg_log("Large Page");
+        __writecr3(curr_cr3);
+        return false;
+    }
+
+    paging_structs::pte_64* pte_table = (paging_structs::pte_64*)map_outside_physical_addr(pde_entry.page_frame_number << 12, &dummy);
+    if (!pte_table) {
+        dbg_log("PTE table not found");
+        __writecr3(curr_cr3);
+        return false;
+    }
+
+    paging_structs::pte_64* pte_entry = &pte_table[vaddr.pt_idx];
+
+    crt::memcpy(pte_entry, &new_ptr, sizeof(paging_structs::pte_64));
+
+    __writecr3(curr_cr3);
+
+    return true;
+}
+
+bool physmem::set_address_range_not_global(uint64_t base, uint64_t size, paging_structs::cr3 outside_cr3) {
+    uint64_t alligned_base = (uint64_t)PAGE_ALIGN(base);
+
+    paging_structs::pte_64 sanity = { 0 };
+
+    for (uint64_t curr_va = alligned_base; curr_va < base + size; curr_va += PAGE_SIZE) {
+        // First get the pte entry and unset the global flag
+        paging_structs::pte_64 pte = get_pte_entry(curr_va, get_kernel_cr3());
+        pte.global = false;
+
+        if (crt::memcmp(&sanity, &pte, sizeof(paging_structs::pte_64)) == 0) {
+            dbg_log("Failed sanity 0 check while trying to set va: %p in cr3: %p to non global", curr_va, outside_cr3);
+            return false;
+        }
+
+        // Then store it again
+        if (!set_pte_entry(curr_va, get_kernel_cr3(), pte)) {
+            dbg_log("Failed return check while trying to set va: %p in cr3: %p to non global", curr_va, outside_cr3);
+            return false;
+        }
+    }
+
+    return true;
+}
+
 
 // Copies memory from one va to another based on cr3 without accessing eithers va
 uint64_t physmem::copy_virtual_memory(paging_structs::cr3 source_cr3, uint64_t source, paging_structs::cr3 destination_cr3, uint64_t destination, uint64_t size) {
@@ -530,6 +680,8 @@ bool log_paging_hierarchy(uint64_t va, paging_structs::cr3 target_cr3);
 
 // Tests whether copying memory is working
 bool physmem::test_page_tables(void) {
+
+#ifdef ENABLE_PHYSMEM_TESTS
     paging_structs::cr3 kernel_cr3 = { 0 };
     kernel_cr3.flags = __readcr3();
 
@@ -581,13 +733,9 @@ bool physmem::test_page_tables(void) {
 
     ExFreePool((void*)mem_a);
     ExFreePool((void*)mem_b);
+#endif // ENABLE_PHYSMEM_TESTS
 
     return true;
-}
-
-// Returns the cr3 in the current physmem instance
-paging_structs::cr3 physmem::get_my_cr3() {
-    return physmem_instance->my_cr3;
 }
 
 // Sets up our paging hierachy for memory copying
@@ -708,16 +856,6 @@ physmem* physmem::get_physmem_instance(void) {
         crt::memset(physmem_instance->page_tables->pte_table[i], 0, PAGE_SIZE);
     }
 
-    uint64_t processor_count = KeQueryActiveProcessorCount(0);
-
-    cr3_storing_region = (uint64_t*)MmAllocateContiguousMemory(processor_count * sizeof(uint64_t), max_addr);
-    if (!cr3_storing_region) {
-        dbg_log("Failed to alloc cr3 storing region mem");
-        return 0;
-    }
-
-    crt::memset(cr3_storing_region, 0, processor_count * sizeof(uint64_t));
-
     paging_structs::pml4e_64* kernel_pml4_page_table = 0;
     paging_structs::cr3 kernel_cr3 = { 0 };
     kernel_cr3.flags = __readcr3();
@@ -739,8 +877,7 @@ physmem* physmem::get_physmem_instance(void) {
     dbg_log("Successfully set up paging hierachy");
 #endif // ENABLE_PHYSMEM_LOGGING
 
-#ifdef ENABLE_PHYSMEM_TESTS
-
+    // Test page tables
     if (!physmem_instance->test_page_tables()) {
         dbg_log("Testing memory copying failed");
         return 0;
@@ -749,8 +886,6 @@ physmem* physmem::get_physmem_instance(void) {
 #ifdef ENABLE_PHYSMEM_LOGGING
     dbg_log("Tests regarding memory copying succeeded");
 #endif // ENABLE_PHYSMEM_LOGGING
-
-#endif // ENABLE_PHYSMEM_TESTS
 
     physmem_instance->inited = true;
 
