@@ -24,18 +24,12 @@
 #define dbg_log_main(fmt, ...) (void)0
 #endif
 
-// No need to store an array of our cr3
-// as that stays consistent across cores
-inline uint64_t* cr3_storing_region;
 
-// Safe driver base and size for later
 inline uint64_t driver_base;
 inline uint64_t driver_size;
 
-// Declaration of the experiment function
 bool physmem_experiment(void);
 
-// Helper functions
 // Function to retrieve the physical address of a virtual address
 inline uint64_t get_physical_address(void* virtual_address) {
     return MmGetPhysicalAddress(virtual_address).QuadPart;
@@ -71,7 +65,7 @@ public:
     uint64_t copy_memory_from_inside(uint64_t source, uint64_t destination, paging_structs::cr3 destination_cr3, uint64_t size);
     uint64_t copy_virtual_memory(paging_structs::cr3 source_cr3, uint64_t source, paging_structs::cr3 destination_cr3, uint64_t destination, uint64_t size);
     uint64_t copy_physical_memory(uint64_t source_physaddr, uint64_t destination_physaddr, uint64_t size);
-   
+
     uint64_t map_outside_virtual_addr(uint64_t outside_va, paging_structs::cr3 outside_cr3, uint64_t* offset_to_next_page);
     uint64_t map_outside_physical_addr(uint64_t outside_pa, uint64_t* offset_to_next_page);
 

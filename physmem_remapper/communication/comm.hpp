@@ -110,6 +110,7 @@ typedef struct {
 
 
 // Definitions
+
 #define SKIP_ORIG_DATA_PTR 0x1337
 #define CALL_ORIG_DATA_PTR 0x7331
 

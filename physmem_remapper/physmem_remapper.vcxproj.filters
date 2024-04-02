@@ -119,5 +119,8 @@
     <MASM Include="asm\gdt_assembly.asm">
       <Filter>physmem\assembly</Filter>
     </MASM>
+    <MASM Include="asm\util_asm.asm">
+      <Filter>physmem\assembly</Filter>
+    </MASM>
   </ItemGroup>
 </Project>

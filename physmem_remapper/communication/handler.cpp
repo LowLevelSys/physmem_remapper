@@ -6,6 +6,8 @@
 
 #include "../physmem/physmem.hpp"
 
+extern uint64_t* cr3_storing_region;
+
 /*
    We use templates here to avoid a very very large code base (look at my hv
    if you want to know what NOT to do)
@@ -31,29 +33,20 @@ bool copy_from_host(uint64_t dest, const T& src, const paging_structs::cr3& proc
     dw_data: crypting key 2
 */
 extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR dw_data) {
-    // In case another call happens during the execution of our handler, make a backup now
-    uint64_t safed_proc_cr3 = 0;
-
-    // Copy over the current cr3 value for the current core
-    crt::memcpy(&safed_proc_cr3, &cr3_storing_region[asm_get_curr_processor_number()], sizeof(uint64_t));
-
     // If the calculated hash doesn't match the given one
     // it is a random call, so just return the orig function
     if (!check_keys(flags, dw_data))
         return CALL_ORIG_DATA_PTR;
-    
 
+    paging_structs::cr3 proc_cr3 = { 0 };
     physmem* instance = physmem::get_physmem_instance();
     command* cmd_ptr = (command*)hwnd;
     command cmd;
 
-    paging_structs::cr3 proc_cr3 = { 0 };
-    proc_cr3.flags = safed_proc_cr3;
+    proc_cr3.flags = cr3_storing_region[asm_get_curr_processor_number()];
 
-    if (sizeof(cmd) != instance->copy_memory_to_inside(proc_cr3, (uint64_t)cmd_ptr, (uint64_t)&cmd, sizeof(cmd))) {
-        dbg_log_handler("Failed to copy main cmd");
+    if (sizeof(cmd) != instance->copy_memory_to_inside(proc_cr3, (uint64_t)cmd_ptr, (uint64_t)&cmd, sizeof(cmd)))
         return SKIP_ORIG_DATA_PTR;
-    }
 
     cmd.result = false;
 
@@ -72,16 +65,16 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         // Allocate memory
         sub_cmd.memory_base = MmAllocateContiguousMemory(sub_cmd.size, max_addr);
         cmd.result = (sub_cmd.memory_base != 0);
-        
-        if (cmd.result) 
-            dbg_log_handler("Allocated memory at %p", sub_cmd.memory_base);
-        else 
-            dbg_log_handler("Failed allocating pool of size %p", sub_cmd.size);
-        
 
-        if (!copy_from_host((uint64_t)cmd.sub_command_ptr, sub_cmd, proc_cr3)) 
+        if (cmd.result)
+            dbg_log_handler("Allocated memory at %p", sub_cmd.memory_base);
+        else
+            dbg_log_handler("Failed allocating pool of size %p", sub_cmd.size);
+
+
+        if (!copy_from_host((uint64_t)cmd.sub_command_ptr, sub_cmd, proc_cr3))
             dbg_log_handler("Failed to copy back allocate_memory_struct");
-        
+
     } break;
 
     case cmd_free_memory: {
@@ -98,7 +91,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
             MmFreeContiguousMemory(sub_cmd.memory_base);
             dbg_log_handler("Freed memory at %p", sub_cmd.memory_base);
         }
-        else 
+        else
             dbg_log_handler("Invalid argument for freeing memory");
 
     } break;
@@ -115,9 +108,9 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
 
         // Copy virtual memory from a to b
         cmd.result = (sub_cmd.size == instance->copy_virtual_memory(source_cr3, sub_cmd.source, destination_cr3, sub_cmd.destination, sub_cmd.size));
-        if (!cmd.result) 
+        if (!cmd.result)
             dbg_log_handler("Failed to copy virtual memory");
-        
+
 
     } break;
 
@@ -132,12 +125,12 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         sub_cmd.cr3 = get_cr3(sub_cmd.pid);
         cmd.result = (sub_cmd.cr3 != 0);
 
-        if (!cmd.result) 
+        if (!cmd.result)
             dbg_log_handler("Failed to get cr3 from pid %p", sub_cmd.pid);
 
         if (!copy_from_host((uint64_t)cmd.sub_command_ptr, sub_cmd, proc_cr3))
             dbg_log_handler("Failed to copy back get_cr3_struct");
-        
+
     } break;
 
     case cmd_get_module_base: {
@@ -150,13 +143,13 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         // Get module base
         sub_cmd.module_base = get_module_base(sub_cmd.pid, sub_cmd.module_name);
         cmd.result = (sub_cmd.module_base != 0);
-        if (!cmd.result) 
+        if (!cmd.result)
             dbg_log_handler("Failed to get module base for %s in pid %p", sub_cmd.module_name, sub_cmd.pid);
-        
+
 
         if (!copy_from_host((uint64_t)cmd.sub_command_ptr, sub_cmd, proc_cr3))
             dbg_log_handler("Failed to copy back get_module_base_struct");
-        
+
     } break;
 
     case cmd_get_module_size: {
@@ -175,9 +168,9 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
             break;
         }
 
-        if (!copy_from_host((uint64_t)cmd.sub_command_ptr, sub_cmd, proc_cr3)) 
+        if (!copy_from_host((uint64_t)cmd.sub_command_ptr, sub_cmd, proc_cr3))
             dbg_log_handler("Failed to copy back get_module_size_struct");
-        
+
     } break;
 
 
@@ -201,7 +194,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         // Copying back might be necessary to return the PID
         if (!copy_from_host((uint64_t)cmd.sub_command_ptr, sub_cmd, proc_cr3))
             dbg_log_handler("Failed to copy back get_pid_by_name_struct");
-        
+
     } break;
 
     case cmd_get_physical_address: {
@@ -228,7 +221,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
             dbg_log_handler("Failed to copy back get_physical_address_struct");
 
         dbg_log("Translated virtual address %p in cr3 %p to %p", sub_cmd.virtual_address, sub_cmd.cr3, sub_cmd.physical_address);
-        
+
     } break;
 
     case cmd_get_virtual_address: {
@@ -249,8 +242,8 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
 
         if (!copy_from_host((uint64_t)cmd.sub_command_ptr, sub_cmd, proc_cr3))
             dbg_log_handler("Failed to copy back get_virtual_address_struct");
-        
-        dbg_log("Translated physical address to kernel va %p", sub_cmd.physical_address, sub_cmd.virtual_address);
+
+        dbg_log_handler("Translated physical address to kernel va %p", sub_cmd.physical_address, sub_cmd.virtual_address);
 
     } break;
 
@@ -266,7 +259,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
             dbg_log_handler("Failed to ensure address space mapping from %p to %p", driver_base, driver_base + driver_size);
             break;
         }
-        
+
         dbg_log_handler("Ensured address space mapping from %p to %p", driver_base, driver_base + driver_size);
 
         cmd.result = true;
@@ -323,7 +316,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
     case cmd_comm_test: {
 
         test_call = true;
-        
+
         cmd.result = true;
 
     } break;
@@ -333,7 +326,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
     } break;
     }
 
-    if (sizeof(cmd) != instance->copy_memory_from_inside((uint64_t)&cmd, (uint64_t)cmd_ptr, proc_cr3, sizeof(cmd))) 
+    if (sizeof(cmd) != instance->copy_memory_from_inside((uint64_t)&cmd, (uint64_t)cmd_ptr, proc_cr3, sizeof(cmd)))
         dbg_log_handler("Failed to copy back main cmd");
 
     return SKIP_ORIG_DATA_PTR;

@@ -20,7 +20,7 @@ inline uint64_t get_pid(const char* target_process_name) {
         if (crt::strstr(image_name, target_process_name) || crt::strstr(target_process_name, image_name)) {
 
             uint64_t pid = 0;
-            
+
             crt::memcpy(&pid, (void*)((uintptr_t)curr_entry + 0x440), sizeof(pid));
 
             return pid;
@@ -118,17 +118,17 @@ inline LDR_DATA_TABLE_ENTRY get_ldr_data_table_entry(uint64_t target_pid, char* 
                 char char_dll_name_buffer[MAX_PATH] = { 0 };
 
 
-                if (curr_ldr_entry.BaseDllName.Length != inst->copy_virtual_memory(user_cr3, (uint64_t)curr_ldr_entry.BaseDllName.Buffer, curr_cr3, (uint64_t)&dll_name_buffer, curr_ldr_entry.BaseDllName.Length)) 
+                if (curr_ldr_entry.BaseDllName.Length != inst->copy_virtual_memory(user_cr3, (uint64_t)curr_ldr_entry.BaseDllName.Buffer, curr_cr3, (uint64_t)&dll_name_buffer, curr_ldr_entry.BaseDllName.Length))
                     continue;
-               
+
                 for (uint64_t i = 0; i < curr_ldr_entry.BaseDllName.Length / sizeof(wchar_t) && i < MAX_PATH - 1; i++)
                     char_dll_name_buffer[i] = (char)dll_name_buffer[i];
-                
+
 
                 // Ignore lower / upper case in order to ensure you find it (and contains therefore if the msg is cut off it still works)
-                if (crt::strstr(char_dll_name_buffer, module_name)) 
+                if (crt::strstr(char_dll_name_buffer, module_name))
                     return curr_ldr_entry;
-                
+
 
                 ldr_curr = (uint64_t)curr_ldr_entry.InLoadOrderLinks.Flink;
 
@@ -136,7 +136,7 @@ inline LDR_DATA_TABLE_ENTRY get_ldr_data_table_entry(uint64_t target_pid, char* 
 
 
         }
-        PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry) + 0x448);
+        PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+0x448);
         curr_entry = (PEPROCESS)((uintptr_t)list->Flink - 0x448);
 
     } while (curr_entry != sys_process);

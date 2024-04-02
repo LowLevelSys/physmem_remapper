@@ -2,6 +2,7 @@
 
 // We love compilers
 physmem* physmem::physmem_instance = 0;
+extern uint64_t* cr3_storing_region;
 
 uint32_t find_free_pml4e_index(paging_structs::pml4e_64* pml4e_table) {
     for (uint32_t i = 0; i < 512; i++) {
@@ -100,7 +101,7 @@ uint64_t physmem::map_outside_virtual_addr(uint64_t outside_va, paging_structs::
         __writecr3(curr);
         return 0;
     }
-    
+
     if (pdpte.large_page) {
         paging_structs::pdpte_1gb_64 pdpte_1gb;
         pdpte_1gb.flags = pdpte.flags;
@@ -147,7 +148,7 @@ uint64_t physmem::map_outside_virtual_addr(uint64_t outside_va, paging_structs::
         __writecr3(curr);
         return 0;
     }
-    
+
     if (pde.large_page) {
         paging_structs::pde_2mb_64 pde_2mb;
         pde_2mb.flags = pde.flags;
@@ -240,7 +241,7 @@ uint64_t physmem::map_outside_physical_addr(uint64_t outside_pa, uint64_t* offse
     generated_virtual_address.offset = outside_pa - page_boundary;
     generated_virtual_address.pml4_idx = free_pml4_index;
     generated_virtual_address.pdpt_idx = NORMAL_PAGE_ENTRY;
-    generated_virtual_address.pd_idx = NORMAL_PAGE_ENTRY; 
+    generated_virtual_address.pd_idx = NORMAL_PAGE_ENTRY;
     generated_virtual_address.pt_idx = find_free_pte_index(page_tables->pte_table[MEMORY_COPYING_SLOT]);
 
     if (generated_virtual_address.pt_idx == 0xdead) {
@@ -250,7 +251,7 @@ uint64_t physmem::map_outside_physical_addr(uint64_t outside_pa, uint64_t* offse
 
     if (generated_virtual_address.pt_idx == 0xdead)
         return 0;
-    
+
     paging_structs::pte_64& pte = page_tables->pte_table[MEMORY_COPYING_SLOT][generated_virtual_address.pt_idx];
 
     pte.present = true;
@@ -260,7 +261,7 @@ uint64_t physmem::map_outside_physical_addr(uint64_t outside_pa, uint64_t* offse
     curr_pte_index = generated_virtual_address.pt_idx;
 
     // Calculate the offset to the next page boundary
-    if (offset_to_next_page) 
+    if (offset_to_next_page)
         *offset_to_next_page = PAGE_SIZE - generated_virtual_address.offset;
 
     paging_structs::cr3 current_cr3 = { 0 };
@@ -397,7 +398,7 @@ uint64_t physmem::get_outside_physical_addr(uint64_t outside_va, paging_structs:
 
     paging_structs::pde_64 pde_entry = pde_table[vaddr.pd_idx];
 
-    if(pde_entry.large_page) {
+    if (pde_entry.large_page) {
         paging_structs::pde_2mb_64 pde_2mb_entry;
         pde_2mb_entry.flags = pde_entry.flags;
 
@@ -560,7 +561,7 @@ bool physmem::test_page_tables(void) {
 
     // Set 1 pool of mem to some value
     crt::memset((void*)mem_a, 0xbb, PAGE_SIZE);
-    
+
     // Copy it over via physical memory copying
     if (PAGE_SIZE != copy_physical_memory(get_physical_address((void*)mem_a), get_physical_address((void*)mem_b), PAGE_SIZE)) {
         dbg_log("Failed to copy physical memory");
@@ -568,7 +569,7 @@ bool physmem::test_page_tables(void) {
         ExFreePool((void*)mem_b);
         return false;
     }
-    
+
     // Check whether the content of the pages are the same
     has_same_content = crt::memcmp((void*)mem_a, (void*)mem_b, PAGE_SIZE) == 0;
     if (!has_same_content) {
@@ -684,7 +685,7 @@ physmem* physmem::get_physmem_instance(void) {
 
     physmem_instance->page_tables->pml4_table = (paging_structs::pml4e_64*)MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
     if (!physmem_instance->page_tables->pml4_table) {
-        dbg_log("Failed to alloc pml4 mem");
+        dbg_log("Failed to alloc mem");
         return 0;
     }
 
@@ -698,7 +699,7 @@ physmem* physmem::get_physmem_instance(void) {
         if (!physmem_instance->page_tables->pdpt_table[i] ||
             !physmem_instance->page_tables->pde_table[i] ||
             !physmem_instance->page_tables->pte_table[i]) {
-            dbg_log("Failed to alloc page table mem");
+            dbg_log("Failed to alloc mem");
             return 0;
         }
 
@@ -710,7 +711,7 @@ physmem* physmem::get_physmem_instance(void) {
     uint64_t processor_count = KeQueryActiveProcessorCount(0);
 
     cr3_storing_region = (uint64_t*)MmAllocateContiguousMemory(processor_count * sizeof(uint64_t), max_addr);
-    if(!cr3_storing_region) {
+    if (!cr3_storing_region) {
         dbg_log("Failed to alloc cr3 storing region mem");
         return 0;
     }

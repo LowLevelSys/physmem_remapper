@@ -1,14 +1,9 @@
 .code
 
 ; Results are returned in rax, so no need to do anything
-__read_rax proc
+__read_rax proc public
     ret
 __read_rax endp
-
-__read_rcx proc
-    mov rax, rcx
-    ret
-__read_rcx endp
 
 ; Reads the curr tr reg into rax
 _str proc

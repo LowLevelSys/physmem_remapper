@@ -9,7 +9,7 @@
 void generate_gadget(uint8_t* gadget, void* mem, uint64_t rax_val) {
     // mov rax, imm64
     gadget[0] = 0x48;
-    gadget[1] = 0xb8; 
+    gadget[1] = 0xb8;
 
     // imm64 value for CR3
     uint64_t cr3_value = physmem::get_physmem_instance()->get_my_cr3().flags;
@@ -53,7 +53,7 @@ void generate_gadget(uint8_t* gadget, void* mem, uint64_t rax_val) {
 // by manually constructing the paging entries for it and once you switch
 // cr3 you should then see the replaced contents 
 bool physmem_experiment(void) {
-    
+
 #ifdef ENABLE_EXPERIMENT_TESTS
 
     paging_structs::cr3 kernel_cr3 = { 0 };
@@ -84,7 +84,7 @@ bool physmem_experiment(void) {
     log_paging_hierarchy((uint64_t)mem, kernel_cr3);
     log_paging_hierarchy((uint64_t)mem, physmem::get_physmem_instance()->get_my_cr3());
 #endif // EXPERIMENT_LOGGING
-    
+
     // Try to execute the cr3 gadgets
     func_sig funca = (func_sig)mem;
     funca();

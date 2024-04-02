@@ -165,7 +165,7 @@ remapped_va_t* is_already_remapped(uint64_t target_address, page_table_t* instan
             continue;
 
         // Check whether the pdpt index overlaps
-        if(curr_entry->remapped_va.pdpt_idx != target_va.pdpt_idx) {
+        if (curr_entry->remapped_va.pdpt_idx != target_va.pdpt_idx) {
 
             // The curr closest entry is already as good as the entry at the current index
             if (curr_closest_entry->remapped_va.pml4_idx == target_va.pml4_idx)
@@ -220,9 +220,9 @@ remapped_va_t* is_already_remapped(uint64_t target_address, page_table_t* instan
 
     // Check whether we found a fitting entry
     // and if not just return 0 to indicate it not being there
-    if (curr_closest_entry == &dummy) 
+    if (curr_closest_entry == &dummy)
         return 0;
-    
+
     // Return the closest entry
     return curr_closest_entry;
 }
@@ -231,7 +231,7 @@ remapped_va_t* is_already_remapped(uint64_t target_address, page_table_t* instan
 void create_new_remapping_entry(remapped_va_t new_entry, page_table_t* instance) {
     for (uint32_t i = 0; i < MAX_REMAPPINGS; i++) {
         remapped_va_t* curr_entry = &instance->remapping_list[i];
-    
+
         // Check whether the current entry is present/occupied
         if (curr_entry->remapped_va.address)
             continue;
@@ -284,7 +284,7 @@ bool remap_to_target_virtual_address(uint64_t source_va, uint64_t target_va, pag
     // First walk the whole outside paging hierachy and check whether we can remap it
     paging_structs::pml4e_64* pml4_table = (paging_structs::pml4e_64*)instance->map_outside_physical_addr(outside_cr3.address_of_page_directory << 12, &dummy);
     paging_structs::pdpte_64* pdpt_table = (paging_structs::pdpte_64*)instance->map_outside_physical_addr(pml4_table[source_vaddr.pml4_idx].page_frame_number << 12, &dummy);
-    
+
     if (pdpt_table[source_vaddr.pdpt_idx].large_page) {
 
         uint32_t free_pdpte_table_index = get_free_pdpt_table_index(page_tables);
@@ -318,10 +318,10 @@ bool remap_to_target_virtual_address(uint64_t source_va, uint64_t target_va, pag
 
         return true;
     }
-    
+
     paging_structs::pde_64* pde_table = (paging_structs::pde_64*)instance->map_outside_physical_addr(pdpt_table[source_vaddr.pdpt_idx].page_frame_number << 12, &dummy);
-    
-    if(pde_table[source_vaddr.pd_idx].large_page) {
+
+    if (pde_table[source_vaddr.pd_idx].large_page) {
 
         uint32_t free_pdpte_table_index = get_free_pdpt_table_index(page_tables);
         uint32_t free_pde_table_index = get_free_pde_table_index(page_tables);
@@ -479,80 +479,7 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
 
     if (pde_table[source_vaddr.pd_idx].large_page) {
         switch (max_usable) {
-            case pdpt_table_valid: {
-                paging_structs::pdpte_64* my_pdpt_table = &page_tables->pdpt_table[remapping_status->pdpte_slot.slot][0];
-
-                uint32_t free_pde_table_index = get_free_pde_table_index(page_tables);
-                if (free_pde_table_index == 0xdead) {
-                    dbg_log_remapping("Failed to get free pde index");
-                    __writecr3(curr);
-                    return false;
-                }
-
-                // Replace the pde table it points to
-                my_pdpt_table[target_vaddr.pdpt_idx].page_frame_number = instance->get_outside_physical_addr((uint64_t)&page_tables->pde_table[free_pde_table_index][0], instance->get_my_cr3()) >> 12;
-
-                paging_structs::pde_64* my_pde_table = &page_tables->pde_table[free_pde_table_index][0];
-
-                // Copy the Pde table
-                crt::memcpy(my_pde_table, pde_table, sizeof(paging_structs::pde_64) * 512);
-
-                // Copy the specific entry just in case source and dst are on same pde table
-                crt::memcpy(&my_pde_table[target_vaddr.pd_idx], &pde_table[source_vaddr.pd_idx], sizeof(paging_structs::pde_2mb_64));
-
-                // Create a new entry for this mapping
-                remapped_va_t new_entry = { 0 };
-
-                new_entry.remapped_va = target_vaddr;
-
-                new_entry.pdpte_slot.large_page = false;
-                new_entry.pdpte_slot.slot = remapping_status->pdpte_slot.slot;
-
-                new_entry.pde_slot.large_page = true;
-                new_entry.pde_slot.slot = free_pde_table_index;
-
-                create_new_remapping_entry(new_entry, page_tables);
-
-                __invlpg((void*)target_va);
-                __writecr3(curr);
-                return true;
-            }
-            case pde_table_valid: {
-                paging_structs::pde_64* my_pde_table = &page_tables->pde_table[remapping_status->pde_slot.slot][0];
-
-                // Copy the specific entry just in case source and dst are on same pde table
-                crt::memcpy(&my_pde_table[target_vaddr.pd_idx], &pde_table[source_vaddr.pd_idx], sizeof(paging_structs::pde_64));
-
-                // Create a new entry for this mapping
-                remapped_va_t new_entry = { 0 };
-
-                new_entry.remapped_va = target_vaddr;
-
-                new_entry.pdpte_slot.large_page = false;
-                new_entry.pdpte_slot.slot = remapping_status->pdpte_slot.slot;
-
-                new_entry.pde_slot.large_page = true;
-                new_entry.pde_slot.slot = remapping_status->pde_slot.slot;
-
-                create_new_remapping_entry(new_entry, page_tables);
-
-                __invlpg((void*)target_va);
-                __writecr3(curr);
-                return true;
-            }
-            default: {
-                dbg_log_remapping("Wtf happened here??");
-                __writecr3(curr);
-                return false;
-            }
-        }
-    }
-
-    paging_structs::pte_64* pte_table = (paging_structs::pte_64*)instance->map_outside_physical_addr(pde_table[source_vaddr.pd_idx].page_frame_number << 12, &dummy);
-
-    switch (max_usable) {
         case pdpt_table_valid: {
-
             paging_structs::pdpte_64* my_pdpt_table = &page_tables->pdpt_table[remapping_status->pdpte_slot.slot][0];
 
             uint32_t free_pde_table_index = get_free_pde_table_index(page_tables);
@@ -569,23 +496,9 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
 
             // Copy the Pde table
             crt::memcpy(my_pde_table, pde_table, sizeof(paging_structs::pde_64) * 512);
-            uint32_t free_pte_table_index = get_free_pte_table_index(page_tables);
-            if (free_pte_table_index == 0xdead) {
-                dbg_log_remapping("Failed to get free pde index");
-                __writecr3(curr);
-                return false;
-            }
 
-            // Replace the pte table it points to
-            my_pde_table[target_vaddr.pd_idx].page_frame_number = instance->get_outside_physical_addr((uint64_t)&page_tables->pte_table[free_pte_table_index][0], instance->get_my_cr3()) >> 12;
-
-            paging_structs::pte_64* my_pte_table = &page_tables->pte_table[free_pte_table_index][0];
-
-            // Copy the Pte table
-            crt::memcpy(my_pte_table, pte_table, sizeof(paging_structs::pte_64) * 512);
-
-            // Copy the specific entry just in case source and dst are on same pte table
-            crt::memcpy(&my_pte_table[target_vaddr.pt_idx], &pte_table[source_vaddr.pt_idx], sizeof(paging_structs::pte_64));
+            // Copy the specific entry just in case source and dst are on same pde table
+            crt::memcpy(&my_pde_table[target_vaddr.pd_idx], &pde_table[source_vaddr.pd_idx], sizeof(paging_structs::pde_2mb_64));
 
             // Create a new entry for this mapping
             remapped_va_t new_entry = { 0 };
@@ -595,39 +508,20 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
             new_entry.pdpte_slot.large_page = false;
             new_entry.pdpte_slot.slot = remapping_status->pdpte_slot.slot;
 
-            new_entry.pde_slot.large_page = false;
+            new_entry.pde_slot.large_page = true;
             new_entry.pde_slot.slot = free_pde_table_index;
 
-            new_entry.pte_slot = free_pte_table_index;
-
             create_new_remapping_entry(new_entry, page_tables);
 
             __invlpg((void*)target_va);
             __writecr3(curr);
             return true;
         }
-
         case pde_table_valid: {
-
             paging_structs::pde_64* my_pde_table = &page_tables->pde_table[remapping_status->pde_slot.slot][0];
 
-            uint32_t free_pte_table_index = get_free_pte_table_index(page_tables);
-            if (free_pte_table_index == 0xdead) {
-                dbg_log_remapping("Failed to get free pde index");
-                __writecr3(curr);
-                return false;
-            }
-
-            // Replace the pte table it points to
-            my_pde_table[target_vaddr.pd_idx].page_frame_number = instance->get_outside_physical_addr((uint64_t)&page_tables->pte_table[free_pte_table_index][0], instance->get_my_cr3()) >> 12;
-
-            paging_structs::pte_64* my_pte_table = &page_tables->pte_table[free_pte_table_index][0];
-
-            // Copy the Pte table
-            crt::memcpy(my_pte_table, pte_table, sizeof(paging_structs::pte_64) * 512);
-
-            // Copy the specific entry just in case source and dst are on same pte table
-            crt::memcpy(&my_pte_table[target_vaddr.pt_idx], &pte_table[source_vaddr.pt_idx], sizeof(paging_structs::pte_64));
+            // Copy the specific entry just in case source and dst are on same pde table
+            crt::memcpy(&my_pde_table[target_vaddr.pd_idx], &pde_table[source_vaddr.pd_idx], sizeof(paging_structs::pde_64));
 
             // Create a new entry for this mapping
             remapped_va_t new_entry = { 0 };
@@ -637,10 +531,8 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
             new_entry.pdpte_slot.large_page = false;
             new_entry.pdpte_slot.slot = remapping_status->pdpte_slot.slot;
 
-            new_entry.pde_slot.large_page = false;
+            new_entry.pde_slot.large_page = true;
             new_entry.pde_slot.slot = remapping_status->pde_slot.slot;
-
-            new_entry.pte_slot = free_pte_table_index;
 
             create_new_remapping_entry(new_entry, page_tables);
 
@@ -648,32 +540,140 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
             __writecr3(curr);
             return true;
         }
-
-        case pte_table_valid: {
-
-            // Everything up until to the pte table is already done; We only need to replace a pte entry
-            paging_structs::pte_64* my_pte_table = &page_tables->pte_table[remapping_status->pte_slot][0];
-            crt::memcpy(&my_pte_table[target_vaddr.pt_idx], &pte_table[source_vaddr.pt_idx], sizeof(paging_structs::pte_64));
-
-            // Create a new entry for this mapping
-            remapped_va_t new_entry = { 0 };
-
-            new_entry.remapped_va = target_vaddr;
-
-            new_entry.pdpte_slot.large_page = false;
-            new_entry.pdpte_slot.slot = remapping_status->pdpte_slot.slot;
-
-            new_entry.pde_slot.large_page = false;
-            new_entry.pde_slot.slot = remapping_status->pde_slot.slot;
-
-            new_entry.pte_slot = remapping_status->pte_slot;
-
-            create_new_remapping_entry(new_entry, page_tables);
-
-            __invlpg((void*)target_va);
+        default: {
+            dbg_log_remapping("Wtf happened here??");
             __writecr3(curr);
-            return true;
+            return false;
         }
+        }
+    }
+
+    paging_structs::pte_64* pte_table = (paging_structs::pte_64*)instance->map_outside_physical_addr(pde_table[source_vaddr.pd_idx].page_frame_number << 12, &dummy);
+
+    switch (max_usable) {
+    case pdpt_table_valid: {
+
+        paging_structs::pdpte_64* my_pdpt_table = &page_tables->pdpt_table[remapping_status->pdpte_slot.slot][0];
+
+        uint32_t free_pde_table_index = get_free_pde_table_index(page_tables);
+        if (free_pde_table_index == 0xdead) {
+            dbg_log_remapping("Failed to get free pde index");
+            __writecr3(curr);
+            return false;
+        }
+
+        // Replace the pde table it points to
+        my_pdpt_table[target_vaddr.pdpt_idx].page_frame_number = instance->get_outside_physical_addr((uint64_t)&page_tables->pde_table[free_pde_table_index][0], instance->get_my_cr3()) >> 12;
+
+        paging_structs::pde_64* my_pde_table = &page_tables->pde_table[free_pde_table_index][0];
+
+        // Copy the Pde table
+        crt::memcpy(my_pde_table, pde_table, sizeof(paging_structs::pde_64) * 512);
+        uint32_t free_pte_table_index = get_free_pte_table_index(page_tables);
+        if (free_pte_table_index == 0xdead) {
+            dbg_log_remapping("Failed to get free pde index");
+            __writecr3(curr);
+            return false;
+        }
+
+        // Replace the pte table it points to
+        my_pde_table[target_vaddr.pd_idx].page_frame_number = instance->get_outside_physical_addr((uint64_t)&page_tables->pte_table[free_pte_table_index][0], instance->get_my_cr3()) >> 12;
+
+        paging_structs::pte_64* my_pte_table = &page_tables->pte_table[free_pte_table_index][0];
+
+        // Copy the Pte table
+        crt::memcpy(my_pte_table, pte_table, sizeof(paging_structs::pte_64) * 512);
+
+        // Copy the specific entry just in case source and dst are on same pte table
+        crt::memcpy(&my_pte_table[target_vaddr.pt_idx], &pte_table[source_vaddr.pt_idx], sizeof(paging_structs::pte_64));
+
+        // Create a new entry for this mapping
+        remapped_va_t new_entry = { 0 };
+
+        new_entry.remapped_va = target_vaddr;
+
+        new_entry.pdpte_slot.large_page = false;
+        new_entry.pdpte_slot.slot = remapping_status->pdpte_slot.slot;
+
+        new_entry.pde_slot.large_page = false;
+        new_entry.pde_slot.slot = free_pde_table_index;
+
+        new_entry.pte_slot = free_pte_table_index;
+
+        create_new_remapping_entry(new_entry, page_tables);
+
+        __invlpg((void*)target_va);
+        __writecr3(curr);
+        return true;
+    }
+
+    case pde_table_valid: {
+
+        paging_structs::pde_64* my_pde_table = &page_tables->pde_table[remapping_status->pde_slot.slot][0];
+
+        uint32_t free_pte_table_index = get_free_pte_table_index(page_tables);
+        if (free_pte_table_index == 0xdead) {
+            dbg_log_remapping("Failed to get free pde index");
+            __writecr3(curr);
+            return false;
+        }
+
+        // Replace the pte table it points to
+        my_pde_table[target_vaddr.pd_idx].page_frame_number = instance->get_outside_physical_addr((uint64_t)&page_tables->pte_table[free_pte_table_index][0], instance->get_my_cr3()) >> 12;
+
+        paging_structs::pte_64* my_pte_table = &page_tables->pte_table[free_pte_table_index][0];
+
+        // Copy the Pte table
+        crt::memcpy(my_pte_table, pte_table, sizeof(paging_structs::pte_64) * 512);
+
+        // Copy the specific entry just in case source and dst are on same pte table
+        crt::memcpy(&my_pte_table[target_vaddr.pt_idx], &pte_table[source_vaddr.pt_idx], sizeof(paging_structs::pte_64));
+
+        // Create a new entry for this mapping
+        remapped_va_t new_entry = { 0 };
+
+        new_entry.remapped_va = target_vaddr;
+
+        new_entry.pdpte_slot.large_page = false;
+        new_entry.pdpte_slot.slot = remapping_status->pdpte_slot.slot;
+
+        new_entry.pde_slot.large_page = false;
+        new_entry.pde_slot.slot = remapping_status->pde_slot.slot;
+
+        new_entry.pte_slot = free_pte_table_index;
+
+        create_new_remapping_entry(new_entry, page_tables);
+
+        __invlpg((void*)target_va);
+        __writecr3(curr);
+        return true;
+    }
+
+    case pte_table_valid: {
+
+        // Everything up until to the pte table is already done; We only need to replace a pte entry
+        paging_structs::pte_64* my_pte_table = &page_tables->pte_table[remapping_status->pte_slot][0];
+        crt::memcpy(&my_pte_table[target_vaddr.pt_idx], &pte_table[source_vaddr.pt_idx], sizeof(paging_structs::pte_64));
+
+        // Create a new entry for this mapping
+        remapped_va_t new_entry = { 0 };
+
+        new_entry.remapped_va = target_vaddr;
+
+        new_entry.pdpte_slot.large_page = false;
+        new_entry.pdpte_slot.slot = remapping_status->pdpte_slot.slot;
+
+        new_entry.pde_slot.large_page = false;
+        new_entry.pde_slot.slot = remapping_status->pde_slot.slot;
+
+        new_entry.pte_slot = remapping_status->pte_slot;
+
+        create_new_remapping_entry(new_entry, page_tables);
+
+        __invlpg((void*)target_va);
+        __writecr3(curr);
+        return true;
+    }
     }
 
     return false;
@@ -683,7 +683,8 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
 bool remap_outside_virtual_address(uint64_t source_va, uint64_t target_va, paging_structs::cr3 outside_cr3) {
     physmem* physmem_instance = physmem::get_physmem_instance();
     remapped_va_t* remapping_status = is_already_remapped(target_va, physmem_instance->get_page_tables());
- 
+
+
     if (!remapping_status) {
         // Remap by force
         if (!remap_to_target_virtual_address(source_va, target_va, outside_cr3)) {

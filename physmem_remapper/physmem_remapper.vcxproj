@@ -150,6 +150,7 @@
     <MASM Include="asm\handler_asm.asm" />
     <MASM Include="asm\idt_assembly.asm" />
     <MASM Include="asm\intrinsics.asm" />
+    <MASM Include="asm\util_asm.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

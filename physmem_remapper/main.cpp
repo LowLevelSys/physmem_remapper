@@ -17,7 +17,7 @@ void init() {
 		dbg_log_main("Failed to setup the physmem instance");
 		return;
 	}
-	
+
 	init_idt();
 
 	if (!init_gdt()) {

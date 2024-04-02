@@ -36,8 +36,8 @@ bool allocate_gdt_structures(void) {
 	tr_ptrs = (segment_selector*)MmAllocateContiguousMemory(sizeof(segment_selector) * my_gdt_state.core_count, max_addr);
 	tr_storing_region = (segment_selector*)MmAllocateContiguousMemory(sizeof(segment_selector) * my_gdt_state.core_count, max_addr);
 
-	if (!gdt_ptrs|| !gdt_storing_region
-	  ||!tr_ptrs || !tr_storing_region) {
+	if (!gdt_ptrs || !gdt_storing_region
+		|| !tr_ptrs || !tr_storing_region) {
 		dbg_log("Failed to allocate gdt structures");
 		return false;
 	}
@@ -108,7 +108,7 @@ bool init_gdt(void) {
 
 	if (!allocate_gdt_structures())
 		return false;
- 
+
 	// For each core load the gdt
 	for (uint64_t i = 0; i < my_gdt_state.core_count; i++) {
 		KAFFINITY orig_affinity = KeSetSystemAffinityThreadEx(1ull << i);
@@ -146,7 +146,7 @@ bool init_gdt(void) {
 		tss_descriptor.base_address_middle = base.base_address_middle;
 		tss_descriptor.base_address_high = base.base_address_high;
 		tss_descriptor.base_address_upper = base.base_address_upper;
-		
+
 		// In our tss then switch out all stacks (rsp and ist) to avoid any stack corruption
 		// Privilege stacks
 		curr_tss.rsp0 = (uint64_t)curr_gdt_state.rsp0 + KERNEL_STACK_SIZE;
@@ -165,7 +165,7 @@ bool init_gdt(void) {
 		// Save our curr gdt ptr
 		gdt_ptrs[i] = get_gdt_ptr(curr_gdt_state);
 		tr_ptrs[i] = tr;
-	
+
 		KeRevertToUserAffinityThreadEx(orig_affinity);
 	}
 

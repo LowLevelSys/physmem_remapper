@@ -2,7 +2,7 @@
 
 extern "C" int _fltused = 0; // Compiler issues
 
-extern "C" void handle_non_maskable_interrupt(trap_frame_t* trap_frame) {
+extern "C" void handle_non_maskable_interrupt(trap_frame_t * trap_frame) {
 	UNREFERENCED_PARAMETER(trap_frame);
 
 	// To do: Implement a system to hide from eac nmi's
@@ -68,7 +68,6 @@ bool init_idt(void) {
 	dbg_log("\n");
 #endif // !PARTIALLY_USE_SYSTEM_IDT
 #endif // EXTENSIVE_IDT_LOGGING
-
 	uint64_t processor_count = KeQueryActiveProcessorCount(0);
 	PHYSICAL_ADDRESS max_addr = { 0 };
 	max_addr.QuadPart = MAXULONG64;
