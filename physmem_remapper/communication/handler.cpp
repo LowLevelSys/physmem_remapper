@@ -245,7 +245,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         if (!copy_from_host((uint64_t)cmd.sub_command_ptr, sub_cmd, proc_cr3))
             dbg_log_handler("Failed to copy back get_physical_address_struct");
 
-        dbg_log("Translated virtual address %p in cr3 %p to %p", sub_cmd.virtual_address, sub_cmd.cr3, sub_cmd.physical_address);
+        dbg_log_handler("Translated virtual address %p in cr3 %p to %p", sub_cmd.virtual_address, sub_cmd.cr3, sub_cmd.physical_address);
 
     } break;
 
@@ -320,8 +320,12 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         physical_base.QuadPart = sub_cmd.physical_base;
         size.QuadPart = sub_cmd.size;
 
+        // Load the new outside (kernel mode) function address into our gadget to call
+        executed_gadgets::gadget_util::load_new_function_address_in_gadget((uint64_t)MmRemovePhysicalMemory);
+        MmRemovePhysicalMemory_t remove_mem = (MmRemovePhysicalMemory_t)global_outside_calling_shellcode;
+
         // Then remove them from the system page tables
-        NTSTATUS status = MmRemovePhysicalMemory(&physical_base, &size);
+        NTSTATUS status = remove_mem(&physical_base, &size);
 
         // Remove the pool from physical memory
         if (!NT_SUCCESS(status)) {

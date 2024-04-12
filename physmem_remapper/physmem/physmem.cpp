@@ -574,6 +574,8 @@ bool physmem::set_address_range_not_global(uint64_t base, uint64_t size, paging_
         }
     }
 
+    // After calling this function, you have to manually flush them out of the tlb for all cores
+
     return true;
 }
 
