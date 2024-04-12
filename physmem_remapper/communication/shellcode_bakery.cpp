@@ -576,6 +576,463 @@ namespace executed_gadgets {
             gadget[index++] = 0xc3;
         }
     };
+
+    namespace gadget_util {
+        // Gernate the main part of the gadget, which is writing to cr3 and forcing the page to be flushed
+        uint8_t* generate_change_cr3(uint8_t* gadget, uint64_t* address_space_switching_cr3_storing_region) {
+            uint32_t index = 0;
+            // This is basically mov eax, curr_processor_number (Ty KeGetCurrentProcessorNumberEx)
+            // mov rax, gs:[20h]
+            gadget[index++] = 0x65; gadget[index++] = 0x48; gadget[index++] = 0x8B; gadget[index++] = 0x04;
+            gadget[index++] = 0x25; gadget[index++] = 0x20; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+
+            // mov eax, [rax+24h]
+            gadget[index++] = 0x8b; gadget[index++] = 0x80; gadget[index++] = 0x24; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+
+            // Calculate the byte offset of base (using processor_index * 8)
+            // imul eax, eax, 8
+            gadget[index++] = 0x6b; gadget[index++] = 0xc0; gadget[index++] = 0x08;
+
+            // push rdx
+            gadget[index++] = 0x52;
+
+            // mov rdx, imm64
+            gadget[index++] = 0x48; gadget[index++] = 0xba;
+            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)address_space_switching_cr3_storing_region;
+            index += 8;
+
+            // add rax, rdx
+            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
+
+            // mov rdx, cr3
+            gadget[index++] = 0x0f; gadget[index++] = 0x20; gadget[index++] = 0xda;
+
+            // mov [rax], rdx
+            gadget[index++] = 0x48; gadget[index++] = 0x89; gadget[index++] = 0x10;
+
+            // pop rdx
+            gadget[index++] = 0x5a;
+
+            // mov rax, imm64
+            gadget[index++] = 0x48; gadget[index++] = 0xb8;
+            uint64_t cr3_value = physmem::get_physmem_instance()->get_kernel_cr3().flags;
+            *(uint64_t*)&gadget[index] = cr3_value;
+            index += 8;
+
+            // mov cr3, rax
+            gadget[index++] = 0x0f; gadget[index++] = 0x22; gadget[index++] = 0xd8;
+
+            return &gadget[index];
+        }
+
+        // Generate the gdt changing part of the gadget
+        uint8_t* generate_change_gdt(uint8_t* gadget, gdt_ptr_t* kernel_gdt_storing_region, gdt_ptr_t* address_space_switching_gdt_storing_region) {
+            uint32_t index = 0;
+
+            // This is basically mov eax, curr_processor_number (Ty KeGetCurrentProcessorNumberEx)
+            // mov rax, gs:[20h]
+            gadget[index++] = 0x65; gadget[index++] = 0x48; gadget[index++] = 0x8B; gadget[index++] = 0x04;
+            gadget[index++] = 0x25; gadget[index++] = 0x20; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+
+            // mov eax, [rax+24h]
+            gadget[index++] = 0x8B; gadget[index++] = 0x80; gadget[index++] = 0x24; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+
+            // Clear the top 32 bits of rax to ensure proper address calculation
+            // mov eax, eax
+            gadget[index++] = 0x89; gadget[index++] = 0xc0;
+
+            // Calculate the byte offset of base (using processor_index * 10)
+            // imul rax, rax, 10
+            gadget[index++] = 0x48; gadget[index++] = 0x6b;
+            gadget[index++] = 0xc0; gadget[index++] = 0x0a;
+
+            // push rdx
+            gadget[index++] = 0x52;
+
+            // push rax
+            gadget[index++] = 0x50;
+
+            // mov rdx, imm64
+            gadget[index++] = 0x48; gadget[index++] = 0xba;
+            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)address_space_switching_gdt_storing_region;
+            index += 8;
+
+            // add rax, rdx
+            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
+
+            // sgdt [rax]
+            gadget[index++] = 0x0f; gadget[index++] = 0x01; gadget[index++] = 0x00;
+
+            // pop rax
+            gadget[index++] = 0x58;
+
+            // mov rdx, imm64
+            gadget[index++] = 0x48; gadget[index++] = 0xba;
+            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)kernel_gdt_storing_region;
+            index += 8;
+
+            // add rax, rdx
+            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
+
+            // lgdt [rax]
+            gadget[index++] = 0x0f; gadget[index++] = 0x01; gadget[index++] = 0x10;
+
+            // pop rdx
+            gadget[index++] = 0x5a;
+
+            return &gadget[index];
+        }
+
+        // Call generate_tss_available_gadget, store tr, and load the new tr
+        uint8_t* generate_change_tr(uint8_t* gadget, segment_selector* kernel_tr_storing_region, segment_selector* address_space_switching_tr_storing_region) {
+            uint32_t index = 0;
+
+            gadget = generate_tss_available_gadget(gadget);
+
+            // This is basically mov eax, curr_processor_number (Ty KeGetCurrentProcessorNumberEx)
+            // mov rax, gs:[20h]
+            gadget[index++] = 0x65; gadget[index++] = 0x48; gadget[index++] = 0x8B; gadget[index++] = 0x04;
+            gadget[index++] = 0x25; gadget[index++] = 0x20; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+
+            // mov eax, [rax+24h]
+            gadget[index++] = 0x8B; gadget[index++] = 0x80; gadget[index++] = 0x24; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+
+            // Clear the top 32 bits of rax to ensure proper address calculation
+            // mov eax, eax
+            gadget[index++] = 0x89; gadget[index++] = 0xc0;
+
+            // Calculate the byte offset of base (using processor_index * 2)
+            // imul rax, rax, 2
+            gadget[index++] = 0x48; gadget[index++] = 0x6b;
+            gadget[index++] = 0xc0; gadget[index++] = 0x02;
+
+            // push rdx
+            gadget[index++] = 0x52;
+
+            // push rax
+            gadget[index++] = 0x50;
+
+            // mov rdx, imm64
+            gadget[index++] = 0x48; gadget[index++] = 0xba;
+            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)address_space_switching_tr_storing_region;
+            index += 8;
+
+            // add rax, rdx
+            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
+
+            // str [rax]
+            gadget[index++] = 0x0f; gadget[index++] = 0x00; gadget[index++] = 0x08;
+
+            // pop rax
+            gadget[index++] = 0x58;
+
+            // mov rdx, imm64
+            gadget[index++] = 0x48; gadget[index++] = 0xba;
+            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)kernel_tr_storing_region;
+            index += 8;
+
+            // add rax, rdx
+            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
+
+
+            // mov ax, [rax]
+            gadget[index++] = 0x66; gadget[index++] = 0x8B; gadget[index++] = 0x00;
+
+            // mov ax, ax
+            gadget[index++] = 0x66; gadget[index++] = 0x8B; gadget[index++] = 0xC0;
+
+            // ltr ax
+            gadget[index++] = 0x0f; gadget[index++] = 0x00; gadget[index++] = 0xD8;
+
+            // pop rdx
+            gadget[index++] = 0x5a;
+
+            return &gadget[index];
+        }
+
+        // Generate the idt changing part of the gadget
+        uint8_t* generate_change_idt(uint8_t* gadget, idt_ptr_t* kernel_idt_storing_region, idt_ptr_t* address_space_switching_idt_storing_region) {
+            uint32_t index = 0;
+
+            // This is basically mov eax, curr_processor_number (Ty KeGetCurrentProcessorNumberEx)
+            // mov rax, gs:[20h]
+            gadget[index++] = 0x65; gadget[index++] = 0x48; gadget[index++] = 0x8B; gadget[index++] = 0x04;
+            gadget[index++] = 0x25; gadget[index++] = 0x20; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+
+            // mov eax, [rax+24h]
+            gadget[index++] = 0x8b; gadget[index++] = 0x80; gadget[index++] = 0x24; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+
+            // Clear the top 32 bits of rax to ensure proper address calculation
+            // mov eax, eax
+            gadget[index++] = 0x89; gadget[index++] = 0xc0;
+
+            // Calculate the byte offset of base (using processor_index * 10)
+            // imul eax, eax, 10
+            gadget[index++] = 0x6b; gadget[index++] = 0xc0; gadget[index++] = 0x0a;
+
+            // push rdx
+            gadget[index++] = 0x52;
+
+            // mov rdx, imm64
+            gadget[index++] = 0x48; gadget[index++] = 0xba;
+            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)address_space_switching_idt_storing_region;
+            index += 8;
+
+            // add rax, rdx
+            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
+
+            // sidt [rax]
+            gadget[index++] = 0x0f; gadget[index++] = 0x01; gadget[index++] = 0x08;
+
+            // mov rax, imm64
+            gadget[index++] = 0x48; gadget[index++] = 0xb8;
+            *(uint64_t*)&gadget[index] = (uint64_t)kernel_idt_storing_region;
+            index += 8;
+
+            // lidt [rax]
+            gadget[index++] = 0x0f; gadget[index++] = 0x01; gadget[index++] = 0x18;
+
+            // pop rdx
+            gadget[index++] = 0x5a;
+
+            return &gadget[index];
+        }
+
+        // Generate the function calling part of the gadget
+        uint8_t* generate_call_function(uint8_t* gadget, void* function_address) {
+            uint32_t index = 0;
+
+            // mov rax, imm64
+            gadget[index++] = 0x48; gadget[index++] = 0xb8;
+            function_address_pointer = (uint64_t*)&gadget[index];
+            *(uint64_t*)&gadget[index] = (uint64_t)function_address;
+            index += 8;
+
+            // call rax
+            gadget[index++] = 0xff; gadget[index++] = 0xd0;
+ 
+            return &gadget[index];
+        }
+
+        uint8_t* generate_restore_cr3(uint8_t* gadget, uint64_t* address_space_switching_cr3_storing_region) {
+            uint32_t index = 0;
+            // This is basically mov eax, curr_processor_number (Ty KeGetCurrentProcessorNumberEx)
+             // mov rax, gs:[20h]
+            gadget[index++] = 0x65; gadget[index++] = 0x48; gadget[index++] = 0x8B; gadget[index++] = 0x04;
+            gadget[index++] = 0x25; gadget[index++] = 0x20; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+
+            // mov eax, [rax+24h]
+            gadget[index++] = 0x8b; gadget[index++] = 0x80; gadget[index++] = 0x24; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+
+            // Clear the top 32 bits of rax to ensure proper address calculation
+            // mov eax, eax
+            gadget[index++] = 0x89; gadget[index++] = 0xc0;
+
+            // Calculate the byte offset of base (using processor_index * 8)
+            // imul eax, eax, 8
+            gadget[index++] = 0x6b; gadget[index++] = 0xc0; gadget[index++] = 0x08;
+
+            // push rdx
+            gadget[index++] = 0x52;
+
+            // mov rdx, imm64
+            gadget[index++] = 0x48; gadget[index++] = 0xba;
+            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)address_space_switching_cr3_storing_region;
+            index += 8;
+
+            // add rax, rdx
+            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
+
+            // mov rax, [rax]
+            gadget[index++] = 0x48; gadget[index++] = 0x8b; gadget[index++] = 0x00;
+
+            // mov cr3, rax
+            gadget[index++] = 0x0f; gadget[index++] = 0x22; gadget[index++] = 0xd8;
+
+            // pop rdx
+            gadget[index++] = 0x5a;
+
+            return &gadget[index];
+        }
+
+        uint8_t* generate_restore_gdt(uint8_t* gadget, gdt_ptr_t* address_space_switching_gdt_storing_region) {
+            uint32_t index = 0;
+            // This is basically mov eax, curr_processor_number (Ty KeGetCurrentProcessorNumberEx)
+            // mov rax, gs:[20h]
+            gadget[index++] = 0x65; gadget[index++] = 0x48; gadget[index++] = 0x8b; gadget[index++] = 0x04;
+            gadget[index++] = 0x25; gadget[index++] = 0x20; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+
+            // mov eax, [rax+24h]
+            gadget[index++] = 0x8b; gadget[index++] = 0x80; gadget[index++] = 0x24; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+
+            // Clear the top 32 bits of rax to ensure proper address calculation
+            // mov eax, eax
+            gadget[index++] = 0x89; gadget[index++] = 0xc0;
+
+            // Calculate the byte offset of base (using processor_index * 10)
+            // imul eax, eax, 10
+            gadget[index++] = 0x6b; gadget[index++] = 0xc0; gadget[index++] = 0x0a;
+
+            // push rdx
+            gadget[index++] = 0x52;
+
+            // mov rdx, imm64
+            gadget[index++] = 0x48; gadget[index++] = 0xba;
+            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)address_space_switching_gdt_storing_region;
+            index += 8;
+
+            // add rax, rdx
+            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
+
+            // lgdt [rax]
+            gadget[index++] = 0x0f; gadget[index++] = 0x01; gadget[index++] = 0x10;
+
+            // pop rdx
+            gadget[index++] = 0x5a;
+
+            return &gadget[index];
+        }
+
+        uint8_t* generate_restore_tr(uint8_t* gadget, segment_selector* address_space_switching_tr_storing_region) {
+            uint32_t index = 0;
+
+            gadget = generate_tss_available_gadget(gadget);
+
+            // This is basically mov eax, curr_processor_number (Ty KeGetCurrentProcessorNumberEx)
+            // mov rax, gs:[20h]
+            gadget[index++] = 0x65; gadget[index++] = 0x48; gadget[index++] = 0x8b; gadget[index++] = 0x04;
+            gadget[index++] = 0x25; gadget[index++] = 0x20; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+
+            // mov eax, [rax+24h]
+            gadget[index++] = 0x8b; gadget[index++] = 0x80; gadget[index++] = 0x24; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+
+            // Clear the top 32 bits of rax to ensure proper address calculation
+            // mov eax, eax
+            gadget[index++] = 0x89; gadget[index++] = 0xc0;
+
+            // Calculate the byte offset of base (using processor_index * 2)
+            // imul eax, eax, 2
+            gadget[index++] = 0x6b; gadget[index++] = 0xc0; gadget[index++] = 0x02;
+
+            // push rdx
+            gadget[index++] = 0x52;
+
+            // mov rdx, imm64
+            gadget[index++] = 0x48; gadget[index++] = 0xba;
+            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)address_space_switching_tr_storing_region;
+            index += 8;
+
+            // add rax, rdx
+            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
+
+            // mov ax, [rax]
+            gadget[index++] = 0x66; gadget[index++] = 0x8b; gadget[index++] = 0x00;
+
+            // mov ax, ax
+            gadget[index++] = 0x66; gadget[index++] = 0x8b; gadget[index++] = 0xc0;
+
+            // ltr ax
+            gadget[index++] = 0x0f; gadget[index++] = 0x00; gadget[index++] = 0xd8;
+
+            // pop rdx
+            gadget[index++] = 0x5a;
+
+            return &gadget[index];
+        }
+
+        uint8_t* generate_restore_idt(uint8_t* gadget, idt_ptr_t* address_space_switching_idt_storing_region) {
+            uint32_t index = 0;
+
+            // This is basically mov eax, curr_processor_number (Ty KeGetCurrentProcessorNumberEx)
+            // mov rax, gs:[20h]
+            gadget[index++] = 0x65; gadget[index++] = 0x48; gadget[index++] = 0x8B; gadget[index++] = 0x04;
+            gadget[index++] = 0x25; gadget[index++] = 0x20; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+
+            // mov eax, [rax+24h]
+            gadget[index++] = 0x8b; gadget[index++] = 0x80; gadget[index++] = 0x24; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+
+            // Clear the top 32 bits of rax to ensure proper address calculation
+            // mov eax, eax
+            gadget[index++] = 0x89; gadget[index++] = 0xc0;
+
+            // Calculate the byte offset of base (using processor_index * 10)
+            // imul eax, eax, 10
+            gadget[index++] = 0x6b; gadget[index++] = 0xc0; gadget[index++] = 0x0a;
+
+            // push rdx
+            gadget[index++] = 0x52;
+
+            // mov rdx, imm64
+            gadget[index++] = 0x48; gadget[index++] = 0xba;
+            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)address_space_switching_idt_storing_region;
+            index += 8;
+
+            // add rax, rdx
+            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
+
+            // lidt [rax]
+            gadget[index++] = 0x0f; gadget[index++] = 0x01; gadget[index++] = 0x18;
+
+            // pop rdx
+            gadget[index++] = 0x5a;
+
+            return &gadget[index];
+        }
+
+        // Arguments are supposed to already be on the stack / in the appropriate regs
+        void generate_address_space_switch_call_function_gadget(uint8_t* gadget, uint64_t* address_space_switching_cr3_storing_region,
+            void* function_address,
+            idt_ptr_t* kernel_idt_storing_region, idt_ptr_t* address_space_switching_idt_storing_region,
+            gdt_ptr_t* kernel_gdt_storing_region, gdt_ptr_t* address_space_switching_gdt_storing_region,
+            segment_selector* kernel_tr_storing_region, segment_selector* address_space_switching_tr_storing_region) {
+            // cli
+            *gadget = 0xfa;
+            gadget++;
+
+            // Generate the full gadget in parts to make it a bit more readable
+            gadget = generate_change_cr3(gadget, address_space_switching_cr3_storing_region);
+            gadget = generate_change_gdt(gadget, kernel_gdt_storing_region, address_space_switching_gdt_storing_region);
+            gadget = generate_change_tr(gadget, kernel_tr_storing_region, address_space_switching_tr_storing_region);
+            gadget = generate_change_idt(gadget, kernel_idt_storing_region, address_space_switching_idt_storing_region);
+
+            // sti
+            *gadget = 0xfb;
+            gadget++;
+
+            // call whatever_function_you_want
+            gadget = generate_call_function(gadget, function_address);
+
+            // cli
+            *gadget = 0xfa;
+            gadget++;
+
+            // push rax
+            *gadget = 0x50;
+            gadget++;
+
+            gadget = generate_restore_cr3(gadget, address_space_switching_cr3_storing_region);
+            gadget = generate_restore_gdt(gadget, address_space_switching_gdt_storing_region);
+            gadget = generate_restore_tr(gadget, address_space_switching_tr_storing_region);
+            gadget = generate_restore_idt(gadget, address_space_switching_idt_storing_region);
+
+            // pop rax
+            *gadget = 0x58;
+            gadget++;
+
+            // sti
+            *gadget = 0xfb;
+            gadget++;
+
+            // ret
+            *gadget = 0xc3;
+        }
+
+
+        void load_new_function_address_in_gadget(uint64_t new_function) {
+            if(function_address_pointer)
+                *function_address_pointer = new_function;
+        }
+    };
 };
 
 namespace shown_gadgets {

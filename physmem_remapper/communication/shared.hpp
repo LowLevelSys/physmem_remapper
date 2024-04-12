@@ -89,6 +89,12 @@ struct get_pid_by_name_struct {
     uint64_t pid;
 };
 
+struct ensure_mapping_struct {
+    // Ouput
+    uint64_t base;
+    uint64_t size;
+};
+
 struct get_driver_info_struct {
     // Ouput
     uint64_t base;

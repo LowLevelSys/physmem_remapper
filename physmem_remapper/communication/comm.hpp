@@ -109,13 +109,26 @@ typedef struct {
 }PEB_LDR_DATA;
 
 
+typedef struct {
+    // Regions where kernel values are stored
+    idt_ptr_t* kernel_idt_storing_region;
+    gdt_ptr_t* kernel_gdt_storing_region;
+    segment_selector* kernel_tr_storing_region;
+
+    // Regions where saved values are stored
+    uint64_t* address_space_switching_cr3_storing_region;
+    idt_ptr_t* address_space_switching_idt_storing_region;
+    gdt_ptr_t* address_space_switching_gdt_storing_region;
+    segment_selector* address_space_switching_tr_storing_region;
+}address_space_switching_storing_region;
+
 // Definitions
 
 #define SKIP_ORIG_DATA_PTR 0x1337
 #define CALL_ORIG_DATA_PTR 0x7331
 
 #define ENABLE_COMMUNICATION_LOGGING
-#define ENABLE_HANDLER_LOGGING
+// #define ENABLE_HANDLER_LOGGING
 // #define ENABLE_EXTENSIVE_COMMUNICATION_TESTS
 // #define ENABLE_COMMUNICATION_PAGING_LOGGING
 

@@ -18,7 +18,10 @@ void init() {
 		return;
 	}
 
-	init_idt();
+	if (!init_idt()) {
+		dbg_log_main("Failed to successfully init my idt");
+		return;
+	}
 
 	if (!init_gdt()) {
 		dbg_log_main("Failed to successfully init my gdt");
@@ -31,12 +34,13 @@ void init() {
 		return;
 	}
 
+	
 	// Replace a .data ptr with a ptr to a write cr3 gadget that then calls our handler
 	if (!init_communication()) {
 		dbg_log_main("Failed to init communication");
 		return;
 	}
-
+	
 	dbg_log_main("Driver initialized successfully!");
 }
 

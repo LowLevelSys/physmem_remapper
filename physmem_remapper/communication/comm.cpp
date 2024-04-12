@@ -1,12 +1,21 @@
 #include "comm.hpp"
 #include "shared.hpp"
-#include "../idt/idt.hpp"
+#include "comm_util.hpp"
 #include "shellcode_bakery.hpp"
+#include "function_typedefs.hpp"
+
+#include "../idt/idt.hpp"
+#include "../gdt/gdt.hpp"
+
+#include "../physmem/physmem.hpp"
 
 uint64_t* cr3_storing_region = 0;
 extern "C" void* global_returning_shellcode = 0;
+void* global_outside_calling_shellcode = 0;
+address_space_switching_storing_region* switching_region = 0;
 
 bool execute_tests(void) {
+
     orig_NtUserGetCPD_type handler = (orig_NtUserGetCPD_type)global_new_data_ptr;
     uint32_t flags;
     uint64_t dw_data;
@@ -33,6 +42,75 @@ bool execute_tests(void) {
     cmd.sub_command_ptr = &free_mem;
 
     handler((uint64_t)&cmd, flags, dw_data);
+
+    return true;
+}
+
+// Takes a reference to a pointer as an argument
+bool init_switching_region(address_space_switching_storing_region* & input) {
+    PHYSICAL_ADDRESS max_addr = { 0 };
+    uint64_t processor_count = KeQueryActiveProcessorCount(0);
+
+    max_addr.QuadPart = MAXULONG64;
+
+    input = (address_space_switching_storing_region*)MmAllocateContiguousMemory(sizeof(address_space_switching_storing_region), max_addr);
+    if (!input)
+        return false;
+
+    crt::memset(input, 0, sizeof(address_space_switching_storing_region));
+
+    // Gdt
+    input->kernel_gdt_storing_region = (gdt_ptr_t*)MmAllocateContiguousMemory(sizeof(gdt_ptr_t) * processor_count, max_addr);
+    input->address_space_switching_gdt_storing_region = (gdt_ptr_t*)MmAllocateContiguousMemory(sizeof(gdt_ptr_t) * processor_count, max_addr);
+
+    // Tr
+    input->kernel_tr_storing_region = (segment_selector*)MmAllocateContiguousMemory(sizeof(segment_selector) * processor_count, max_addr);
+    input->address_space_switching_tr_storing_region = (segment_selector*)MmAllocateContiguousMemory(sizeof(segment_selector) * processor_count, max_addr);
+
+    // Idt
+    input->kernel_idt_storing_region = (idt_ptr_t*)MmAllocateContiguousMemory(sizeof(idt_ptr_t) * processor_count, max_addr);
+    input->address_space_switching_idt_storing_region = (idt_ptr_t*)MmAllocateContiguousMemory(sizeof(idt_ptr_t) * processor_count, max_addr);
+
+    // Cr3
+    input->address_space_switching_cr3_storing_region = (uint64_t*)MmAllocateContiguousMemory(sizeof(uint64_t) * processor_count, max_addr);
+
+
+    if (!input->kernel_gdt_storing_region || !input->address_space_switching_gdt_storing_region
+        || !input->kernel_tr_storing_region || !input->address_space_switching_tr_storing_region
+        || !input->kernel_idt_storing_region || !input->address_space_switching_idt_storing_region
+        || !input->address_space_switching_cr3_storing_region)
+        return false;
+
+    crt::memset(input->kernel_gdt_storing_region, 0, sizeof(gdt_ptr_t) * processor_count);
+    crt::memset(input->address_space_switching_gdt_storing_region, 0, sizeof(gdt_ptr_t) * processor_count);
+
+    crt::memset(input->kernel_tr_storing_region, 0, sizeof(segment_selector) * processor_count);
+    crt::memset(input->address_space_switching_tr_storing_region, 0, sizeof(segment_selector) * processor_count);
+
+    crt::memset(input->kernel_idt_storing_region, 0, sizeof(idt_ptr_t) * processor_count);
+    crt::memset(input->address_space_switching_idt_storing_region, 0, sizeof(idt_ptr_t) * processor_count);
+
+    crt::memset(input->address_space_switching_cr3_storing_region, 0, sizeof(uint64_t) * processor_count);
+
+    for (uint64_t i = 0; i < processor_count; i++) {
+        KAFFINITY orig_affinity = KeSetSystemAffinityThreadEx(1ull << i);
+
+        segment_selector tr;
+        gdt_ptr_t gdt;
+        idt_ptr_t idt;
+
+        // Store all core kernel values
+        tr = _str();
+        _sgdt(&gdt);
+        __sidt(&idt);
+
+        // Safe them in our struct
+        input->kernel_tr_storing_region[i] = tr;
+        input->kernel_gdt_storing_region[i] = gdt;
+        input->kernel_idt_storing_region[i] = idt;
+   
+        KeRevertToUserAffinityThreadEx(orig_affinity);
+    }
 
     return true;
 }
@@ -91,15 +169,23 @@ bool init_communication(void) {
     void* executed_pool = MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
     void* shown_pool = MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
     global_returning_shellcode = MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
+    global_outside_calling_shellcode = MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
+    if(!init_switching_region(switching_region)) {
+        dbg_log_communication("Failed to init switching region");
+        return false;
+    }
 
     cr3_storing_region = (uint64_t*)MmAllocateContiguousMemory(processor_count * sizeof(uint64_t), max_addr);
 
-    if (!executed_pool || !shown_pool || !global_returning_shellcode || !cr3_storing_region)
+    if (!executed_pool || !shown_pool || !global_returning_shellcode || !cr3_storing_region || !global_outside_calling_shellcode) {
+        dbg_log_communication("Failed communication memory allocation");
         return false;
+    }
 
     crt::memset(executed_pool, 0, PAGE_SIZE);
     crt::memset(shown_pool, 0, PAGE_SIZE);
     crt::memset(global_returning_shellcode, 0, PAGE_SIZE);
+    crt::memset(global_outside_calling_shellcode, 0, PAGE_SIZE);
 
     crt::memset(cr3_storing_region, 0, processor_count * sizeof(uint64_t));
 
@@ -113,6 +199,12 @@ bool init_communication(void) {
     executed_gadgets::return_handler::generate_return_gadget((uint8_t*)global_returning_shellcode, orig_data_ptr,
         cr3_storing_region, idt_storing_region,
         gdt_storing_region, tr_storing_region);
+
+    executed_gadgets::gadget_util::generate_address_space_switch_call_function_gadget((uint8_t*)global_outside_calling_shellcode, switching_region->address_space_switching_cr3_storing_region,
+        (void*)0xdead,
+        switching_region->kernel_idt_storing_region, switching_region->address_space_switching_idt_storing_region,
+        switching_region->kernel_gdt_storing_region, switching_region->address_space_switching_gdt_storing_region,
+        switching_region->kernel_tr_storing_region,  switching_region->address_space_switching_tr_storing_region);
 
     shown_gadgets::generate_shown_jump_gadget((uint8_t*)shown_pool, shown_pool, cr3_storing_region);
 
@@ -140,12 +232,17 @@ bool init_communication(void) {
         dbg_log_communication("Failed to ensure driver address space mapping");
         return false;
     }
-
+    if (!ensure_address_space_mapping((uint64_t)global_outside_calling_shellcode, PAGE_SIZE, instance->get_kernel_cr3())) {
+        dbg_log_communication("Failed to ensure driver address space mapping");
+        return false;
+    }
 
 #ifdef ENABLE_COMMUNICATION_LOGGING
-    dbg_log_communication("Executed jump gadget at %p", executed_pool);
+    dbg_log_communication("Executed jump gadget at %p\n", executed_pool);
     dbg_log_communication("Shown jump gadget at %p \n", shown_pool);
     dbg_log_communication("Returning gadget at %p \n", global_returning_shellcode);
+    dbg_log_communication("Function calling gadget at %p \n", global_outside_calling_shellcode);
+    dbg_log_communication("Switching region at %p", switching_region);
     dbg_log("\n");
 #endif
 

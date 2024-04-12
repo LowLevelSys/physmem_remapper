@@ -105,6 +105,9 @@
     <ClInclude Include="includes\crt.hpp">
       <Filter>physmem\includes</Filter>
     </ClInclude>
+    <ClInclude Include="communication\function_typedefs.hpp">
+      <Filter>communication</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="asm\handler_asm.asm">

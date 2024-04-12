@@ -1,12 +1,16 @@
 #include "comm.hpp"
 #include "shared.hpp"
 #include "comm_util.hpp"
+#include "shellcode_bakery.hpp"
+#include "function_typedefs.hpp"
+
 #include "../idt/idt.hpp"
 #include "../gdt/gdt.hpp"
 
 #include "../physmem/physmem.hpp"
 
 extern uint64_t* cr3_storing_region;
+extern void* global_outside_calling_shellcode;
 
 /*
    We use templates here to avoid a very very large code base (look at my hv
@@ -25,6 +29,20 @@ bool copy_from_host(uint64_t dest, const T& src, const paging_structs::cr3& proc
     return sizeof(T) == instance->copy_memory_from_inside(reinterpret_cast<const uint64_t>(&src), dest, proc_cr3, sizeof(T));
 }
 
+template<typename return_type, typename... args>
+return_type execute_in_kernel_address_space(return_type(*func)(args...), args... arguments) {
+
+    return_type result;
+
+    auto callable = reinterpret_cast<return_type(*)(args...)>(global_outside_calling_shellcode);
+
+    // Load the address of the windows API we want to call
+    executed_gadgets::gadget_util::load_new_function_address_in_gadget((uint64_t)func);
+
+    result = callable(arguments...);
+
+    return result;
+}
 /*
     Our main handler that handles communication with um
     It assumes to be called under the process cr3
@@ -62,15 +80,18 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         PHYSICAL_ADDRESS max_addr = { 0 };
         max_addr.QuadPart = MAXULONG64;
 
+        // Load the new outside (kernel mode) function address into our gadget to call
+        executed_gadgets::gadget_util::load_new_function_address_in_gadget((uint64_t)MmAllocateContiguousMemory);
+        MmAllocateContiguousMemory_t alloc_mem = (MmAllocateContiguousMemory_t)global_outside_calling_shellcode;
+
         // Allocate memory
-        sub_cmd.memory_base = MmAllocateContiguousMemory(sub_cmd.size, max_addr);
+        sub_cmd.memory_base = alloc_mem(sub_cmd.size, max_addr);
         cmd.result = (sub_cmd.memory_base != 0);
 
         if (cmd.result)
             dbg_log_handler("Allocated memory at %p", sub_cmd.memory_base);
         else
             dbg_log_handler("Failed allocating pool of size %p", sub_cmd.size);
-
 
         if (!copy_from_host((uint64_t)cmd.sub_command_ptr, sub_cmd, proc_cr3))
             dbg_log_handler("Failed to copy back allocate_memory_struct");
@@ -84,11 +105,15 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
             break;
         }
 
+        // Load the new outside (kernel mode) function address into our gadget to call
+        executed_gadgets::gadget_util::load_new_function_address_in_gadget((uint64_t)MmFreeContiguousMemory);
+        MmFreeContiguousMemory_t free_mem = (MmFreeContiguousMemory_t)global_outside_calling_shellcode;
+
         // Free memory if the base is valid
         cmd.result = (sub_cmd.memory_base != 0);
 
         if (cmd.result) {
-            MmFreeContiguousMemory(sub_cmd.memory_base);
+            free_mem(sub_cmd.memory_base);
             dbg_log_handler("Freed memory at %p", sub_cmd.memory_base);
         }
         else
@@ -248,14 +273,13 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
     } break;
 
     case cmd_ensure_mapping: {
-
-        if (is_mapping_ensured) {
-            cmd.result = true;
-            dbg_log_handler("Mapping is already ensured");
+        ensure_mapping_struct sub_cmd;
+        if (!copy_to_host(proc_cr3, (uint64_t)cmd.sub_command_ptr, sub_cmd)) {
+            dbg_log_handler("Failed to copy get_virtual_address_struct");
             break;
         }
 
-        if (!ensure_address_space_mapping(driver_base, driver_size, instance->get_kernel_cr3())) {
+        if (!ensure_address_space_mapping(sub_cmd.base, sub_cmd.size, instance->get_kernel_cr3())) {
             dbg_log_handler("Failed to ensure address space mapping from %p to %p", driver_base, driver_base + driver_size);
             break;
         }
