@@ -1102,37 +1102,41 @@ namespace shown_gadgets {
 /*
     Shown gadget:
 
+    cli
     mov rax,gs:[00000020]
     mov eax,[rax+00000024]
     imul eax,eax,08
     push rdx
-    mov rdx,FFFFAE00B7F18000
+    mov rdx,FFFFC00100AD9000
     add rax,rdx
     mov edx,cr3
     mov [rax],rdx
     pop rdx
-    mov rax,000000044C981000
+    mov rax,000000044EB7F000
     mov cr3,eax
-    mov rax,FFFFAE00B7F12000
+    mov rax,FFFFC0010A03A000
     invplg [rax]
     mfence
     lock ret
+*/
 
-
+/*
     Executed gadget:
+        Executed gadget:
 
+    cli
     mov rax,gs:[00000020]
     mov eax,[rax+00000024]
     imul eax,eax,08
     push rdx
-    mov rdx,FFFFAE00B7F18000
+    mov rdx,FFFFC00100AD9000
     add rax,rdx
     mov edx,cr3
     mov [rax],rdx
     pop rdx
-    mov rax,000000044C981000
+    mov rax,000000044EB7F000
     mov cr3,eax
-    mov rax,FFFFAE00B7F12000
+    mov rax,FFFFC0010A03A000
     invplg [rax]
     mfence
     lock mov rax,gs:[00000020]
@@ -1141,11 +1145,11 @@ namespace shown_gadgets {
     imul rax,rax,0A
     push rdx
     push rax
-    mov rdx,FFFFAE00B722B000
+    mov rdx,FFFFC0010167C000
     add rax,rdx
     sgdt [rax]
     pop rax
-    mov rdx,FFFFAE00B7228000
+    mov rdx,FFFFC00101679000
     add rax,rdx
     lgdt [rax]
     pop rdx
@@ -1181,11 +1185,11 @@ namespace shown_gadgets {
     imul rax,rax,02
     push rdx
     push rax
-    mov rdx,FFFFAE00B7231000
+    mov rdx,FFFFC001020FF000
     add rax,rdx
     str word ptr [rax]
     pop rax
-    mov rdx,FFFFAE00B722E000
+    mov rdx,FFFFC0010167F000
     add rax,rdx
     mov ax,[rax]
     mov ax,ax
@@ -1196,14 +1200,249 @@ namespace shown_gadgets {
     mov eax,eax
     imul eax,eax,0A
     push rdx
-    mov rdx,FFFFAE00B7225000
+    mov rdx,FFFFC00101676000
     add rax,rdx
     sidt [rax]
-    mov rax,FFFFAE00B6BB0090
+    mov rax,FFFFC001008A50A0
     lidt [rax]
     pop rdx
-    mov rax,FFFFAE00B6BA9070
+    sti
+    mov rax,FFFFC0010089D070
     jmp rax
+*/
 
+/*
+    Function calling gadget:
+    cli
+    mov rax,gs:[00000020]
+    mov eax,[rax+00000024]
+    imul eax,eax,08
+    push rdx
+    mov rdx,FFFFC00100876000
+    add rax,rdx
+    mov edx,cr3
+    mov [rax],rdx
+    pop rdx
+    mov rax,00000000001AD000
+    mov cr3,eax
+    mov rax,gs:[00000020]
+    mov eax,[rax+00000024]
+    mov eax,eax
+    imul rax,rax,0A
+    push rdx
+    push rax
+    mov rdx,FFFFC00100867000
+    add rax,rdx
+    sgdt [rax]
+    pop rax
+    mov rdx,FFFFC00100864000
+    add rax,rdx
+    lgdt [rax]
+    pop rdx
+    sub rsp,02
+    str word ptr [rsp]
+    xor eax,eax
+    mov ax,[rsp]
+    shr rax,03
+    and eax,00000FFF
+    add rsp,02
+    mov eax,eax
+    imul eax,eax,08
+    push rdx
+    mov rdx,rax
+    push rdi
+    sub rsp,00000010
+    lea rdi,[rsp]
+    sgdt [rdi]
+    mov rax,[rdi+02]
+    add rsp,00000010
+    pop rdi
+    add rax,rdx
+    pop rdx
+    push rdx
+    mov edx,[rax+04]
+    and edx,FFFFF0FF
+    or edx,00000900
+    mov [rax+04],edx
+    pop rdx
+    mov rax,gs:[00000020]
+    mov eax,[rax+00000024]
+    mov eax,eax
+    imul rax,rax,02
+    push rdx
+    push rax
+    mov rdx,FFFFC0010086D000
+    add rax,rdx
+    str word ptr [rax]
+    pop rax
+    mov rdx,FFFFC0010086A000
+    add rax,rdx
+    mov ax,[rax]
+    mov ax,ax
+    ltr ax
+    pop rdx
+    mov rax,gs:[00000020]
+    mov eax,[rax+00000024]
+    mov eax,eax
+    imul eax,eax,0A
+    push rdx
+    mov rdx,FFFFC00100873000
+    add rax,rdx
+    sidt [rax]
+    mov rax,FFFFC00100870000
+    lidt [rax]
+    pop rdx
+    sti
+    mov rax,ntoskrnl.MmFreeContiguousMemory
+    call rax
+    cli
+    push rax
+    mov rax,gs:[00000020]
+    mov eax,[rax+00000024]
+    mov eax,eax
+    imul eax,eax,08
+    push rdx
+    mov rdx,FFFFC00100876000
+    add rax,rdx
+    mov rax,[rax]
+    mov cr3,eax
+    pop rdx
+    mov rax,gs:[00000020]
+    mov eax,[rax+00000024]
+    mov eax,eax
+    imul eax,eax,0A
+    push rdx
+    mov rdx,FFFFC00100867000
+    add rax,rdx
+    lgdt [rax]
+    pop rdx
+    sub rsp,02
+    str word ptr [rsp]
+    xor eax,eax
+    mov ax,[rsp]
+    shr rax,03
+    and eax,00000FFF
+    add rsp,02
+    mov eax,eax
+    imul eax,eax,08
+    push rdx
+    mov rdx,rax
+    push rdi
+    sub rsp,00000010
+    lea rdi,[rsp]
+    sgdt [rdi]
+    mov rax,[rdi+02]
+    add rsp,00000010
+    pop rdi
+    add rax,rdx
+    pop rdx
+    push rdx
+    mov edx,[rax+04]
+    and edx,FFFFF0FF
+    or edx,00000900
+    mov [rax+04],edx
+    pop rdx
+    mov rax,gs:[00000020]
+    mov eax,[rax+00000024]
+    mov eax,eax
+    imul eax,eax,02
+    push rdx
+    mov rdx,FFFFC0010086D000
+    add rax,rdx
+    mov ax,[rax]
+    mov ax,ax
+    ltr ax
+    pop rdx
+    mov rax,gs:[00000020]
+    mov eax,[rax+00000024]
+    mov eax,eax
+    imul eax,eax,0A
+    push rdx
+    mov rdx,FFFFC00100873000
+    add rax,rdx
+    lidt [rax]
+    pop rdx
+    pop rax
+    sti
+    ret
+
+*/
+
+/*
+    Returning gadget: 
+    push rax
+    cli
+    mov rax,gs:[00000020]
+    mov eax,[rax+00000024]
+    mov eax,eax
+    imul eax,eax,08
+    push rdx
+    mov rdx,FFFFC00100AD9000
+    add rax,rdx
+    mov rax,[rax]
+    mov cr3,eax
+    pop rdx
+    mov rax,gs:[00000020]
+    mov eax,[rax+00000024]
+    mov eax,eax
+    imul eax,eax,0A
+    push rdx
+    mov rdx,FFFFC0010167C000
+    add rax,rdx
+    lgdt [rax]
+    pop rdx
+    sub rsp,02
+    str word ptr [rsp]
+    xor eax,eax
+    mov ax,[rsp]
+    shr rax,03
+    and eax,00000FFF
+    add rsp,02
+    mov eax,eax
+    imul eax,eax,08
+    push rdx
+    mov rdx,rax
+    push rdi
+    sub rsp,00000010
+    lea rdi,[rsp]
+    sgdt [rdi]
+    mov rax,[rdi+02]
+    add rsp,00000010
+    pop rdi
+    add rax,rdx
+    pop rdx
+    push rdx
+    mov edx,[rax+04]
+    and edx,FFFFF0FF
+    or edx,00000900
+    mov [rax+04],edx
+    pop rdx
+    mov rax,gs:[00000020]
+    mov eax,[rax+00000024]
+    mov eax,eax
+    imul eax,eax,02
+    push rdx
+    mov rdx,FFFFC001020FF000
+    add rax,rdx
+    mov ax,[rax]
+    mov ax,ax
+    ltr ax
+    pop rdx
+    mov rax,gs:[00000020]
+    mov eax,[rax+00000024]
+    mov eax,eax
+    imul eax,eax,0A
+    push rdx
+    mov rdx,FFFFC00101676000
+    add rax,rdx
+    lidt [rax]
+    pop rdx
+    sti
+    pop rax
+    cmp eax,00001337
+    je FFFFC001015DB10F
+    mov rax,win32kfull.NtUserGetCPD
+    jmp rax
+    ret
 
 */

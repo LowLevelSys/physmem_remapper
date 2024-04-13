@@ -241,7 +241,6 @@ bool init_communication(void) {
     dbg_log_communication("Shown jump gadget at %p \n", shown_pool);
     dbg_log_communication("Returning gadget at %p \n", global_returning_shellcode);
     dbg_log_communication("Function calling gadget at %p \n", global_outside_calling_shellcode);
-    dbg_log_communication("Switching region at %p", switching_region);
     dbg_log("\n");
 #endif
 
