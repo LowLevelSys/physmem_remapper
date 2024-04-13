@@ -10,6 +10,7 @@
 // #define ENABLE_PHYSMEM_TESTS
 // #define ENABLE_EXPERIMENT_LOGGING
 // #define ENABLE_EXPERIMENT_TESTS
+// #define ENTRY_LOGGING
 #define ENABLE_GENERAL_LOGGING
 
 // Define a simple debug macro
@@ -25,6 +26,11 @@
 #define dbg_log_main(fmt, ...) (void)0
 #endif
 
+#ifdef ENTRY_LOGGING
+#define dbg_log_entry(fmt, ...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[ENTRY] " fmt, ##__VA_ARGS__)
+#else
+#define dbg_log_entry(fmt, ...) (void)0
+#endif
 inline uint64_t driver_base;
 inline uint64_t driver_size;
 

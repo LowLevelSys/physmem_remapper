@@ -80,12 +80,23 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         PHYSICAL_ADDRESS max_addr = { 0 };
         max_addr.QuadPart = MAXULONG64;
 
+        paging_structs::cr8 curr_irql = { 0 };
+        paging_structs::cr8 new_irql = { 0 };
+        curr_irql.flags = __readcr8();
+        new_irql.flags = curr_irql.flags;
+
+        new_irql.task_priority_level = PASSIVE_LEVEL;
+        __writecr8(new_irql.flags);
+
         // Load the new outside (kernel mode) function address into our gadget to call
         executed_gadgets::gadget_util::load_new_function_address_in_gadget((uint64_t)MmAllocateContiguousMemory);
         MmAllocateContiguousMemory_t alloc_mem = (MmAllocateContiguousMemory_t)global_outside_calling_shellcode;
 
         // Allocate memory
         sub_cmd.memory_base = alloc_mem(sub_cmd.size, max_addr);
+
+        __writecr8(curr_irql.flags);
+
         cmd.result = (sub_cmd.memory_base != 0);
 
         if (cmd.result)
@@ -105,6 +116,15 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
             break;
         }
 
+        paging_structs::cr8 curr_irql = { 0 };
+        paging_structs::cr8 new_irql = { 0 };
+        curr_irql.flags = __readcr8();
+        new_irql.flags = curr_irql.flags;
+
+        new_irql.task_priority_level = PASSIVE_LEVEL;
+
+        __writecr8(new_irql.flags);
+
         // Load the new outside (kernel mode) function address into our gadget to call
         executed_gadgets::gadget_util::load_new_function_address_in_gadget((uint64_t)MmFreeContiguousMemory);
         MmFreeContiguousMemory_t free_mem = (MmFreeContiguousMemory_t)global_outside_calling_shellcode;
@@ -114,6 +134,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
 
         if (cmd.result) {
             free_mem(sub_cmd.memory_base);
+            __writecr8(curr_irql.flags);
             dbg_log_handler("Freed memory at %p", sub_cmd.memory_base);
         }
         else
@@ -249,14 +270,30 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
 
     } break;
 
-    case cmd_get_virtual_address: {
+    case cmd_get_virtual_address: { // This is very iffy and only usable on km addresses
         get_virtual_address_struct sub_cmd;
         if (!copy_to_host(proc_cr3, (uint64_t)cmd.sub_command_ptr, sub_cmd)) {
             dbg_log_handler("Failed to copy get_virtual_address_struct");
             break;
         }
 
-        sub_cmd.virtual_address = get_virtual_address(sub_cmd.physical_address);
+        executed_gadgets::gadget_util::load_new_function_address_in_gadget((uint64_t)MmGetVirtualForPhysical);
+        MmGetVirtualForPhysical_t get_virtual_for_physical = (MmGetVirtualForPhysical_t)global_outside_calling_shellcode;
+
+        PHYSICAL_ADDRESS phys_addr = { 0 };
+        phys_addr.QuadPart = sub_cmd.physical_address;
+
+        paging_structs::cr8 curr_irql = { 0 };
+        paging_structs::cr8 new_irql = { 0 };
+        curr_irql.flags = __readcr8();
+        new_irql.flags = curr_irql.flags;
+
+        new_irql.task_priority_level = PASSIVE_LEVEL;
+        __writecr8(new_irql.flags);
+
+        sub_cmd.virtual_address = (uint64_t)get_virtual_for_physical(phys_addr);
+
+        __writecr8(curr_irql.flags);
 
         if (!sub_cmd.virtual_address) {
             dbg_log_handler("Failed getting VA from PA %p", sub_cmd.physical_address);
@@ -304,40 +341,6 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
 
         if (!copy_from_host((uint64_t)cmd.sub_command_ptr, sub_cmd, proc_cr3))
             dbg_log_handler("Failed to copy back get_driver_info_struct");
-
-    } break;
-
-    case cmd_remove_system_mapping: {
-        remove_system_mapping_struct sub_cmd;
-        if (!copy_to_host(proc_cr3, (uint64_t)cmd.sub_command_ptr, sub_cmd)) {
-            dbg_log_handler("Failed to copy get_virtual_address_struct");
-            break;
-        }
-
-        PHYSICAL_ADDRESS physical_base = { 0 };
-        LARGE_INTEGER size = { 0 };
-
-        physical_base.QuadPart = sub_cmd.physical_base;
-        size.QuadPart = sub_cmd.size;
-
-        // Load the new outside (kernel mode) function address into our gadget to call
-        executed_gadgets::gadget_util::load_new_function_address_in_gadget((uint64_t)MmRemovePhysicalMemory);
-        MmRemovePhysicalMemory_t remove_mem = (MmRemovePhysicalMemory_t)global_outside_calling_shellcode;
-
-        // Then remove them from the system page tables
-        NTSTATUS status = remove_mem(&physical_base, &size);
-
-        // Remove the pool from physical memory
-        if (!NT_SUCCESS(status)) {
-            dbg_log_handler("Failed to remove physical memory range %p to %p from system mappings", physical_base.QuadPart, physical_base.QuadPart + size.QuadPart);
-            dbg_log_handler("NT_STATUS: 0x%X", status);
-            break;
-        }
-
-        dbg_log_handler("Removed physical memory range %p to %p from system mappings", physical_base.QuadPart, physical_base.QuadPart + size.QuadPart);
-
-        if (!copy_from_host((uint64_t)cmd.sub_command_ptr, sub_cmd, proc_cr3))
-            dbg_log_handler("Failed to copy back remove_system_mapping_struct");
 
     } break;
 

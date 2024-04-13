@@ -24,4 +24,9 @@ __read_cs proc
     ret
 __read_cs endp
 
+__read_rip proc
+    mov rax, [rsp] ; mov the ret address into rax
+    ret
+__read_rip endp
+
 end

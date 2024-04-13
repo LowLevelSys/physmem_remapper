@@ -45,7 +45,6 @@ bool execute_tests(void) {
 
     return true;
 }
-
 // Takes a reference to a pointer as an argument
 bool init_switching_region(address_space_switching_storing_region* & input) {
     PHYSICAL_ADDRESS max_addr = { 0 };
@@ -258,13 +257,12 @@ bool init_communication(void) {
     global_new_data_ptr = (uint64_t)shown_pool; // points to our gadget
     global_data_ptr_address = (uint64_t*)target_address;
     orig_NtUserGetCPD = (orig_NtUserGetCPD_type)global_orig_data_ptr;
-    /*
-    // Try to execute all commands before exchanging the .data ptr
+
     if (!execute_tests()) {
-        dbg_log_communication("Failed tests... Not proceeding");
+        dbg_log_communication("Failed executing tests");
         return false;
     }
-    */
+
     // Attach to winlogon.exe
     KeStackAttachProcess((PRKPROCESS)winlogon_eproc, &apc);
 

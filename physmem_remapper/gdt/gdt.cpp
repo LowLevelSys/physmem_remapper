@@ -73,6 +73,7 @@ bool allocate_gdt_structures(void) {
 	return true;
 }
 
+// Calculate the base of a segment selector according to the intel sdm
 uint64_t segment_base(gdt_ptr_t& gdtr, segment_selector selector) {
 	if (selector.index == 0)
 		return 0;
@@ -90,6 +91,7 @@ uint64_t segment_base(gdt_ptr_t& gdtr, segment_selector selector) {
 	return base_address;
 }
 
+// Calculate a gdt ptr value based on a gdt state
 gdt_ptr_t get_gdt_ptr(per_vcpu_gdt_t& cpu_gdt_state) {
 	gdt_ptr_t gdtr;
 

@@ -72,7 +72,6 @@ struct get_physical_address_struct {
     uint64_t physical_address;
 };
 
-
 struct get_virtual_address_struct {
     // Input
     uint64_t physical_address;
@@ -101,12 +100,6 @@ struct get_driver_info_struct {
     uint64_t size;
 };
 
-struct remove_system_mapping_struct {
-    // Input
-    uint64_t physical_base;
-    uint64_t size;
-};
-
 enum command_type {
     cmd_allocate_memory,
     cmd_free_memory,
@@ -119,7 +112,6 @@ enum command_type {
     cmd_get_virtual_address,
     cmd_ensure_mapping,
     cmd_get_driver_info,
-    cmd_remove_system_mapping,
     cmd_comm_test,
 };
 
