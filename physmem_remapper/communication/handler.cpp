@@ -160,6 +160,20 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
 
     } break;
 
+    case cmd_copy_physical_memory: {
+        copy_physical_memory_struct sub_cmd;
+        if (!copy_to_host(proc_cr3, (uint64_t)cmd.sub_command_ptr, sub_cmd)) {
+            dbg_log_handler("Failed to copy copy_physical_memory_struct");
+            break;
+        }
+
+        // Copy physical memory from a to b
+        cmd.result = (sub_cmd.size == instance->copy_physical_memory(sub_cmd.source_physical, sub_cmd.destination_physical, sub_cmd.size));
+        if (!cmd.result)
+            dbg_log_handler("Failed to copy physical memory");
+    } break;
+
+
     case cmd_get_cr3: {
         get_cr3_struct sub_cmd;
         if (!copy_to_host(proc_cr3, (uint64_t)cmd.sub_command_ptr, sub_cmd)) {
