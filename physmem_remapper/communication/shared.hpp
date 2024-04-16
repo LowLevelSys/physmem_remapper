@@ -44,6 +44,15 @@ struct copy_physical_memory_struct {
     uint64_t size;             
 };
 
+typedef struct read_process_memory_struct {
+    uint64_t pid;
+    void* virtual_address;
+    void* buffer;
+    uint64_t size;
+    uint64_t* bytes_read;
+} read_process_memory_struct;
+
+
 struct get_cr3_struct {
     // Input
     uint64_t pid;
@@ -121,6 +130,7 @@ enum command_type {
     cmd_ensure_mapping,
     cmd_get_driver_info,
     cmd_comm_test,
+    cmd_read_process_memory,
 };
 
 struct command {

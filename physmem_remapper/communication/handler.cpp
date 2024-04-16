@@ -9,8 +9,114 @@
 
 #include "../physmem/physmem.hpp"
 
+
 extern uint64_t* cr3_storing_region;
 extern void* global_outside_calling_shellcode;
+
+extern "C" NTSTATUS PsLookupProcessByProcessId(
+    HANDLE ProcessId,
+    PEPROCESS * Process
+);
+
+// kernel utility functions
+
+NTSTATUS kernel_read_physical_memory(void* address, void* buffer, SIZE_T size, SIZE_T* bytes_read) {
+    MM_COPY_ADDRESS addr = { 0 };
+    addr.PhysicalAddress.QuadPart = reinterpret_cast<UINT64>(address);
+
+    return MmCopyMemory(buffer, addr, size, MM_COPY_MEMORY_PHYSICAL, bytes_read);
+}
+
+UINT64 kernel_get_directory_table_base(HANDLE pid) {
+    PEPROCESS proc = nullptr;
+    NTSTATUS status = PsLookupProcessByProcessId(pid, &proc);
+    if (!NT_SUCCESS(status)) return 0;
+
+    if (!proc) return 0;
+
+    UCHAR* proc_bytes = reinterpret_cast<UCHAR*>(proc);
+    ULONG_PTR dtb = *reinterpret_cast<PULONG_PTR>(proc_bytes + 0x28);
+    if (!dtb) dtb = *reinterpret_cast<PULONG_PTR>(proc_bytes + 0x0388);
+
+    ObDereferenceObject(proc);
+    return dtb;
+}
+
+static const UINT64 phys_mem_mask = (~0xFULL << 8) & 0xFFFFFFFFFULL;
+
+void* kernel_translate_virtual_address(uintptr_t dtb, uintptr_t virtual_address) {
+    dtb &= ~0xF;
+
+    uintptr_t page_offset = virtual_address & ~(~0UL << 12);
+    uintptr_t pte = ((virtual_address >> 12) & (0x1FFll));
+    uintptr_t pt = ((virtual_address >> 21) & (0x1FFll));
+    uintptr_t pd = ((virtual_address >> 30) & (0x1FFll));
+    uintptr_t pdp = ((virtual_address >> 39) & (0x1FFll));
+
+    SIZE_T read_size = 0;
+    uintptr_t pdpe = 0;
+    kernel_read_physical_memory(reinterpret_cast<void*>(dtb + 8 * pdp), &pdpe, sizeof(pdpe), &read_size);
+    if (~pdpe & 1) return nullptr;
+
+    uintptr_t pde = 0;
+    kernel_read_physical_memory(reinterpret_cast<void*>((pdpe & phys_mem_mask) + 8 * pd), &pde, sizeof(pde), &read_size);
+    if (~pde & 1) return nullptr;
+
+    if (pde & 0x80) {  // 1GB large pages
+        return reinterpret_cast<void*>((pde & (~0ULL << 42 >> 12)) + (virtual_address & ~(~0ull << 30)));
+    }
+
+    uintptr_t pte_addr = 0;
+    kernel_read_physical_memory(reinterpret_cast<void*>((pde & phys_mem_mask) + 8 * pt), &pte_addr, sizeof(pte_addr), &read_size);
+    if (~pte_addr & 1) return nullptr;
+
+    if (pte_addr & 0x80) {  // 2MB large pages
+        return reinterpret_cast<void*>((pte_addr & phys_mem_mask) + (virtual_address & ~(~0ull) << 21));
+    }
+
+    uintptr_t rva = 0;
+    kernel_read_physical_memory(reinterpret_cast<void*>((pte_addr & phys_mem_mask) + 8 * pte), &rva, sizeof(rva), &read_size);
+    rva &= phys_mem_mask;
+
+    if (!rva) return nullptr;
+    return reinterpret_cast<void*>(rva + page_offset);
+}
+
+NTSTATUS kernel_read_process_memory(HANDLE pid, void* address, void* buffer, SIZE_T size, SIZE_T* bytes_read) {
+    if (!address || !buffer || size <= 0) return STATUS_INVALID_PARAMETER;
+
+    UINT64 dtb = kernel_get_directory_table_base(pid);
+    if (!dtb) return STATUS_ABANDONED;
+
+    SIZE_T current_offset = 0;
+    SIZE_T total_size = size;
+
+    while (total_size > 0) {
+        uintptr_t current_virt_addr = reinterpret_cast<uintptr_t>(address) + current_offset;
+        uintptr_t current_phys_addr = reinterpret_cast<uintptr_t>(kernel_translate_virtual_address(dtb, current_virt_addr));
+        //DbgPrint("Phys Addr: 0x%p \n", current_phys_addr);
+        if (!current_phys_addr) return STATUS_ABANDONED;
+
+        uintptr_t read_size = min(4096 - (current_phys_addr & 0xFFF), total_size);
+        SIZE_T bytes_read_int = 0;
+
+        NTSTATUS status = kernel_read_physical_memory(reinterpret_cast<void*>(current_phys_addr),
+            reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(buffer) + current_offset),
+            read_size, &bytes_read_int);
+
+        total_size -= bytes_read_int;
+        current_offset += bytes_read_int;
+
+        if (status != STATUS_SUCCESS) break;
+        if (bytes_read_int == 0)      break;
+    }
+
+    if (bytes_read != nullptr) {
+        *bytes_read = current_offset;
+    }
+
+    return STATUS_SUCCESS;
+}
 
 /*
    We use templates here to avoid a very very large code base (look at my hv
@@ -171,6 +277,19 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         cmd.result = (sub_cmd.size == instance->copy_physical_memory(sub_cmd.source_physical, sub_cmd.destination_physical, sub_cmd.size));
         if (!cmd.result)
             dbg_log_handler("Failed to copy physical memory");
+    } break;
+
+    case cmd_read_process_memory: {
+        read_process_memory_struct sub_cmd;
+        if (!copy_to_host(proc_cr3, (uint64_t)cmd.sub_command_ptr, sub_cmd)) {
+            dbg_log_handler("Failed to copy read_physical_memory_struct");
+            break;
+        }
+
+        cmd.result = (kernel_read_process_memory((HANDLE)sub_cmd.pid, sub_cmd.virtual_address, sub_cmd.buffer, sub_cmd.size, sub_cmd.bytes_read) == STATUS_SUCCESS);
+        if (!cmd.result)
+            dbg_log_handler("Failed to read physical memory");
+
     } break;
 
 
