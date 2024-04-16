@@ -280,7 +280,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
     } break;
 
     case cmd_read_process_memory: {
-        read_process_memory_struct sub_cmd;
+        read_process_memory_struct sub_cmd{};
         //if (!copy_to_host(proc_cr3, (uint64_t)cmd.sub_command_ptr, sub_cmd)) {
         //    dbg_log_handler("Failed to copy read_physical_memory_struct");
         //    break;
