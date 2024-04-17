@@ -11,7 +11,7 @@
 // #define ENABLE_EXPERIMENT_LOGGING
 // #define ENABLE_EXPERIMENT_TESTS
 // #define ENTRY_LOGGING
-#define ENABLE_GENERAL_LOGGING
+// #define ENABLE_GENERAL_LOGGING
 
 // Define a simple debug macro
 #ifdef ENABLE_OUTPUT
@@ -59,10 +59,11 @@ private:
     paging_structs::cr3 my_cr3;
     paging_structs::cr3 global_kernel_cr3;
 
-    uint64_t curr_pdpt_1gb_index;
-    uint64_t curr_pde_2mb_index;
-    uint64_t curr_pte_index;
-
+    // The bottom half will be erased if they are true,
+    // and if they are false the top half will be erased
+    bool erase_1gb_bot;
+    bool erase_2mb_bot;
+    bool erase_pte_bot;
 
     static physmem* physmem_instance;
     bool inited;
@@ -80,6 +81,24 @@ public:
     uint64_t map_outside_virtual_addr(uint64_t outside_va, paging_structs::cr3 outside_cr3, uint64_t* offset_to_next_page);
     uint64_t map_outside_physical_addr(uint64_t outside_pa, uint64_t* offset_to_next_page);
     uint64_t get_outside_physical_addr(uint64_t outside_va, paging_structs::cr3 outside_cr3);
+
+    // Helpers
+    void free_pdpte_1gb_entries_half(paging_structs::pdpte_1gb_64* pdpte_1gb_table);
+    void free_pde_2mb_entries_half(paging_structs::pde_2mb_64* pde_2mb_table);
+    void free_pte_entries_half(paging_structs::pte_64* pte_table);
+
+    // Checks whether a paging entry index is valid
+    bool is_index_valid(uint64_t index) {
+        bool valid = index <= 511;
+
+        if (valid) {
+            dbg_log("[VALID] Index: %d", index);
+        } else {
+            dbg_log("[INVALID] Index: %d", index);
+        }
+
+        return valid;
+    }
 
     // Paging structure manipulating utility
     paging_structs::pte_64 get_pte_entry(uint64_t outside_va, paging_structs::cr3 outside_cr3);

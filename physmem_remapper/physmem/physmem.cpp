@@ -3,74 +3,93 @@
 // We love compilers
 physmem* physmem::physmem_instance = 0;
 
-uint32_t find_free_pml4e_index(paging_structs::pml4e_64* pml4e_table) {
+uint64_t find_free_pml4e_index(paging_structs::pml4e_64* pml4e_table) {
     for (uint32_t i = 0; i < 512; i++) {
         if (!pml4e_table[i].present) {
+            pml4e_table[i].present = true;
             return i;
         }
     }
-    return 0xdead;
+
+    // dbg_log("Full PML4 table");
+    return MAXULONG64;
 }
 
-uint32_t find_free_pdpte_1gb_index(paging_structs::pdpte_1gb_64* pdpte_1gb_table) {
+uint64_t find_free_pdpte_1gb_index(paging_structs::pdpte_1gb_64* pdpte_1gb_table) {
     for (uint32_t i = 0; i < 512; i++) {
         if (!pdpte_1gb_table[i].present) {
+            pdpte_1gb_table[i].present = true;
             return i;
         }
     }
 
-    return 0xdead;
+    // dbg_log("Full PDPTE table");
+    return MAXULONG64;
 }
 
-uint32_t find_free_pde_2mb_index(paging_structs::pde_2mb_64* pde_2mb_table) {
+uint64_t find_free_pde_2mb_index(paging_structs::pde_2mb_64* pde_2mb_table) {
     for (uint32_t i = 0; i < 512; i++) {
         if (!pde_2mb_table[i].present) {
+            pde_2mb_table[i].present = true;
             return i;
         }
     }
 
-    return 0xdead;
+    // dbg_log("Full PDE table");
+    return MAXULONG64;
 }
 
-uint32_t find_free_pte_index(paging_structs::pte_64* pte_table) {
+uint64_t find_free_pte_index(paging_structs::pte_64* pte_table) {
     for (uint32_t i = 0; i < 512; i++) {
         if (!pte_table[i].present) {
+            pte_table[i].present = true;
             return i;
         }
     }
 
-    return 0xdead;
+    // dbg_log("Full PTE table");
+    return MAXULONG64;
 }
 
-void free_pml4e_entries_except(paging_structs::pml4e_64* pml4e_table, uint64_t curr_index) {
-    for (uint32_t i = 0; i < 512; i++) {
-        if (i != curr_index) {
-            pml4e_table[i].present = false;
-        }
+void physmem::free_pdpte_1gb_entries_half(paging_structs::pdpte_1gb_64* pdpte_1gb_table) {
+    // Either clean top or bottom half
+    if (erase_1gb_bot) {
+        crt::memset(&pdpte_1gb_table[0], 0, sizeof(paging_structs::pdpte_1gb_64) * 256);
+        // dbg_log("Freed 1gb Pdpte bot entries");
+        erase_1gb_bot = false;
+    }
+    else {
+        crt::memset(&pdpte_1gb_table[255], 0, sizeof(paging_structs::pdpte_1gb_64) * 256);
+        // dbg_log("Freed 1gb Pdpte top entries");
+        erase_1gb_bot = true;
     }
 }
 
-void free_pdpte_1gb_entries_except(paging_structs::pdpte_1gb_64* pdpte_1gb_table, uint64_t curr_index) {
-    for (uint32_t i = 0; i < 512; i++) {
-        if (i != curr_index) {
-            pdpte_1gb_table[i].present = false;
-        }
+void physmem::free_pde_2mb_entries_half(paging_structs::pde_2mb_64* pde_2mb_table) {
+    // Either clean top or bottom half
+    if (erase_2mb_bot) {
+        crt::memset(&pde_2mb_table[0], 0, sizeof(paging_structs::pde_2mb_64) * 256);
+        // dbg_log("Freed 2mb Pde bot entries");
+        erase_2mb_bot = false;
+    }
+    else {
+        crt::memset(&pde_2mb_table[255], 0, sizeof(paging_structs::pde_2mb_64) * 256);
+        // dbg_log("Freed 2mb Pde top entries");
+        erase_2mb_bot = true;
     }
 }
 
-void free_pde_2mb_entries_except(paging_structs::pde_2mb_64* pde_2mb_table, uint64_t curr_index) {
-    for (uint32_t i = 0; i < 512; i++) {
-        if (i != curr_index) {
-            pde_2mb_table[i].present = false;
-        }
+void physmem::free_pte_entries_half(paging_structs::pte_64* pte_table) {
+    // Either clean top or bottom half
+    if (erase_pte_bot) {
+        crt::memset(&pte_table[0], 0, sizeof(paging_structs::pte_64) * 256);
+        // dbg_log("Freed 4Kb Pte bot entries");
+        erase_pte_bot = false;
     }
-}
-
-void free_pte_entries_except(paging_structs::pte_64* pte_table, uint64_t curr_index) {
-    for (uint32_t i = 0; i < 512; i++) {
-        if (i != curr_index) {
-            pte_table[i].present = false;
-        }
+    else {
+        crt::memset(&pte_table[255], 0, sizeof(paging_structs::pte_64) * 256);
+        // dbg_log("Freed 4Kb Pte top entries");
+        erase_pte_bot = true;
     }
 }
 
@@ -87,8 +106,8 @@ uint64_t physmem::map_outside_virtual_addr(uint64_t outside_va, paging_structs::
     paging_structs::pml4e_64 pml4e = pml4e_table[vaddr.pml4_idx];
 
     if (!pml4e.present) {
-        dbg_log("Pml4 entry not present");
         __writecr3(curr);
+        dbg_log("Outside Pml4 not present");
         return 0;
     }
 
@@ -96,8 +115,8 @@ uint64_t physmem::map_outside_virtual_addr(uint64_t outside_va, paging_structs::
     paging_structs::pdpte_64 pdpte = pdpt_table[vaddr.pdpt_idx];
 
     if (!pdpte.present) {
-        dbg_log("Pdpte entry not present");
         __writecr3(curr);
+        dbg_log("Outside Pdpt not present");
         return 0;
     }
 
@@ -113,25 +132,25 @@ uint64_t physmem::map_outside_virtual_addr(uint64_t outside_va, paging_structs::
         virtual_address generated_virtual_address = { 0 };
         generated_virtual_address.offset = vaddr.offset;
         generated_virtual_address.pml4_idx = free_pml4_index;
-        generated_virtual_address.pdpt_idx = find_free_pdpte_1gb_index(page_tables->pdpt_1gb_table[MEMORY_COPYING_SLOT]);
+        uint64_t pdpt_idx = find_free_pdpte_1gb_index(page_tables->pdpt_1gb_table[MEMORY_COPYING_SLOT]);
         // Pd and pt index don't matter as they won't ever be used
 
-        if (generated_virtual_address.pdpt_idx == 0xdead) {
-            free_pdpte_1gb_entries_except(page_tables->pdpt_1gb_table[MEMORY_COPYING_SLOT], curr_pdpt_1gb_index);
-            generated_virtual_address.pdpt_idx = find_free_pdpte_1gb_index(page_tables->pdpt_1gb_table[MEMORY_COPYING_SLOT]);
-        }
+        if (!is_index_valid(pdpt_idx)) {
+            free_pdpte_1gb_entries_half(page_tables->pdpt_1gb_table[MEMORY_COPYING_SLOT]);
+            pdpt_idx = find_free_pdpte_1gb_index(page_tables->pdpt_1gb_table[MEMORY_COPYING_SLOT]);
 
-        if (generated_virtual_address.pdpt_idx == 0xdead) {
-            __writecr3(curr);
-            dbg_log("No free pdpt slots!");
-            return 0;
+            if (!is_index_valid(pdpt_idx)) {
+                __writecr3(curr);
+                dbg_log("Invalid pdpt index");
+                return 0;
+            }
         }
+        generated_virtual_address.pdpt_idx = pdpt_idx;
 
         // Copy over the flags and force the write flag
         page_tables->pdpt_1gb_table[MEMORY_COPYING_SLOT][generated_virtual_address.pdpt_idx].flags = pdpte_1gb.flags;
         page_tables->pdpt_1gb_table[MEMORY_COPYING_SLOT][generated_virtual_address.pdpt_idx].write = true;
-
-        curr_pdpt_1gb_index = generated_virtual_address.pdpt_idx;
+        page_tables->pdpt_1gb_table[MEMORY_COPYING_SLOT][generated_virtual_address.pdpt_idx].present = true;
 
         __invlpg((void*)generated_virtual_address.address);
         __writecr3(curr);
@@ -143,8 +162,8 @@ uint64_t physmem::map_outside_virtual_addr(uint64_t outside_va, paging_structs::
     paging_structs::pde_64 pde = pd_table[vaddr.pd_idx];
 
     if (!pde.present) {
-        dbg_log("Pde entry not present");
         __writecr3(curr);
+        dbg_log("Outside Pde not present");
         return 0;
     }
 
@@ -161,25 +180,25 @@ uint64_t physmem::map_outside_virtual_addr(uint64_t outside_va, paging_structs::
         generated_virtual_address.offset = vaddr.offset;
         generated_virtual_address.pml4_idx = free_pml4_index;
         generated_virtual_address.pdpt_idx = NORMAL_PAGE_ENTRY;
-        generated_virtual_address.pd_idx = find_free_pde_2mb_index(page_tables->pde_2mb_table[MEMORY_COPYING_SLOT]);
+        uint64_t pd_idx = find_free_pde_2mb_index(page_tables->pde_2mb_table[MEMORY_COPYING_SLOT]);
         // Pd and pt index don't matter as they won't ever be used
 
-        if (generated_virtual_address.pd_idx == 0xdead) {
-            free_pde_2mb_entries_except(page_tables->pde_2mb_table[MEMORY_COPYING_SLOT], curr_pde_2mb_index);
-            generated_virtual_address.pd_idx = find_free_pde_2mb_index(page_tables->pde_2mb_table[MEMORY_COPYING_SLOT]);
-        }
+        if (!is_index_valid(pd_idx)) {
+            free_pde_2mb_entries_half(page_tables->pde_2mb_table[MEMORY_COPYING_SLOT]);
+            pd_idx = find_free_pde_2mb_index(page_tables->pde_2mb_table[MEMORY_COPYING_SLOT]);
 
-        if (generated_virtual_address.pd_idx == 0xdead) {
-            __writecr3(curr);
-            dbg_log("No free pde slots!");
-            return 0;
+            if (!is_index_valid(pd_idx)) {
+                __writecr3(curr);
+                dbg_log("Invalid Pd index");
+                return 0;
+            }
         }
+        generated_virtual_address.pd_idx = pd_idx;
 
         // Copy over the flags and force the write flag
         page_tables->pde_2mb_table[MEMORY_COPYING_SLOT][generated_virtual_address.pd_idx].flags = pde_2mb.flags;
         page_tables->pde_2mb_table[MEMORY_COPYING_SLOT][generated_virtual_address.pd_idx].write = true;
-
-        curr_pde_2mb_index = generated_virtual_address.pd_idx;
+        page_tables->pde_2mb_table[MEMORY_COPYING_SLOT][generated_virtual_address.pd_idx].present = true;
 
         __invlpg((void*)generated_virtual_address.address);
         __writecr3(curr);
@@ -191,8 +210,8 @@ uint64_t physmem::map_outside_virtual_addr(uint64_t outside_va, paging_structs::
     paging_structs::pte_64 pte = pt_table[vaddr.pt_idx];
 
     if (!pte.present) {
-        dbg_log("Pte entry not present");
         __writecr3(curr);
+        dbg_log("Outside Pte not present");
         return 0;
     }
 
@@ -205,25 +224,25 @@ uint64_t physmem::map_outside_virtual_addr(uint64_t outside_va, paging_structs::
     generated_virtual_address.pml4_idx = free_pml4_index;
     generated_virtual_address.pdpt_idx = NORMAL_PAGE_ENTRY;
     generated_virtual_address.pd_idx = NORMAL_PAGE_ENTRY;
-    generated_virtual_address.pt_idx = find_free_pte_index(&page_tables->pte_table[MEMORY_COPYING_SLOT][0]);
+    uint64_t pt_idx = find_free_pte_index(&page_tables->pte_table[MEMORY_COPYING_SLOT][0]);
 
-    if (generated_virtual_address.pt_idx == 0xdead) {
-        free_pte_entries_except(&page_tables->pte_table[MEMORY_COPYING_SLOT][0], curr_pte_index);
-        generated_virtual_address.pt_idx = find_free_pte_index(&page_tables->pte_table[MEMORY_COPYING_SLOT][0]);
+    if (!is_index_valid(pt_idx)) {
+        free_pte_entries_half(&page_tables->pte_table[MEMORY_COPYING_SLOT][0]);
+        pt_idx = find_free_pte_index(&page_tables->pte_table[MEMORY_COPYING_SLOT][0]);
+
+        if (!is_index_valid(pt_idx)) {
+            __writecr3(curr);
+            dbg_log("Invalid Pte index");
+            return 0;
+        }
     }
 
-    if (generated_virtual_address.pt_idx == 0xdead) {
-        dbg_log("No free pte slots!");
-        __writecr3(curr);
-        return 0;
-    }
+    generated_virtual_address.pt_idx = pt_idx;
 
     // Copy over the flags and force the write flag
     page_tables->pte_table[MEMORY_COPYING_SLOT][generated_virtual_address.pt_idx].flags = pte.flags;
     page_tables->pte_table[MEMORY_COPYING_SLOT][generated_virtual_address.pt_idx].write = true;
-
-    // Save the current index
-    curr_pte_index = generated_virtual_address.pt_idx;
+    page_tables->pte_table[MEMORY_COPYING_SLOT][generated_virtual_address.pt_idx].present = true;
 
     __invlpg((void*)generated_virtual_address.address);
     __writecr3(curr);
@@ -241,23 +260,22 @@ uint64_t physmem::map_outside_physical_addr(uint64_t outside_pa, uint64_t* offse
     generated_virtual_address.pml4_idx = free_pml4_index;
     generated_virtual_address.pdpt_idx = NORMAL_PAGE_ENTRY;
     generated_virtual_address.pd_idx = NORMAL_PAGE_ENTRY;
-    generated_virtual_address.pt_idx = find_free_pte_index(page_tables->pte_table[MEMORY_COPYING_SLOT]);
+    uint64_t pt_idx = find_free_pte_index(page_tables->pte_table[MEMORY_COPYING_SLOT]);
 
-    if (generated_virtual_address.pt_idx == 0xdead) {
-        free_pte_entries_except(page_tables->pte_table[MEMORY_COPYING_SLOT], curr_pte_index);
-        generated_virtual_address.pt_idx = find_free_pte_index(page_tables->pte_table[MEMORY_COPYING_SLOT]);
+    if (!is_index_valid(pt_idx)) {
+        free_pte_entries_half(page_tables->pte_table[MEMORY_COPYING_SLOT]);
+        pt_idx = find_free_pte_index(page_tables->pte_table[MEMORY_COPYING_SLOT]);
+
+        if (!is_index_valid(pt_idx))
+            return 0;
     }
-
-    if (generated_virtual_address.pt_idx == 0xdead)
-        return 0;
+    generated_virtual_address.pt_idx = pt_idx;
 
     paging_structs::pte_64& pte = page_tables->pte_table[MEMORY_COPYING_SLOT][generated_virtual_address.pt_idx];
 
     pte.present = true;
     pte.write = true;
     pte.page_frame_number = page_boundary >> 12;
-
-    curr_pte_index = generated_virtual_address.pt_idx;
 
     // Calculate the offset to the next page boundary
     if (offset_to_next_page)
@@ -559,7 +577,7 @@ bool physmem::set_address_range_not_global(uint64_t base, uint64_t size, paging_
 
     for (uint64_t curr_va = alligned_base; curr_va < base + size; curr_va += PAGE_SIZE) {
         // First get the pte entry and unset the global flag
-        paging_structs::pte_64 pte = get_pte_entry(curr_va, get_kernel_cr3());
+        paging_structs::pte_64 pte = get_pte_entry(curr_va, outside_cr3);
         pte.global = false;
 
         if (crt::memcmp(&sanity, &pte, sizeof(paging_structs::pte_64)) == 0) {
@@ -568,7 +586,7 @@ bool physmem::set_address_range_not_global(uint64_t base, uint64_t size, paging_
         }
 
         // Then store it again
-        if (!set_pte_entry(curr_va, get_kernel_cr3(), pte)) {
+        if (!set_pte_entry(curr_va, outside_cr3, pte)) {
             dbg_log("Failed return check while trying to set va: %p in cr3: %p to non global", curr_va, outside_cr3);
             return false;
         }
@@ -744,8 +762,8 @@ bool physmem::test_page_tables(void) {
 bool physmem::setup_paging_hierachy(void) {
 
     // Find a free pml4 slot index
-    uint32_t free_index = find_free_pml4e_index(page_tables->pml4_table);
-    if (free_index == 0xdead) {
+    uint64_t free_index = find_free_pml4e_index(page_tables->pml4_table);
+    if (!is_index_valid(free_index)) {
         dbg_log("No free Pml4 index left; Weird");
         return false;
     }
@@ -801,6 +819,11 @@ bool physmem::setup_paging_hierachy(void) {
     page_tables->is_pdpt_table_occupied[MEMORY_COPYING_SLOT] = true;
     page_tables->is_pde_table_occupied[MEMORY_COPYING_SLOT] = true;
     page_tables->is_pte_table_occupied[MEMORY_COPYING_SLOT] = true;
+
+    // Start the cleanup cycle by erasing the bottom half
+    erase_1gb_bot = true;
+    erase_2mb_bot = true;
+    erase_pte_bot = true;
 
     return true;
 }

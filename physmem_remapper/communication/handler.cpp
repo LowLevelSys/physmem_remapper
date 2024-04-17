@@ -149,8 +149,10 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
             break;
         }
 
-        paging_structs::cr3 source_cr3 = { .flags = sub_cmd.source_cr3 };
-        paging_structs::cr3 destination_cr3 = { .flags = sub_cmd.destination_cr3 };
+        paging_structs::cr3 source_cr3 = { 0 };
+        paging_structs::cr3 destination_cr3 = { 0 };
+        source_cr3.flags = sub_cmd.source_cr3;
+        destination_cr3.flags = sub_cmd.destination_cr3;
 
         // Copy virtual memory from a to b
         cmd.result = (sub_cmd.size == instance->copy_virtual_memory(source_cr3, sub_cmd.source, destination_cr3, sub_cmd.destination, sub_cmd.size));
@@ -338,6 +340,36 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         cmd.result = true;
 
         dbg_log_handler("Got driver info");
+
+        if (!copy_from_host((uint64_t)cmd.sub_command_ptr, sub_cmd, proc_cr3))
+            dbg_log_handler("Failed to copy back get_driver_info_struct");
+
+    } break;
+
+    case cmd_get_ldr_data_table_entry_count: {
+        get_ldr_data_table_entry_count_struct sub_cmd;
+        if (!copy_to_host(proc_cr3, (uint64_t)cmd.sub_command_ptr, sub_cmd)) {
+            dbg_log_handler("Failed to copy get_ldr_data_table_entry_count_struct");
+            break;
+        }
+
+        sub_cmd.count = get_data_table_entry_count(sub_cmd.pid);
+
+        cmd.result = true;
+
+        if (!copy_from_host((uint64_t)cmd.sub_command_ptr, sub_cmd, proc_cr3))
+            dbg_log_handler("Failed to copy back get_driver_info_struct");
+
+    } break;
+
+    case cmd_get_data_table_entry_info: {
+        cmd_get_data_table_entry_info_struct sub_cmd;
+        if (!copy_to_host(proc_cr3, (uint64_t)cmd.sub_command_ptr, sub_cmd)) {
+            dbg_log_handler("Failed to copy cmd_get_module_info_at_index_struct");
+            break;
+        }
+
+        cmd.result = get_data_table_entry_info(sub_cmd.pid, sub_cmd.info_array, proc_cr3);
 
         if (!copy_from_host((uint64_t)cmd.sub_command_ptr, sub_cmd, proc_cr3))
             dbg_log_handler("Failed to copy back get_driver_info_struct");

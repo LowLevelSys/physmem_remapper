@@ -13,6 +13,12 @@ using uint16_t = unsigned short;
 using uint32_t = unsigned int;
 using uint64_t = unsigned long long;
 
+struct module_info_t {
+    char name[MAX_PATH];
+    uint64_t base;
+    uint64_t size;
+};
+
 struct allocate_memory_struct {
     // Input
     uint64_t size;
@@ -100,6 +106,21 @@ struct get_driver_info_struct {
     uint64_t size;
 };
 
+struct get_ldr_data_table_entry_count_struct {
+    // Input
+    uint64_t pid;
+
+    // Output
+    uint64_t count;
+};
+
+struct cmd_get_data_table_entry_info_struct {
+    // Input
+    uint64_t pid;
+    module_info_t* info_array;
+};
+
+
 enum command_type {
     cmd_allocate_memory,
     cmd_free_memory,
@@ -112,6 +133,8 @@ enum command_type {
     cmd_get_virtual_address,
     cmd_ensure_mapping,
     cmd_get_driver_info,
+    cmd_get_ldr_data_table_entry_count,
+    cmd_get_data_table_entry_info,
     cmd_comm_test,
 };
 

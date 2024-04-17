@@ -139,7 +139,7 @@ bool init_gdt(void) {
 		tss_descriptor.type = SEGMENT_DESCRIPTOR_TYPE_TSS_AVAILABLE;
 		tss_descriptor.descriptor_type = SEGMENT_DESCRIPTOR_TYPE_SYSTEM; // Kernel descriptor
 		tss_descriptor.descriptor_privilege_level = 0; // Set to kernel privilege level
-		tss_descriptor.present = 1; // Mark as present
+		tss_descriptor.present = true; // Mark as present
 		tss_descriptor.granularity = 0; // Let it be interpreted as byte units
 		tss_descriptor.segment_limit_low = total_tss_size & 0xFFFF; // Lower 16 bits
 		tss_descriptor.segment_limit_high = (total_tss_size >> 16) & 0xF; // Upper 4 bits

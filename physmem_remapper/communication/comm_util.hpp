@@ -25,7 +25,7 @@ inline uint64_t get_pid(const char* target_process_name) {
 
             return pid;
         }
-        PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+0x448);
+        PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry) + 0x448);
         curr_entry = (PEPROCESS)((uintptr_t)list->Flink - 0x448);
 
     } while (curr_entry != sys_process);
@@ -51,7 +51,7 @@ inline uint64_t get_cr3(uint64_t target_pid) {
 
             return cr3;
         }
-        PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+0x448);
+        PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry) + 0x448);
         curr_entry = (PEPROCESS)((uintptr_t)list->Flink - 0x448);
 
     } while (curr_entry != sys_process);
@@ -66,10 +66,7 @@ inline LDR_DATA_TABLE_ENTRY get_ldr_data_table_entry(uint64_t target_pid, char* 
     PEPROCESS sys_process = PsInitialSystemProcess;
     PEPROCESS curr_entry = sys_process;
 
-    paging_structs::cr3 curr_cr3;
-    paging_structs::cr3 user_cr3;
-    user_cr3.flags = inst->get_kernel_cr3().flags;
-    curr_cr3.flags = __readcr3();
+    paging_structs::cr3 user_cr3 = { 0 };
 
     do {
         uint64_t curr_pid;
@@ -90,59 +87,235 @@ inline LDR_DATA_TABLE_ENTRY get_ldr_data_table_entry(uint64_t target_pid, char* 
 
             // From now on we have to copy everything from the dtb using the user cr3
             uint64_t p_ldr;
+
+            if (sizeof(p_ldr) != inst->copy_memory_to_inside(user_cr3, peb + 0x18, (uint64_t)&p_ldr, sizeof(p_ldr))) {
+                dbg_log_handler("Failed to copy Ldr data ptr");
+                return { 0 };
+            }
+
             PEB_LDR_DATA ldr_data;
 
-            if (sizeof(p_ldr) != inst->copy_virtual_memory(user_cr3, peb + 0x18, curr_cr3, (uint64_t)&p_ldr, sizeof(p_ldr))) {
-                dbg_log("Failed to copy Ldr data ptr");
+            if (sizeof(ldr_data) != inst->copy_memory_to_inside(user_cr3, p_ldr, (uint64_t)&ldr_data, sizeof(ldr_data))) {
+                dbg_log_handler("Failed to copy Ldr data");
                 return { 0 };
             }
 
-            if (sizeof(ldr_data) != inst->copy_virtual_memory(user_cr3, p_ldr, curr_cr3, (uint64_t)&ldr_data, sizeof(ldr_data))) {
-                dbg_log("Failed to copy Ldr data");
-                return { 0 };
-            }
+            LIST_ENTRY* remote_flink = ldr_data.InLoadOrderModuleList.Flink;
+            LIST_ENTRY* next_link = remote_flink;
 
-            uint64_t ldr_head = (uint64_t)ldr_data.InLoadOrderModuleList.Flink;
-            uint64_t ldr_curr = ldr_head;
+            do {
+                LDR_DATA_TABLE_ENTRY entry;
 
-            do
-            {
-                LDR_DATA_TABLE_ENTRY curr_ldr_entry = { 0 };
-
-                if (sizeof(curr_ldr_entry) != inst->copy_virtual_memory(user_cr3, ldr_curr, curr_cr3, (uint64_t)&curr_ldr_entry, sizeof(curr_ldr_entry))) {
-                    dbg_log("Failed to copy Ldr data table entry");
+                if (sizeof(LDR_DATA_TABLE_ENTRY) != inst->copy_memory_to_inside(user_cr3, (uint64_t)next_link, (uint64_t)&entry, sizeof(LDR_DATA_TABLE_ENTRY))) {
+                    dbg_log_handler("Failed to copy Ldr data table entry");
                     return { 0 };
                 }
 
                 wchar_t dll_name_buffer[MAX_PATH] = { 0 };
                 char char_dll_name_buffer[MAX_PATH] = { 0 };
 
+                if (entry.BaseDllName.Length != inst->copy_memory_to_inside(user_cr3, (uint64_t)entry.BaseDllName.Buffer, (uint64_t)&dll_name_buffer, entry.BaseDllName.Length)) {
+                    dbg_log_handler("Failed to module name");
+                    return { 0 };
+                }
 
-                if (curr_ldr_entry.BaseDllName.Length != inst->copy_virtual_memory(user_cr3, (uint64_t)curr_ldr_entry.BaseDllName.Buffer, curr_cr3, (uint64_t)&dll_name_buffer, curr_ldr_entry.BaseDllName.Length))
-                    continue;
-
-                for (uint64_t i = 0; i < curr_ldr_entry.BaseDllName.Length / sizeof(wchar_t) && i < MAX_PATH - 1; i++)
+                for (uint64_t i = 0; i < entry.BaseDllName.Length / sizeof(wchar_t) && i < MAX_PATH - 1; i++)
                     char_dll_name_buffer[i] = (char)dll_name_buffer[i];
 
+                char_dll_name_buffer[entry.BaseDllName.Length / sizeof(wchar_t)] = '\0';
 
-                // Ignore lower / upper case in order to ensure you find it (and contains therefore if the msg is cut off it still works)
                 if (crt::strstr(char_dll_name_buffer, module_name))
-                    return curr_ldr_entry;
+                    return entry;
+
+                next_link = (LIST_ENTRY*)entry.InLoadOrderLinks.Flink;
+            } while (next_link && next_link != remote_flink);
 
 
-                ldr_curr = (uint64_t)curr_ldr_entry.InLoadOrderLinks.Flink;
-
-            } while (ldr_curr != ldr_head);
-
-
+            return { 0 };
         }
-        PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+0x448);
-        curr_entry = (PEPROCESS)((uintptr_t)list->Flink - 0x448);
+
+        PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry) + 0x448); // apl offset
+        curr_entry = (PEPROCESS)((uintptr_t)list->Flink - 0x448); // apl offset
 
     } while (curr_entry != sys_process);
 
-
     return { 0 };
+}
+
+inline uint64_t get_data_table_entry_count(uint64_t target_pid) {
+    physmem* inst = physmem::get_physmem_instance();
+
+    PEPROCESS sys_process = PsInitialSystemProcess;
+    PEPROCESS curr_entry = sys_process;
+
+    paging_structs::cr3 user_cr3 = { 0 };
+
+    do {
+        uint64_t curr_pid;
+
+        crt::memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + 0x440), sizeof(curr_pid));
+
+        // Check whether we found our process
+        if (target_pid == curr_pid) {
+
+            uint64_t dtb;
+            uint64_t peb;
+
+            crt::memcpy(&dtb, (void*)((uintptr_t)curr_entry + 0x28), sizeof(dtb));
+
+            crt::memcpy(&peb, (void*)((uintptr_t)curr_entry + 0x550), sizeof(peb));
+
+            user_cr3.address_of_page_directory = dtb >> 12;
+
+            // From now on we have to copy everything from the dtb using the user cr3
+            uint64_t p_ldr;
+
+            if (sizeof(p_ldr) != inst->copy_memory_to_inside(user_cr3, peb + 0x18, (uint64_t)&p_ldr, sizeof(p_ldr))) {
+                dbg_log_handler("Failed to copy Ldr data ptr");
+                return 0;
+            }
+
+            PEB_LDR_DATA ldr_data;
+
+            if (sizeof(ldr_data) != inst->copy_memory_to_inside(user_cr3, p_ldr, (uint64_t)&ldr_data, sizeof(ldr_data))) {
+                dbg_log_handler("Failed to copy Ldr data");
+                return 0;
+            }
+
+            LIST_ENTRY* remote_flink = ldr_data.InLoadOrderModuleList.Flink;
+            LIST_ENTRY* next_link = remote_flink;
+            uint64_t module_count = 0;
+
+            do {
+                LDR_DATA_TABLE_ENTRY entry;
+
+                if (sizeof(LDR_DATA_TABLE_ENTRY) != inst->copy_memory_to_inside(user_cr3, (uint64_t)next_link, (uint64_t)&entry, sizeof(LDR_DATA_TABLE_ENTRY))) {
+                    dbg_log_handler("Failed to copy Ldr data table entry");
+                    return module_count;
+                }
+
+                wchar_t dll_name_buffer[MAX_PATH] = { 0 };
+                char char_dll_name_buffer[MAX_PATH] = { 0 };
+
+                if (entry.BaseDllName.Length != inst->copy_memory_to_inside(user_cr3, (uint64_t)entry.BaseDllName.Buffer, (uint64_t)&dll_name_buffer, entry.BaseDllName.Length)) {
+                    dbg_log_handler("Failed to module name");
+                    return { 0 };
+                }
+
+                for (uint64_t i = 0; i < entry.BaseDllName.Length / sizeof(wchar_t) && i < MAX_PATH - 1; i++)
+                    char_dll_name_buffer[i] = (char)dll_name_buffer[i];
+
+                char_dll_name_buffer[entry.BaseDllName.Length / sizeof(wchar_t)] = '\0';
+
+                dbg_log_handler("Dll %s", char_dll_name_buffer);
+
+                module_count++;
+                next_link = (LIST_ENTRY*)entry.InLoadOrderLinks.Flink;
+            } while (next_link && next_link != remote_flink);
+
+            return module_count;
+        }
+        PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry) + 0x448); // apl offset
+        curr_entry = (PEPROCESS)((uintptr_t)list->Flink - 0x448); // apl offset
+
+    } while (curr_entry != sys_process);
+
+    return 0;
+}
+
+inline bool get_data_table_entry_info(uint64_t target_pid, module_info_t* info_array, paging_structs::cr3 proc_cr3) {
+    physmem* inst = physmem::get_physmem_instance();
+    module_info_t* curr_info_entry = info_array;
+
+    PEPROCESS sys_process = PsInitialSystemProcess;
+    PEPROCESS curr_entry = sys_process;
+
+    paging_structs::cr3 user_cr3 = { 0 };
+
+    if (!curr_info_entry) {
+        dbg_log_handler("Invalid parameter");
+        return false;
+    }
+
+    do {
+        uint64_t curr_pid;
+
+        crt::memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + 0x440), sizeof(curr_pid));
+
+        // Check whether we found our process
+        if (target_pid == curr_pid) {
+
+            uint64_t dtb;
+            uint64_t peb;
+
+            crt::memcpy(&dtb, (void*)((uintptr_t)curr_entry + 0x28), sizeof(dtb));
+
+            crt::memcpy(&peb, (void*)((uintptr_t)curr_entry + 0x550), sizeof(peb));
+
+            user_cr3.address_of_page_directory = dtb >> 12;
+
+            // From now on we have to copy everything from the dtb using the user cr3
+            uint64_t p_ldr;
+
+            if (sizeof(p_ldr) != inst->copy_memory_to_inside(user_cr3, peb + 0x18, (uint64_t)&p_ldr, sizeof(p_ldr))) {
+                dbg_log_handler("Failed to copy Ldr data ptr");
+                return false;
+            }
+
+            PEB_LDR_DATA ldr_data;
+
+            if (sizeof(ldr_data) != inst->copy_memory_to_inside(user_cr3, p_ldr, (uint64_t)&ldr_data, sizeof(ldr_data))) {
+                dbg_log_handler("Failed to copy Ldr data");
+                return false;
+            }
+
+            LIST_ENTRY* remote_flink = ldr_data.InLoadOrderModuleList.Flink;
+            LIST_ENTRY* next_link = remote_flink;
+
+            do {
+                LDR_DATA_TABLE_ENTRY entry;
+
+                if (sizeof(LDR_DATA_TABLE_ENTRY) != inst->copy_memory_to_inside(user_cr3, (uint64_t)next_link, (uint64_t)&entry, sizeof(LDR_DATA_TABLE_ENTRY))) {
+                    dbg_log_handler("Failed to copy Ldr data table entry");
+                    return false;
+                }
+
+                wchar_t dll_name_buffer[MAX_PATH] = { 0 };
+                char char_dll_name_buffer[MAX_PATH] = { 0 };
+
+                if (entry.BaseDllName.Length != inst->copy_memory_to_inside(user_cr3, (uint64_t)entry.BaseDllName.Buffer, (uint64_t)&dll_name_buffer, entry.BaseDllName.Length)) {
+                    dbg_log_handler("Failed to copy module name");
+                    return false;
+                }
+
+                for (uint64_t i = 0; i < entry.BaseDllName.Length / sizeof(wchar_t) && i < MAX_PATH - 1; i++)
+                    char_dll_name_buffer[i] = (char)dll_name_buffer[i];
+
+                char_dll_name_buffer[entry.BaseDllName.Length / sizeof(wchar_t)] = '\0';
+
+                module_info_t info = { 0 };
+                info.base = (uint64_t)entry.DllBase;
+                info.size = entry.SizeOfImage;
+                crt::memcpy(&info.name, &char_dll_name_buffer, min(entry.BaseDllName.Length / sizeof(wchar_t), MAX_PATH - 1));
+
+                if (sizeof(module_info_t) != inst->copy_memory_from_inside((uint64_t)&info, (uint64_t)curr_info_entry, proc_cr3, sizeof(module_info_t))) {
+                    dbg_log_handler("Failed to copy module info to um");
+                    return false;
+                }
+
+                curr_info_entry++;
+
+                next_link = (LIST_ENTRY*)entry.InLoadOrderLinks.Flink;
+            } while (next_link && next_link != remote_flink);
+
+            return true;
+        }
+        PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+0x448); // apl offset
+        curr_entry = (PEPROCESS)((uintptr_t)list->Flink - 0x448); // apl offset
+
+    } while (curr_entry != sys_process);
+
+    return false;
 }
 
 inline uint64_t get_module_base(uint64_t target_pid, char* module_name) {

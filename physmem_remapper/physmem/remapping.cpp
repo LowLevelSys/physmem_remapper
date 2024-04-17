@@ -483,7 +483,7 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
             paging_structs::pdpte_64* my_pdpt_table = &page_tables->pdpt_table[remapping_status->pdpte_slot.slot][0];
 
             uint32_t free_pde_table_index = get_free_pde_table_index(page_tables);
-            if (free_pde_table_index == 0xdead) {
+            if (!instance->is_index_valid(free_pde_table_index)) {
                 dbg_log_remapping("Failed to get free pde index");
                 __writecr3(curr);
                 return false;
@@ -556,7 +556,7 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
         paging_structs::pdpte_64* my_pdpt_table = &page_tables->pdpt_table[remapping_status->pdpte_slot.slot][0];
 
         uint32_t free_pde_table_index = get_free_pde_table_index(page_tables);
-        if (free_pde_table_index == 0xdead) {
+        if (!instance->is_index_valid(free_pde_table_index)) {
             dbg_log_remapping("Failed to get free pde index");
             __writecr3(curr);
             return false;
@@ -570,7 +570,7 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
         // Copy the Pde table
         crt::memcpy(my_pde_table, pde_table, sizeof(paging_structs::pde_64) * 512);
         uint32_t free_pte_table_index = get_free_pte_table_index(page_tables);
-        if (free_pte_table_index == 0xdead) {
+        if (!instance->is_index_valid(free_pte_table_index)) {
             dbg_log_remapping("Failed to get free pde index");
             __writecr3(curr);
             return false;
@@ -612,7 +612,7 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
         paging_structs::pde_64* my_pde_table = &page_tables->pde_table[remapping_status->pde_slot.slot][0];
 
         uint32_t free_pte_table_index = get_free_pte_table_index(page_tables);
-        if (free_pte_table_index == 0xdead) {
+        if (!instance->is_index_valid(free_pte_table_index)) {
             dbg_log_remapping("Failed to get free pde index");
             __writecr3(curr);
             return false;

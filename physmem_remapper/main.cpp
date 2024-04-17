@@ -8,18 +8,6 @@
 	please consult the Intel Sdm Volume 3: 4.10.2.4 (Global Pages)
 */
 
-bool can_return_entry = false;
-
-void sleep(uint64_t ms) {
-	// Convert milliseconds to 100-nanosecond intervals
-	// Negative value indicates a relative time
-	LARGE_INTEGER interval;
-	interval.QuadPart = -((LONGLONG)ms * 10 * 1000);
-
-	// Set the thread to an alertable state to delay its execution
-	KeDelayExecutionThread(KernelMode, FALSE, &interval);
-}
-
 void init() {
 
 	// Example usage
@@ -54,9 +42,6 @@ void init() {
 	}
 
 	dbg_log_main("Driver initialized successfully!");
-
-	// Now indicate us being finished
-	can_return_entry = true;
 }
 
 // Just a basic driver entry
@@ -64,20 +49,12 @@ NTSTATUS driver_entry(uint64_t base, uint64_t size) {
 
 	dbg_log_entry("Driver at va %p - %p in system page tables", base, base + size);
 
+	// Safe driver info
 	driver_base = base;
 	driver_size = size;
 
-	HANDLE thread;
-	CLIENT_ID thread_id;
-
-	PsCreateSystemThread(&thread, STANDARD_RIGHTS_ALL, NULL, NULL, &thread_id, (PKSTART_ROUTINE)init, (void*)0);
-	ZwClose(thread);
-
-	while (!can_return_entry)
-		sleep(10);
-
-	// Just to ensure the thread above is finished
-	sleep(10);
+	// Try to avoid creating system threeads
+	init();
 
 	return STATUS_SUCCESS;
 }
