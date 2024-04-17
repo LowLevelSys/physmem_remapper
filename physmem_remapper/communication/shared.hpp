@@ -43,6 +43,22 @@ struct copy_virtual_memory_struct {
     uint64_t size;
 };
 
+struct copy_physical_memory_struct {
+    // Input
+    uint64_t source_physical;   
+    uint64_t destination_physical; 
+    uint64_t size;             
+};
+
+typedef struct read_process_memory_struct {
+    uint64_t pid;
+    void* virtual_address;
+    void* buffer;
+    uint64_t size;
+    uint64_t* bytes_read;
+} read_process_memory_struct;
+
+
 struct get_cr3_struct {
     // Input
     uint64_t pid;
@@ -125,6 +141,7 @@ enum command_type {
     cmd_allocate_memory,
     cmd_free_memory,
     cmd_copy_virtual_memory,
+    cmd_copy_physical_memory,
     cmd_get_cr3,
     cmd_get_module_base,
     cmd_get_module_size,
@@ -136,6 +153,7 @@ enum command_type {
     cmd_get_ldr_data_table_entry_count,
     cmd_get_data_table_entry_info,
     cmd_comm_test,
+    cmd_read_process_memory,
 };
 
 struct command {
