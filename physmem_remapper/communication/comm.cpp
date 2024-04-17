@@ -15,7 +15,7 @@ void* global_outside_calling_shellcode = 0;
 address_space_switching_storing_region* switching_region = 0;
 
 // Takes a reference to a pointer as an argument
-bool init_switching_region(address_space_switching_storing_region* & input) {
+bool init_switching_region(address_space_switching_storing_region*& input) {
     PHYSICAL_ADDRESS max_addr = { 0 };
     uint64_t processor_count = KeQueryActiveProcessorCount(0);
 
