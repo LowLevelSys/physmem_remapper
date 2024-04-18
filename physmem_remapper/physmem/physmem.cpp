@@ -887,7 +887,7 @@ physmem* physmem::get_physmem_instance(void) {
 
     kernel_pml4_page_table = (paging_structs::pml4e_64*)get_virtual_address(kernel_cr3.address_of_page_directory << 12);
 
-    //Copy the top most layer of pml4 because that's the kernel and we need that
+    // Copy the top most layer of pml4 because that's the kernel and we need that
     crt::memcpy(physmem_instance->page_tables->pml4_table, kernel_pml4_page_table, sizeof(paging_structs::pml4e_64) * 512);
 
     physmem_instance->my_cr3.flags = kernel_cr3.flags;

@@ -244,6 +244,7 @@ struct remapped_va_t {
     slot_t pdpte_slot;
     slot_t pde_slot;
     uint32_t pte_slot;
+    bool used;
 };
 
 enum usable_until {

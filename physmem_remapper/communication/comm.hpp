@@ -127,7 +127,7 @@ typedef struct {
 #define SKIP_ORIG_DATA_PTR 0x1337
 #define CALL_ORIG_DATA_PTR 0x7331
 
-#define ENABLE_COMMUNICATION_LOGGING
+// #define ENABLE_COMMUNICATION_LOGGING
 // #define ENABLE_HANDLER_LOGGING
 // #define ENABLE_EXTENSIVE_COMMUNICATION_TESTS
 // #define ENABLE_COMMUNICATION_PAGING_LOGGING
@@ -135,14 +135,14 @@ typedef struct {
 // We can only allow logging in "host mode" if we are partially using the system idt
 #ifdef ENABLE_HANDLER_LOGGING
 #ifdef PARTIALLY_USE_SYSTEM_IDT
-#define dbg_log_handler(fmt, ...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL,"[HANDLER] " fmt, ##__VA_ARGS__)
+#define dbg_log_handler(fmt, ...) dbg_log(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL,"[HANDLER] " fmt, ##__VA_ARGS__)
 #endif // PARTIALLY_USE_SYSTEM_IDT
 #else
 #define dbg_log_handler(fmt, ...) (void)0
 #endif
 
 #ifdef ENABLE_COMMUNICATION_LOGGING
-#define dbg_log_communication(fmt, ...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL,"[COMMUNICATION] " fmt, ##__VA_ARGS__)
+#define dbg_log_communication(fmt, ...) dbg_log("[COMMUNICATION] " fmt, ##__VA_ARGS__)
 #else
 #define dbg_log_communication(fmt, ...) (void)0
 #endif
@@ -167,6 +167,27 @@ inline bool is_mapping_ensured = false;
 // Func declarations
 bool init_communication(void);
 extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR dw_data);
+
+inline bool is_data_ptr_valid(uint64_t data_ptr) {
+    PLIST_ENTRY head = PsLoadedModuleList;
+    PLIST_ENTRY curr = head->Flink;
+
+    // Just loop over the modules
+    while (curr != head) {
+        LDR_DATA_TABLE_ENTRY* curr_mod = CONTAINING_RECORD(curr, LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
+
+        uint64_t driver_base = (uint64_t)curr_mod->DllBase;
+        uint64_t driver_end = (uint64_t)curr_mod->DllBase + curr_mod->SizeOfImage;
+
+        // If the data ptr resides in a legit driver, it is considered valid
+        if (data_ptr >= driver_base && driver_end >= data_ptr)
+            return true;
+
+        curr = curr->Flink;
+    }
+
+    return false;
+}
 
 // Helper functions
 inline void* get_driver_module_base(const wchar_t* module_name) {
@@ -197,15 +218,16 @@ inline PEPROCESS get_eprocess(const char* process_name) {
     do {
         crt::memcpy((void*)(&image_name), (void*)((uintptr_t)curr_entry + 0x5a8), sizeof(image_name));
 
-        if (crt::strstr(image_name, process_name) || crt::strstr(process_name, image_name)) {
+        if (crt::strcmp(image_name, process_name) == 0) {
             uint32_t active_threads;
 
             crt::memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + 0x5f0), sizeof(active_threads));
-            if (active_threads) {
+
+            if (active_threads) 
                 return curr_entry;
-            }
         }
-        PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+0x448);
+
+        PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry) + 0x448);
         curr_entry = (PEPROCESS)((uintptr_t)list->Flink - 0x448);
 
     } while (curr_entry != sys_process);
@@ -219,13 +241,14 @@ inline uintptr_t find_pattern_in_range(uintptr_t region_base, size_t region_size
     char* region_end = (char*)region_base + region_size - pattern_size + 1;
 
     for (char* byte = (char*)region_base; byte < region_end; ++byte) {
+
         if (*byte == *pattern || *pattern == wildcard) {
             bool found = true;
 
             for (size_t i = 1; i < pattern_size; ++i) {
                 if (pattern[i] != byte[i] && pattern[i] != wildcard) {
                     found = false;
-                    break;  // break out of this inner loop as soon as mismatch is found
+                    break;
                 }
             }
             if (found) {

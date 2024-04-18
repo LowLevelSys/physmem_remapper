@@ -440,8 +440,8 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         get_driver_info_struct sub_cmd;
 
         // Return info to the caller
-        sub_cmd.base = driver_base;
-        sub_cmd.size = driver_size;
+        sub_cmd.base = my_driver_base;
+        sub_cmd.size = my_driver_size;
 
         cmd.result = true;
 

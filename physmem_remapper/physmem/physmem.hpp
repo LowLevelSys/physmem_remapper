@@ -11,7 +11,7 @@
 // #define ENABLE_EXPERIMENT_LOGGING
 // #define ENABLE_EXPERIMENT_TESTS
 // #define ENTRY_LOGGING
-// #define ENABLE_GENERAL_LOGGING
+#define ENABLE_GENERAL_LOGGING
 
 // Define a simple debug macro
 #ifdef ENABLE_OUTPUT
@@ -31,8 +31,8 @@
 #else
 #define dbg_log_entry(fmt, ...) (void)0
 #endif
-inline uint64_t driver_base;
-inline uint64_t driver_size;
+inline uint64_t my_driver_base;
+inline uint64_t my_driver_size;
 
 bool physmem_experiment(void);
 
@@ -91,12 +91,13 @@ public:
     bool is_index_valid(uint64_t index) {
         bool valid = index <= 511;
 
+        /*
         if (valid) {
             dbg_log("[VALID] Index: %d", index);
         } else {
             dbg_log("[INVALID] Index: %d", index);
         }
-
+        */
         return valid;
     }
 

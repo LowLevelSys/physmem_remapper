@@ -91,17 +91,17 @@ bool init_communication(void) {
         return false;
     }
 
-    auto hwin32k = get_driver_module_base(L"win32k.sys");
-    if (!hwin32k) {
+    void* win32k_base = get_driver_module_base(L"win32k.sys");
+    if (!win32k_base) {
         dbg_log_communication("Failed to get win32k.sys base address");
         return false;
     }
 
 #ifdef ENABLE_COMMUNICATION_LOGGING
-    dbg_log_communication("Win32k.sys at %p \n", hwin32k);
+    dbg_log_communication("Win32k.sys at %p \n", win32k_base);
 #endif // ENABLE_COMMUNICATION_LOGGING
 
-    auto winlogon_eproc = get_eprocess("winlogon.exe");
+    PEPROCESS winlogon_eproc = get_eprocess("winlogon.exe");
     if (!winlogon_eproc) {
         dbg_log_communication("Failed to get winlogon.exe eproc");
         return false;
@@ -113,7 +113,7 @@ bool init_communication(void) {
 
     // NtUserGetCPD
     // 48 83 EC 28 48 8B 05 99 02
-    uint64_t pattern = search_pattern_in_section(hwin32k, ".text", "\x48\x83\xEC\x28\x48\x8B\x05\x99\x02", 9, 0x0);
+    uint64_t pattern = search_pattern_in_section(win32k_base, ".text", "\x48\x83\xEC\x28\x48\x8B\x05\x99\x02", 9, 0x0);
 
     int* displacement_ptr = (int*)(pattern + 7);
     uint64_t target_address = pattern + 7 + 4 + *displacement_ptr;
@@ -121,13 +121,11 @@ bool init_communication(void) {
 
     // Don't forget to detach
     KeUnstackDetachProcess(&apc);
-
-#ifdef ENABLE_COMMUNICATION_LOGGING
+    
     dbg_log_communication("Pattern at %p", pattern);
     dbg_log_communication("Target .data ptr stored at %p", target_address);
     dbg_log_communication("Target .data ptr value %p \n", orig_data_ptr);
     dbg_log("\n");
-#endif // ENABLE_COMMUNICATION_LOGGING
 
     PHYSICAL_ADDRESS max_addr = { 0 };
     uint64_t processor_count = KeQueryActiveProcessorCount(0);
@@ -183,35 +181,23 @@ bool init_communication(void) {
     }
 
     // Mark driver pages as non global
-    if(!instance->set_address_range_not_global(driver_base, driver_size, instance->get_kernel_cr3())) {
+    if(!instance->set_address_range_not_global(my_driver_base, my_driver_size, instance->get_kernel_cr3())) {
         dbg_log_communication("Failed to mark driver image range as non global");
         return false;
     }
-
+    
     // Then ensure that even if the system removes our driver memory from the system page tables
     // we are still mapped in ours
-    if (!ensure_address_space_mapping(driver_base, driver_size, instance->get_kernel_cr3())) {
+    if (!ensure_address_space_mapping(my_driver_base, my_driver_size, instance->get_kernel_cr3())) {
         dbg_log_communication("Failed to ensure driver address space mapping");
         return false;
     }
 
-    // Ensure mapping for all shellcodes (not the one that we overmap, cause there is no need to)
-    if (!ensure_address_space_mapping((uint64_t)global_returning_shellcode, PAGE_SIZE, instance->get_kernel_cr3())) {
-        dbg_log_communication("Failed to ensure driver address space mapping");
-        return false;
-    }
-    if (!ensure_address_space_mapping((uint64_t)global_outside_calling_shellcode, PAGE_SIZE, instance->get_kernel_cr3())) {
-        dbg_log_communication("Failed to ensure driver address space mapping");
-        return false;
-    }
-
-#ifdef ENABLE_COMMUNICATION_LOGGING
     dbg_log_communication("Executed jump gadget at %p\n", executed_pool);
     dbg_log_communication("Shown jump gadget at %p \n", shown_pool);
     dbg_log_communication("Returning gadget at %p \n", global_returning_shellcode);
     dbg_log_communication("Function calling gadget at %p \n", global_outside_calling_shellcode);
     dbg_log("\n");
-#endif
 
 #ifdef ENABLE_COMMUNICATION_PAGING_LOGGING
     log_paging_hierarchy((uint64_t)shown_pool, global_kernel_cr3);
@@ -226,7 +212,13 @@ bool init_communication(void) {
     global_data_ptr_address = (uint64_t*)target_address;
     orig_NtUserGetCPD = (orig_NtUserGetCPD_type)global_orig_data_ptr;
 
-    // Attach to winlogon.exe
+    // Check whether we have already hooked the data ptr
+    if (!is_data_ptr_valid(orig_data_ptr)) {
+        dbg_log_communication("Stopping initialization; Data ptr is already hooked!");
+        return false;
+    }
+
+    // Attachs to winlogon.exe
     KeStackAttachProcess((PRKPROCESS)winlogon_eproc, &apc);
 
     // Point it to our gadget

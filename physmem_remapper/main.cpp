@@ -35,12 +35,13 @@ void init() {
 		return;
 	}
 
+	
 	// Replace a .data ptr with a ptr to a write cr3 gadget that then calls our handler
 	if (!init_communication()) {
 		dbg_log_main("Failed to init communication");
 		return;
 	}
-
+	
 	dbg_log_main("Driver initialized successfully!");
 }
 
@@ -50,8 +51,8 @@ NTSTATUS driver_entry(uint64_t base, uint64_t size) {
 	dbg_log_entry("Driver at va %p - %p in system page tables", base, base + size);
 
 	// Safe driver info
-	driver_base = base;
-	driver_size = size;
+	my_driver_base = base;
+	my_driver_size = size;
 
 	// Try to avoid creating system threeads
 	init();
