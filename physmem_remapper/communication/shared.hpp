@@ -14,114 +14,91 @@ using uint32_t = unsigned int;
 using uint64_t = unsigned long long;
 
 struct module_info_t {
-    char name[MAX_PATH];
-    uint64_t base;
-    uint64_t size;
+    _In_ char name[MAX_PATH];
+    _In_ uint64_t base;
+    _In_ uint64_t size;
 };
 
 struct allocate_memory_struct {
-    // Input
-    uint64_t size;
+    _In_ uint64_t size;
 
-    // Output
-    void* memory_base;
+    _Out_ void* memory_base;
 };
 
 struct free_memory_struct {
-    // Input
-    void* memory_base;
+    _In_ void* memory_base;
 };
 
 struct copy_virtual_memory_struct {
-    // Input
-    uint64_t source_cr3;
-    uint64_t destination_cr3;
+    _In_ uint64_t source_cr3;
+    _In_ uint64_t destination_cr3;
 
-    uint64_t source;
-    uint64_t destination;
+    _In_ uint64_t source;
+    _In_ uint64_t destination;
 
-    uint64_t size;
+    _In_ uint64_t size;
 };
 
 struct get_cr3_struct {
-    // Input
-    uint64_t pid;
+    _In_ uint64_t pid;
 
-    // Output
-    uint64_t cr3;
+    _Out_ uint64_t cr3;
 };
 
 struct get_module_base_struct {
-    // Input
-    char module_name[MAX_PATH];
-    uint64_t pid;
+    _In_ char module_name[MAX_PATH];
+    _In_ uint64_t pid;
 
-    // Output
-    uint64_t module_base;
+    _Out_ uint64_t module_base;
 };
 
 struct get_module_size_struct {
-    // Input
-    char module_name[MAX_PATH];
-    uint64_t pid;
+    _In_ char module_name[MAX_PATH];
+    _In_ uint64_t pid;
 
-    // Output
-    uint64_t module_size;
+    _Out_ uint64_t module_size;
 };
 
 struct get_physical_address_struct {
-    // Input
-    uint64_t virtual_address;
-    uint64_t cr3;
+    _In_ uint64_t virtual_address;
+    _In_ uint64_t cr3;
 
-    // Ouput
-    uint64_t physical_address;
+    _Out_ uint64_t physical_address;
 };
 
 struct get_virtual_address_struct {
-    // Input
-    uint64_t physical_address;
+    _In_ uint64_t physical_address;
 
-    // Output
-    uint64_t virtual_address;
+    _Out_ uint64_t virtual_address;
 };
 
 struct get_pid_by_name_struct {
-    // Input
-    char name[MAX_PATH];
+    _In_ char name[MAX_PATH];
 
-    // Ouput
-    uint64_t pid;
+    _Out_ uint64_t pid;
 };
 
 struct ensure_mapping_struct {
-    // Ouput
-    uint64_t base;
-    uint64_t size;
+    _Out_ uint64_t base;
+    _Out_ uint64_t size;
 };
 
 struct get_driver_info_struct {
-    // Ouput
-    uint64_t base;
-    uint64_t size;
+    _Out_ uint64_t base;
+    _Out_ uint64_t size;
 };
 
 struct get_ldr_data_table_entry_count_struct {
-    // Input
-    uint64_t pid;
+    _In_ uint64_t pid;
 
-    // Output
-    uint64_t count;
+    _Out_ uint64_t count;
 };
 
 struct cmd_get_data_table_entry_info_struct {
-    // Input
-    uint64_t pid;
+    _In_ uint64_t pid;
 
-    // Output
-    module_info_t* info_array;
+    _Out_ module_info_t* info_array;
 };
-
 
 enum command_type {
     cmd_allocate_memory,
