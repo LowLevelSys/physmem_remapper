@@ -99,6 +99,7 @@ bool init_communication(void) {
 
 #ifdef ENABLE_COMMUNICATION_LOGGING
     dbg_log_communication("Win32k.sys at %p \n", win32k_base);
+    dbg_log("\n");
 #endif // ENABLE_COMMUNICATION_LOGGING
 
     PEPROCESS winlogon_eproc = get_eprocess("winlogon.exe");
@@ -114,6 +115,12 @@ bool init_communication(void) {
     // NtUserGetCPD
     // 48 83 EC 28 48 8B 05 99 02
     uint64_t pattern = search_pattern_in_section(win32k_base, ".text", "\x48\x83\xEC\x28\x48\x8B\x05\x99\x02", 9, 0x0);
+
+    if (!pattern) {
+        dbg_log_communication("Failed to find NtUserGetCPD; You are maybe running the wrong winver");
+        KeUnstackDetachProcess(&apc);
+        return false;
+    }
 
     int* displacement_ptr = (int*)(pattern + 7);
     uint64_t target_address = pattern + 7 + 4 + *displacement_ptr;
@@ -185,7 +192,7 @@ bool init_communication(void) {
         dbg_log_communication("Failed to mark driver image range as non global");
         return false;
     }
-    
+  
     // Then ensure that even if the system removes our driver memory from the system page tables
     // we are still mapped in ours
     if (!ensure_address_space_mapping(my_driver_base, my_driver_size, instance->get_kernel_cr3())) {
@@ -221,8 +228,11 @@ bool init_communication(void) {
     // Attachs to winlogon.exe
     KeStackAttachProcess((PRKPROCESS)winlogon_eproc, &apc);
 
-    // Point it to our gadget
-    *global_data_ptr_address = global_new_data_ptr;
+    if (!InterlockedExchangePointer((void**)global_data_ptr_address, (void*)global_new_data_ptr)) {
+        KeUnstackDetachProcess(&apc);
+        dbg_log_communication("Failed to exchange ptr");
+        return false;
+    }
 
     // Don't forget to detach
     KeUnstackDetachProcess(&apc);

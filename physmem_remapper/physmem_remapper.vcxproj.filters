@@ -49,9 +49,6 @@
     <ClCompile Include="physmem\physmem_experiment.cpp">
       <Filter>physmem\experiment</Filter>
     </ClCompile>
-    <ClCompile Include="communication\comm.cpp">
-      <Filter>communication</Filter>
-    </ClCompile>
     <ClCompile Include="communication\handler.cpp">
       <Filter>communication</Filter>
     </ClCompile>
@@ -63,6 +60,9 @@
     </ClCompile>
     <ClCompile Include="communication\shellcode_bakery.cpp">
       <Filter>communication\shellcode</Filter>
+    </ClCompile>
+    <ClCompile Include="communication\comm.cpp">
+      <Filter>communication</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

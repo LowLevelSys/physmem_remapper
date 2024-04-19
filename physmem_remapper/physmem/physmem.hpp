@@ -21,13 +21,13 @@
 #endif
 
 #ifdef ENABLE_GENERAL_LOGGING
-#define dbg_log_main(fmt, ...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[MAIN] " fmt, ##__VA_ARGS__)
+#define dbg_log_main(fmt, ...) dbg_log("[MAIN] " fmt, ##__VA_ARGS__)
 #else
 #define dbg_log_main(fmt, ...) (void)0
 #endif
 
 #ifdef ENTRY_LOGGING
-#define dbg_log_entry(fmt, ...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[ENTRY] " fmt, ##__VA_ARGS__)
+#define dbg_log_entry(fmt, ...) dbg_log("[ENTRY] " fmt, ##__VA_ARGS__)
 #else
 #define dbg_log_entry(fmt, ...) (void)0
 #endif

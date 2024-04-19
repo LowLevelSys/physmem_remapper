@@ -123,11 +123,10 @@ typedef struct {
 }address_space_switching_storing_region;
 
 // Definitions
-
 #define SKIP_ORIG_DATA_PTR 0x1337
 #define CALL_ORIG_DATA_PTR 0x7331
 
-// #define ENABLE_COMMUNICATION_LOGGING
+#define ENABLE_COMMUNICATION_LOGGING
 // #define ENABLE_HANDLER_LOGGING
 // #define ENABLE_EXTENSIVE_COMMUNICATION_TESTS
 // #define ENABLE_COMMUNICATION_PAGING_LOGGING
@@ -282,7 +281,7 @@ inline uintptr_t search_pattern_in_section(void* module_handle, const char* sect
         // Check if this is the section we are interested in
         if (crt::strncmp((const char*)sections[i].Name, section_name, IMAGE_SIZEOF_SHORT_NAME) == 0) {
             // Calculate the start address of the section
-            uint8_t* section_start = (uint8_t*)module_handle + sections[i].VirtualAddress;
+            uintptr_t section_start = (uintptr_t)module_handle + sections[i].VirtualAddress;
             uint32_t section_size = sections[i].Misc.VirtualSize;
 
             uintptr_t result = find_pattern_in_range((uintptr_t)section_start, section_size, pattern, pattern_size, wildcard);
