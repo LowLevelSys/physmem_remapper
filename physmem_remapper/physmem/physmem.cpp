@@ -260,6 +260,7 @@ uint64_t physmem::map_outside_physical_addr(uint64_t outside_pa, uint64_t* offse
     generated_virtual_address.pml4_idx = free_pml4_index;
     generated_virtual_address.pdpt_idx = NORMAL_PAGE_ENTRY;
     generated_virtual_address.pd_idx = NORMAL_PAGE_ENTRY;
+
     uint64_t pt_idx = find_free_pte_index(page_tables->pte_table[MEMORY_COPYING_SLOT]);
 
     if (!is_index_valid(pt_idx)) {

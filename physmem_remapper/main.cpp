@@ -29,19 +29,12 @@ void init() {
 		return;
 	}
 
-	// Define the physmem_test if you really want the test to be executed
-	if (!physmem_experiment()) {
-		dbg_log_main("Failed to successfully execute the physmem experiment");
-		return;
-	}
-
-	
 	// Replace a .data ptr with a ptr to a write cr3 gadget that then calls our handler
 	if (!init_communication()) {
 		dbg_log_main("Failed to init communication");
 		return;
 	}
-	
+
 	dbg_log_main("Driver initialized successfully!");
 }
 

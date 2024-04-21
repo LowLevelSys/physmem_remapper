@@ -1,10 +1,11 @@
 #include "gdt.hpp"
 
 bool check_cpu_gdt_allocation(per_vcpu_gdt_t* cpu_gdt) {
-	if (!cpu_gdt->ist1 || !cpu_gdt->ist1
+	if    (!cpu_gdt->ist1
 		|| !cpu_gdt->ist2 || !cpu_gdt->ist3
 		|| !cpu_gdt->ist4 || !cpu_gdt->ist5
 		|| !cpu_gdt->ist6 || !cpu_gdt->ist7
+
 		|| !cpu_gdt->rsp0 || !cpu_gdt->rsp1
 		|| !cpu_gdt->rsp2)
 		return false;

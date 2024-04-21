@@ -1,38 +1,91 @@
 #pragma once
+#include <immintrin.h>
+
+using uint8_t = unsigned char;
+using uint16_t = unsigned short;
+using uint32_t = unsigned int;
+using uint64_t = unsigned long long;
 
 
 namespace crt {
-    inline void* memset(void* src, int val, unsigned __int64 count) {
-        typedef unsigned char      uint8_t;
-        uint8_t* byte_src = reinterpret_cast<uint8_t*>(src);
+    inline void* memset(void* src, int val, size_t count) {
+        unsigned char* ptr = static_cast<unsigned char*>(src);
+        uint64_t wide_val = 0x0101010101010101ULL * static_cast<unsigned char>(val);
 
-        for (unsigned __int64 i = 0; i < count; ++i)
-            byte_src[i] = static_cast<uint8_t>(val);
+        // Handle any initial unaligned bytes
+        while (reinterpret_cast<uintptr_t>(ptr) % 16 != 0 && count > 0) {
+            *ptr++ = static_cast<unsigned char>(val);
+            --count;
+        }
+
+        // Set memory using 16-byte blocks
+        __m128i big_val = _mm_set1_epi8(static_cast<char>(val));
+        while (count >= 16) {
+            _mm_storeu_si128(reinterpret_cast<__m128i*>(ptr), big_val);
+            ptr += 16;
+            count -= 16;
+        }
+
+        // Handle remaining bytes with 8-byte transfers if possible
+        while (count >= 8) {
+            *reinterpret_cast<uint64_t*>(ptr) = wide_val;
+            ptr += 8;
+            count -= 8;
+        }
+
+        // Clean up any remaining bytes
+        while (count--) {
+            *ptr++ = static_cast<unsigned char>(val);
+        }
 
         return src;
     }
 
-    inline void* memmove(void* dest, const void* src, unsigned __int64 count) {
-        char* char_dest = (char*)dest;
-        char* char_src = (char*)src;
-        if ((char_dest <= char_src) || (char_dest >= (char_src + count))) {
-            while (count > 0) {
-                *char_dest = *char_src;
-                char_dest++;
-                char_src++;
-                count--;
+    inline void* memmove(void* dest, const void* src, size_t count) {
+        char* d = static_cast<char*>(dest);
+        const char* s = static_cast<const char*>(src);
+
+        if (d < s) {
+            // Forward copy
+            while (count >= 16) {
+                __m128i data = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s));
+                _mm_storeu_si128(reinterpret_cast<__m128i*>(d), data);
+                d += 16;
+                s += 16;
+                count -= 16;
+            }
+            while (count >= 8) {
+                *reinterpret_cast<uint64_t*>(d) = *reinterpret_cast<const uint64_t*>(s);
+                d += 8;
+                s += 8;
+                count -= 8;
+            }
+            while (count--) {
+                *d++ = *s++;
             }
         }
         else {
-            char_dest = (char*)dest + count - 1;
-            char_src = (char*)src + count - 1;
-            while (count > 0) {
-                *char_dest = *char_src;
-                char_dest--;
-                char_src--;
-                count--;
+            // Reverse copy
+            d += count;
+            s += count;
+            while (count >= 16) {
+                d -= 16;
+                s -= 16;
+                count -= 16;
+                __m128i data = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s));
+                _mm_storeu_si128(reinterpret_cast<__m128i*>(d), data);
+            }
+            while (count >= 8) {
+                d -= 8;
+                s -= 8;
+                count -= 8;
+                *reinterpret_cast<uint64_t*>(d) = *reinterpret_cast<const uint64_t*>(s);
+            }
+            while (count--) {
+                *--d = *--s;
             }
         }
+
         return dest;
     }
 
@@ -48,32 +101,30 @@ namespace crt {
         return 0;
     }
 
-    inline void* memcpy(void* dest, const void* src, unsigned __int64 count)
-    {
-        char* char_dest = (char*)dest;
-        char* char_src = (char*)src;
-        if ((char_dest <= char_src) || (char_dest >= (char_src + count)))
-        {
-            while (count > 0)
-            {
-                *char_dest = *char_src;
-                char_dest++;
-                char_src++;
-                count--;
-            }
+    inline void* memcpy(void* dest, const void* src, size_t count) {
+        auto* dst8 = static_cast<char*>(dest);
+        const auto* src8 = static_cast<const char*>(src);
+
+        while (count >= 32) {
+            __m256i data = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(src8));
+            _mm256_storeu_si256(reinterpret_cast<__m256i*>(dst8), data);
+            src8 += 32;
+            dst8 += 32;
+            count -= 32;
         }
-        else
-        {
-            char_dest = (char*)dest + count - 1;
-            char_src = (char*)src + count - 1;
-            while (count > 0)
-            {
-                *char_dest = *char_src;
-                char_dest--;
-                char_src--;
-                count--;
-            }
+
+        // Use 8-byte transfers for remaining data if any
+        while (count >= 8) {
+            *reinterpret_cast<uint64_t*>(dst8) = *reinterpret_cast<const uint64_t*>(src8);
+            src8 += 8;
+            dst8 += 8;
+            count -= 8;
         }
+
+        while (count--) {
+            *dst8++ = *src8++;
+        }
+
         return dest;
     }
 

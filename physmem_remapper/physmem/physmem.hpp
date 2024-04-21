@@ -98,6 +98,7 @@ public:
             dbg_log("[INVALID] Index: %d", index);
         }
         */
+
         return valid;
     }
 

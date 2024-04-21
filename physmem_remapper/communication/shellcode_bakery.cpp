@@ -9,86 +9,37 @@ namespace executed_gadgets {
     curr_tss->type = SEGMENT_DESCRIPTOR_TYPE_TSS_AVAILABLE;
     */
     uint8_t* generate_tss_available_gadget(uint8_t* gadget) {
-        uint32_t index = 0;
+        static const uint8_t precomputed_sequence[] = {
+            0x48, 0x83, 0xEC, 0x02, // sub rsp, 2
+            0x0F, 0x00, 0x0C, 0x24, // str [rsp]
+            0x31, 0xC0,             // xor eax, eax
+            0x66, 0x8B, 0x04, 0x24, // mov ax, [rsp]
+            0x48, 0xC1, 0xE8, 0x03, // shr rax, 3
+            0x25, 0xFF, 0x0F, 0x00, 0x00, // and eax, 0FFF
+            0x48, 0x83, 0xC4, 0x02, // add rsp, 2
+            0x89, 0xC0,             // mov eax, eax to clear upper 32 bits
+            0x6B, 0xC0, 0x08,       // imul eax, eax, 8
+            0x52,                   // push rdx
+            0x48, 0x89, 0xC2,       // mov rdx, rax
+            0x57,                   // push rdi
+            0x48, 0x81, 0xEC, 0x10, 0x00, 0x00, 0x00, // sub rsp, 16
+            0x48, 0x8D, 0x3C, 0x24, // lea rdi, [rsp]
+            0x0F, 0x01, 0x07,       // sgdt [rdi]
+            0x48, 0x8B, 0x47, 0x02, // mov rax, [rdi+2]
+            0x48, 0x81, 0xC4, 0x10, 0x00, 0x00, 0x00, // add rsp, 16
+            0x5F,                   // pop rdi
+            0x48, 0x01, 0xD0,       // add rax, rdx
+            0x5A,                   // pop rdx
+            0x52,                   // push rdx
+            0x8B, 0x50, 0x04,       // mov edx, [rax + 4]
+            0x81, 0xE2, 0xFF, 0xF0, 0xFF, 0xFF, // and edx, 0FFFFF0FFh
+            0x81, 0xCA, 0x00, 0x09, 0x00, 0x00, // or edx, 0x900h
+            0x89, 0x50, 0x04,       // mov [rax + 4], edx
+            0x5A                    // pop rdx
+        };
 
-        // sub rsp, 2
-        gadget[index++] = 0x48; gadget[index++] = 0x83; gadget[index++] = 0xEC; gadget[index++] = 0x02;
-
-        // str [rsp]
-        gadget[index++] = 0x0F; gadget[index++] = 0x00; gadget[index++] = 0x0C; gadget[index++] = 0x24;
-
-        // xor eax, eax
-        gadget[index++] = 0x31; gadget[index++] = 0xC0;
-
-        // mov ax, [rsp]
-        gadget[index++] = 0x66; gadget[index++] = 0x8B; gadget[index++] = 0x04; gadget[index++] = 0x24;
-
-        // shr rax, 3
-        gadget[index++] = 0x48; gadget[index++] = 0xC1; gadget[index++] = 0xE8; gadget[index++] = 0x03;
-
-        // and eax, 0FFF
-        gadget[index++] = 0x25; gadget[index++] = 0xFF; gadget[index++] = 0x0F; gadget[index++] = 0x00; gadget[index++] = 0x00;
-
-        // add rsp, 2
-        gadget[index++] = 0x48; gadget[index++] = 0x83; gadget[index++] = 0xC4; gadget[index++] = 0x02;
-
-        // mov eax, eax to clear upper 32 bits
-        gadget[index++] = 0x89; gadget[index++] = 0xC0;
-
-        // imul eax, eax, 8
-        gadget[index++] = 0x6B; gadget[index++] = 0xC0; gadget[index++] = 0x08;
-
-        // push rdx
-        gadget[index++] = 0x52;
-
-        // mov rdx, rax
-        gadget[index++] = 0x48; gadget[index++] = 0x89; gadget[index++] = 0xC2;
-
-        // push rdi
-        gadget[index++] = 0x57;
-
-        // sub rsp, 16
-        gadget[index++] = 0x48; gadget[index++] = 0x81; gadget[index++] = 0xEC; gadget[index++] = 0x10; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
-
-        // lea rdi, [rsp]
-        gadget[index++] = 0x48; gadget[index++] = 0x8D; gadget[index++] = 0x3C; gadget[index++] = 0x24;
-
-        // sgdt [rdi]
-        gadget[index++] = 0x0F; gadget[index++] = 0x01; gadget[index++] = 0x07;
-
-        // mov rax, [rdi+2]
-        gadget[index++] = 0x48; gadget[index++] = 0x8B; gadget[index++] = 0x47; gadget[index++] = 0x02;
-
-        // add rsp, 16
-        gadget[index++] = 0x48; gadget[index++] = 0x81; gadget[index++] = 0xC4; gadget[index++] = 0x10; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
-
-        // pop rdi
-        gadget[index++] = 0x5F;
-
-        // add rax, rdx
-        gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xD0;
-
-        // pop rdx
-        gadget[index++] = 0x5A;
-
-        // push rdx
-        gadget[index++] = 0x52;
-
-        // mov edx, [rax + 4]
-        gadget[index++] = 0x8B; gadget[index++] = 0x50; gadget[index++] = 0x04;
-
-        // and edx, 0FFFFF0FFh
-        gadget[index++] = 0x81; gadget[index++] = 0xE2; gadget[index++] = 0xFF; gadget[index++] = 0xF0; gadget[index++] = 0xFF; gadget[index++] = 0xFF;
-
-        // or edx, 0x900h
-        gadget[index++] = 0x81; gadget[index++] = 0xCA; gadget[index++] = 0x00; gadget[index++] = 0x09; gadget[index++] = 0x00; gadget[index++] = 0x00;
-
-        // mov [rax + 4], edx
-        gadget[index++] = 0x89; gadget[index++] = 0x50; gadget[index++] = 0x04;
-
-        // pop rdx
-        gadget[index++] = 0x5A;
-
+        crt::memcpy(gadget, precomputed_sequence, sizeof(precomputed_sequence));
+        uint32_t index = sizeof(precomputed_sequence);
         return &gadget[index];
     }
 
@@ -98,253 +49,158 @@ namespace executed_gadgets {
         uint8_t* generate_execute_jump_gadget_cr3(uint8_t* gadget, void* mem, uint64_t* my_cr3_storing_region) {
             uint32_t index = 0;
 
-            // cli
-            gadget[index++] = 0xfa;
+            // Precompiled sequence of instructions that are mostly static
+            static const uint8_t instruction_sequence[] = {
+                0xfa,                                   // cli
+                0x65, 0x48, 0x8B, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00, // mov rax, gs:[20h]
+                0x8b, 0x80, 0x24, 0x00, 0x00, 0x00,     // mov eax, [rax+24h]
+                0x89, 0xC0,                             // mov eax, eax (clear upper 32 bits)
+                0x6b, 0xc0, 0x08,                       // imul eax, eax, 8
+                0x52,                                   // push rdx
+                0x48, 0xba, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Mov rdx, imm64
+                0x48, 0x01, 0xd0,                       // add rax, rdx
+                0x0f, 0x20, 0xda,                       // mov rdx, cr3
+                0x48, 0x89, 0x10,                       // mov [rax], rdx
+                0x5a,                                   // pop rdx
+                // Mov rax, imm64 (cr3_value, placeholder for now)
+                0x48, 0xb8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x0f, 0x22, 0xd8,                       // mov cr3, rax
+                // Mov rax, imm64 (mem, placeholder for now)
+                0x48, 0xb8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x0f, 0x01, 0x38,                       // invlpg [rax]
+                0x0f, 0xae, 0xf0                        // mfence
+            };
 
-            // This is basically mov eax, curr_processor_number (Ty KeGetCurrentProcessorNumberEx)
-            // mov rax, gs:[20h]
-            gadget[index++] = 0x65; gadget[index++] = 0x48; gadget[index++] = 0x8B; gadget[index++] = 0x04;
-            gadget[index++] = 0x25; gadget[index++] = 0x20; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            crt::memcpy(gadget, instruction_sequence, sizeof(instruction_sequence));
 
-            // mov eax, [rax+24h]
-            gadget[index++] = 0x8b; gadget[index++] = 0x80; gadget[index++] = 0x24; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            *reinterpret_cast<uint64_t*>(&gadget[24]) = reinterpret_cast<uint64_t>(my_cr3_storing_region);
+            *reinterpret_cast<uint64_t*>(&gadget[44]) = physmem::get_physmem_instance()->get_my_cr3().flags;
+            *reinterpret_cast<uint64_t*>(&gadget[57]) = reinterpret_cast<uint64_t>(mem);
 
-            // Calculate the byte offset of base (using processor_index * 8)
-            // imul eax, eax, 8
-            gadget[index++] = 0x6b; gadget[index++] = 0xc0; gadget[index++] = 0x08;
-
-            // push rdx
-            gadget[index++] = 0x52;
-
-            // mov rdx, imm64
-            gadget[index++] = 0x48; gadget[index++] = 0xba;
-            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)my_cr3_storing_region;
-            index += 8;
-
-            // add rax, rdx
-            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
-
-            // mov rdx, cr3
-            gadget[index++] = 0x0f; gadget[index++] = 0x20; gadget[index++] = 0xda;
-
-            // mov [rax], rdx
-            gadget[index++] = 0x48; gadget[index++] = 0x89; gadget[index++] = 0x10;
-
-            // pop rdx
-            gadget[index++] = 0x5a;
-
-            // mov rax, imm64
-            gadget[index++] = 0x48; gadget[index++] = 0xb8;
-            uint64_t cr3_value = physmem::get_physmem_instance()->get_my_cr3().flags;
-            *(uint64_t*)&gadget[index] = cr3_value;
-            index += 8;
-
-            // mov cr3, rax
-            gadget[index++] = 0x0f; gadget[index++] = 0x22; gadget[index++] = 0xd8;
-
-            // mov rax, imm64
-            gadget[index++] = 0x48; gadget[index++] = 0xb8;
-            *(uint64_t*)&gadget[index] = (uint64_t)mem;
-            index += 8;
-
-            // invlpg [rax]
-            gadget[index++] = 0x0f; gadget[index++] = 0x01; gadget[index++] = 0x38;
-            // mfence
-            gadget[index++] = 0x0f; gadget[index++] = 0xae; gadget[index++] = 0xf0;
+            index += sizeof(instruction_sequence);
 
             return &gadget[index];
         }
 
-        // Generate the gdt changing part of the gadget
         uint8_t* generate_execute_jump_gadget_gdt(uint8_t* gadget, gdt_ptr_t* my_gdt_ptrs, gdt_ptr_t* my_gdt_storing_region) {
-            uint32_t index = 0;
 
-            // This is basically mov eax, curr_processor_number (Ty KeGetCurrentProcessorNumberEx)
-            // mov rax, gs:[20h]
-            gadget[index++] = 0x65; gadget[index++] = 0x48; gadget[index++] = 0x8B; gadget[index++] = 0x04;
-            gadget[index++] = 0x25; gadget[index++] = 0x20; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            // Precompiled instruction sequence with placeholders
+            static const uint8_t instruction_sequence[] = {
+                0x65, 0x48, 0x8B, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00, // mov rax, gs:[20h]
+                0x8B, 0x80, 0x24, 0x00, 0x00, 0x00,                   // mov eax, [rax+24h]
+                0x89, 0xC0,                                           // mov eax, eax (clear upper 32 bits)
+                0x48, 0x6B, 0xC0, 0x0A,                               // imul rax, rax, 10
+                0x52,                                                 // push rdx
+                0x50,                                                 // push rax
+                // Placeholder for mov rdx, imm64 my_gdt_storing_region
+                0x48, 0xBA, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x48, 0x01, 0xD0,                                     // add rax, rdx
+                0x0F, 0x01, 0x00,                                     // sgdt [rax]
+                0x58,                                                 // pop rax
+                // Placeholder for mov rdx, imm64 my_gdt_ptrs
+                0x48, 0xBA, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x48, 0x01, 0xD0,                                     // add rax, rdx
+                0x0F, 0x01, 0x10,                                     // lgdt [rax]
+                0x5A                                                  // pop rdx
+            };
 
-            // mov eax, [rax+24h]
-            gadget[index++] = 0x8B; gadget[index++] = 0x80; gadget[index++] = 0x24; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            crt::memcpy(gadget, instruction_sequence, sizeof(instruction_sequence));
+            uint32_t index = sizeof(instruction_sequence);
 
-            // Clear the top 32 bits of rax to ensure proper address calculation
-            // mov eax, eax
-            gadget[index++] = 0x89; gadget[index++] = 0xc0;
-
-            // Calculate the byte offset of base (using processor_index * 10)
-            // imul rax, rax, 10
-            gadget[index++] = 0x48; gadget[index++] = 0x6b;
-            gadget[index++] = 0xc0; gadget[index++] = 0x0a;
-
-            // push rdx
-            gadget[index++] = 0x52;
-
-            // push rax
-            gadget[index++] = 0x50;
-
-            // mov rdx, imm64
-            gadget[index++] = 0x48; gadget[index++] = 0xba;
-            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)my_gdt_storing_region;
-            index += 8;
-
-            // add rax, rdx
-            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
-
-            // sgdt [rax]
-            gadget[index++] = 0x0f; gadget[index++] = 0x01; gadget[index++] = 0x00;
-
-            // pop rax
-            gadget[index++] = 0x58;
-
-            // mov rdx, imm64
-            gadget[index++] = 0x48; gadget[index++] = 0xba;
-            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)my_gdt_ptrs;
-            index += 8;
-
-            // add rax, rdx
-            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
-
-            // lgdt [rax]
-            gadget[index++] = 0x0f; gadget[index++] = 0x01; gadget[index++] = 0x10;
-
-            // pop rdx
-            gadget[index++] = 0x5a;
+            // Fill in the placeholders with the actual addresses
+            *reinterpret_cast<uint64_t*>(&gadget[25]) = reinterpret_cast<uint64_t>(my_gdt_storing_region);
+            *reinterpret_cast<uint64_t*>(&gadget[42]) = reinterpret_cast<uint64_t>(my_gdt_ptrs);
 
             return &gadget[index];
         }
 
         // Call generate_tss_available_gadget, store tr, and load the new tr
         uint8_t* generate_execute_jump_gadget_tr(uint8_t* gadget, segment_selector* my_tr, segment_selector* my_tr_storing_region) {
-            uint32_t index = 0;
 
             gadget = generate_tss_available_gadget(gadget);
 
-            // This is basically mov eax, curr_processor_number (Ty KeGetCurrentProcessorNumberEx)
-            // mov rax, gs:[20h]
-            gadget[index++] = 0x65; gadget[index++] = 0x48; gadget[index++] = 0x8B; gadget[index++] = 0x04;
-            gadget[index++] = 0x25; gadget[index++] = 0x20; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            // Precompiled instruction sequence with placeholders
+            static const uint8_t instruction_sequence[] = {
+                0x65, 0x48, 0x8B, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00, // mov rax, gs:[20h]
+                0x8B, 0x80, 0x24, 0x00, 0x00, 0x00,                   // mov eax, [rax+24h]
+                0x89, 0xC0,                                           // mov eax, eax (clear upper 32 bits)
+                0x48, 0x6B, 0xC0, 0x02,                               // imul rax, rax, 2
+                0x52,                                                 // push rdx
+                0x50,                                                 // push rax
+                // Placeholder for mov rdx, imm64 my_tr_storing_region
+                0x48, 0xBA, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x48, 0x01, 0xD0,                                     // add rax, rdx
+                0x0F, 0x00, 0x08,                                     // str [rax]
+                0x58,                                                 // pop rax
+                // Placeholder for mov rdx, imm64 my_tr
+                0x48, 0xBA, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x48, 0x01, 0xD0,                                     // add rax, rdx
+                0x66, 0x8B, 0x00,                                     // mov ax, [rax]
+                0x66, 0x8B, 0xC0,                                     // mov ax, ax
+                0x0F, 0x00, 0xD8,                                     // ltr ax
+                0x5A                                                  // pop rdx
+            };
 
-            // mov eax, [rax+24h]
-            gadget[index++] = 0x8B; gadget[index++] = 0x80; gadget[index++] = 0x24; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            crt::memcpy(gadget, instruction_sequence, sizeof(instruction_sequence));
+            uint32_t index = sizeof(instruction_sequence);
 
-            // Clear the top 32 bits of rax to ensure proper address calculation
-            // mov eax, eax
-            gadget[index++] = 0x89; gadget[index++] = 0xc0;
-
-            // Calculate the byte offset of base (using processor_index * 2)
-            // imul rax, rax, 2
-            gadget[index++] = 0x48; gadget[index++] = 0x6b;
-            gadget[index++] = 0xc0; gadget[index++] = 0x02;
-
-            // push rdx
-            gadget[index++] = 0x52;
-
-            // push rax
-            gadget[index++] = 0x50;
-
-            // mov rdx, imm64
-            gadget[index++] = 0x48; gadget[index++] = 0xba;
-            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)my_tr_storing_region;
-            index += 8;
-
-            // add rax, rdx
-            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
-
-            // str [rax]
-            gadget[index++] = 0x0f; gadget[index++] = 0x00; gadget[index++] = 0x08;
-
-            // pop rax
-            gadget[index++] = 0x58;
-
-            // mov rdx, imm64
-            gadget[index++] = 0x48; gadget[index++] = 0xba;
-            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)my_tr;
-            index += 8;
-
-            // add rax, rdx
-            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
-
-
-            // mov ax, [rax]
-            gadget[index++] = 0x66; gadget[index++] = 0x8B; gadget[index++] = 0x00;
-
-            // mov ax, ax
-            gadget[index++] = 0x66; gadget[index++] = 0x8B; gadget[index++] = 0xC0;
-
-            // ltr ax
-            gadget[index++] = 0x0f; gadget[index++] = 0x00; gadget[index++] = 0xD8;
-
-            // pop rdx
-            gadget[index++] = 0x5a;
+            // Fill in the placeholders with the actual addresses
+            *reinterpret_cast<uint64_t*>(&gadget[25]) = reinterpret_cast<uint64_t>(my_tr_storing_region);
+            *reinterpret_cast<uint64_t*>(&gadget[42]) = reinterpret_cast<uint64_t>(my_tr);
 
             return &gadget[index];
         }
 
         // Generate the idt changing part of the gadget
         uint8_t* generate_execute_jump_gadget_idt(uint8_t* gadget, idt_ptr_t* my_idt, idt_ptr_t* my_idt_storing_region) {
-            uint32_t index = 0;
 
-            // This is basically mov eax, curr_processor_number (Ty KeGetCurrentProcessorNumberEx)
-            // mov rax, gs:[20h]
-            gadget[index++] = 0x65; gadget[index++] = 0x48; gadget[index++] = 0x8B; gadget[index++] = 0x04;
-            gadget[index++] = 0x25; gadget[index++] = 0x20; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            // Precompiled instruction sequence with placeholders for addresses
+            static const uint8_t instruction_sequence[] = {
+                0x65, 0x48, 0x8B, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00, // mov rax, gs:[20h]
+                0x8b, 0x80, 0x24, 0x00, 0x00, 0x00,                   // mov eax, [rax+24h]
+                0x89, 0xC0,                                           // mov eax, eax (clear upper 32 bits)
+                0x6b, 0xc0, 0x0a,                                     // imul eax, eax, 10
+                0x52,                                                 // push rdx
+                // Placeholder for mov rdx, imm64 my_idt_storing_region
+                0x48, 0xBA, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x48, 0x01, 0xD0,                                     // add rax, rdx
+                0x0f, 0x01, 0x08,                                     // sidt [rax]
+                // Placeholder for mov rax, imm64 my_idt
+                0x48, 0xB8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x0f, 0x01, 0x18,                                     // lidt [rax]
+                0x5A                                                  // pop rdx
+            };
 
-            // mov eax, [rax+24h]
-            gadget[index++] = 0x8b; gadget[index++] = 0x80; gadget[index++] = 0x24; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            crt::memcpy(gadget, instruction_sequence, sizeof(instruction_sequence));
+            uint32_t index = sizeof(instruction_sequence);
 
-            // Clear the top 32 bits of rax to ensure proper address calculation
-            // mov eax, eax
-            gadget[index++] = 0x89; gadget[index++] = 0xc0;
-
-            // Calculate the byte offset of base (using processor_index * 10)
-            // imul eax, eax, 10
-            gadget[index++] = 0x6b; gadget[index++] = 0xc0; gadget[index++] = 0x0a;
-
-            // push rdx
-            gadget[index++] = 0x52;
-
-            // mov rdx, imm64
-            gadget[index++] = 0x48; gadget[index++] = 0xba;
-            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)my_idt_storing_region;
-            index += 8;
-
-            // add rax, rdx
-            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
-
-            // sidt [rax]
-            gadget[index++] = 0x0f; gadget[index++] = 0x01; gadget[index++] = 0x08;
-
-            // mov rax, imm64
-            gadget[index++] = 0x48; gadget[index++] = 0xb8;
-            *(uint64_t*)&gadget[index] = (uint64_t)my_idt;
-            index += 8;
-
-            // lidt [rax]
-            gadget[index++] = 0x0f; gadget[index++] = 0x01; gadget[index++] = 0x18;
-
-            // pop rdx
-            gadget[index++] = 0x5a;
+            // Fill in the placeholders with actual addresses
+            *reinterpret_cast<uint64_t*>(&gadget[23]) = reinterpret_cast<uint64_t>(my_idt_storing_region);
+            *reinterpret_cast<uint64_t*>(&gadget[39]) = reinterpret_cast<uint64_t>(my_idt);
 
             return &gadget[index];
         }
 
         // Generate the jmp rax part of the gadget
         uint8_t* generate_execute_jump_gadget_end(uint8_t* gadget, uint64_t jmp_address) {
-            uint32_t index = 0;
+     
+            // Precompiled instruction sequence with placeholders for the jump address
+            static const uint8_t instruction_sequence[] = {
+                0xfb,                            // sti
+                0x48, 0xB8,                      // mov rax, imm64 (placeholder for jump address)
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0xFF, 0xE0                       // jmp rax
+            };
 
-            // sti
-            gadget[index++] = 0xfb;
+            crt::memcpy(gadget, instruction_sequence, sizeof(instruction_sequence));
+            uint32_t index = sizeof(instruction_sequence);
 
-            // mov rax, imm64
-            gadget[index++] = 0x48; gadget[index++] = 0xB8;
-            *(uint64_t*)&gadget[index] = jmp_address;
-            index += 8;
-
-            // jmp rax
-            gadget[index++] = 0xFF; gadget[index++] = 0xE0;
+            // Fill in the placeholder for the jump address
+            *reinterpret_cast<uint64_t*>(&gadget[3]) = jmp_address;
 
             return &gadget[index];
         }
+
 
         // Generates shellcode which jumps to our handler
         void generate_executed_jump_gadget(uint8_t* gadget, uint64_t* my_cr3_storing_region,
@@ -365,166 +221,111 @@ namespace executed_gadgets {
     namespace return_handler {
 
         uint8_t* generate_restore_cr3(uint8_t* gadget, uint64_t* my_cr3_storing_region) {
-            uint32_t index = 0;
-            // This is basically mov eax, curr_processor_number (Ty KeGetCurrentProcessorNumberEx)
-             // mov rax, gs:[20h]
-            gadget[index++] = 0x65; gadget[index++] = 0x48; gadget[index++] = 0x8B; gadget[index++] = 0x04;
-            gadget[index++] = 0x25; gadget[index++] = 0x20; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            static const uint8_t restore_cr3_instruction_sequence[] = {
+                0x65, 0x48, 0x8B, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00,  // mov rax, gs:[20h]
+                0x8B, 0x80, 0x24, 0x00, 0x00, 0x00,                    // mov eax, [rax+24h]
+                0x89, 0xC0,                                            // mov eax, eax (clear upper 32 bits)
+                0x6B, 0xC0, 0x08,                                      // imul eax, eax, 8
+                0x52,                                                  // push rdx
+                0x48, 0xBA,                                            // mov rdx, imm64 (placeholder for my_cr3_storing_region)
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x48, 0x01, 0xD0,                                      // add rax, rdx
+                0x48, 0x8B, 0x00,                                      // mov rax, [rax]
+                0x0F, 0x22, 0xD8,                                      // mov cr3, rax
+                0x5A                                                   // pop rdx
+            };
 
-            // mov eax, [rax+24h]
-            gadget[index++] = 0x8b; gadget[index++] = 0x80; gadget[index++] = 0x24; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            // Copy the precompiled instruction sequence into the gadget buffer
+            crt::memcpy(gadget, restore_cr3_instruction_sequence, sizeof(restore_cr3_instruction_sequence));
 
-            // Clear the top 32 bits of rax to ensure proper address calculation
-            // mov eax, eax
-            gadget[index++] = 0x89; gadget[index++] = 0xc0;
+            // Insert the actual memory address of my_cr3_storing_region into the instruction sequence
+            *reinterpret_cast<uint64_t*>(&gadget[23]) = reinterpret_cast<uint64_t>(my_cr3_storing_region);
 
-            // Calculate the byte offset of base (using processor_index * 8)
-            // imul eax, eax, 8
-            gadget[index++] = 0x6b; gadget[index++] = 0xc0; gadget[index++] = 0x08;
-
-            // push rdx
-            gadget[index++] = 0x52;
-
-            // mov rdx, imm64
-            gadget[index++] = 0x48; gadget[index++] = 0xba;
-            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)my_cr3_storing_region;
-            index += 8;
-
-            // add rax, rdx
-            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
-
-            // mov rax, [rax]
-            gadget[index++] = 0x48; gadget[index++] = 0x8b; gadget[index++] = 0x00;
-
-            // mov cr3, rax
-            gadget[index++] = 0x0f; gadget[index++] = 0x22; gadget[index++] = 0xd8;
-
-            // pop rdx
-            gadget[index++] = 0x5a;
+            // Calculate the next index position after the inserted sequence
+            uint32_t index = sizeof(restore_cr3_instruction_sequence);
 
             return &gadget[index];
         }
 
         uint8_t* generate_restore_gdt(uint8_t* gadget, gdt_ptr_t* my_gdt_storing_region) {
-            uint32_t index = 0;
-            // This is basically mov eax, curr_processor_number (Ty KeGetCurrentProcessorNumberEx)
-            // mov rax, gs:[20h]
-            gadget[index++] = 0x65; gadget[index++] = 0x48; gadget[index++] = 0x8b; gadget[index++] = 0x04;
-            gadget[index++] = 0x25; gadget[index++] = 0x20; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            static const uint8_t restore_gdt_instruction_sequence[] = {
+                0x65, 0x48, 0x8B, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00,  // mov rax, gs:[20h]
+                0x8B, 0x80, 0x24, 0x00, 0x00, 0x00,                    // mov eax, [rax+24h]
+                0x89, 0xC0,                                            // mov eax, eax (clear upper 32 bits)
+                0x6B, 0xC0, 0x0A,                                      // imul eax, eax, 10
+                0x52,                                                  // push rdx
+                0x48, 0xBA,                                            // mov rdx, imm64 (placeholder for my_gdt_storing_region)
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x48, 0x01, 0xD0,                                      // add rax, rdx
+                0x0F, 0x01, 0x10,                                      // lgdt [rax]
+                0x5A                                                   // pop rdx
+            };
 
-            // mov eax, [rax+24h]
-            gadget[index++] = 0x8b; gadget[index++] = 0x80; gadget[index++] = 0x24; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            // Copy the precompiled instruction sequence into the gadget buffer
+            crt::memcpy(gadget, restore_gdt_instruction_sequence, sizeof(restore_gdt_instruction_sequence));
 
-            // Clear the top 32 bits of rax to ensure proper address calculation
-            // mov eax, eax
-            gadget[index++] = 0x89; gadget[index++] = 0xc0;
+            // Insert the actual memory address of my_gdt_storing_region into the instruction sequence
+            *reinterpret_cast<uint64_t*>(&gadget[23]) = reinterpret_cast<uint64_t>(my_gdt_storing_region);
 
-            // Calculate the byte offset of base (using processor_index * 10)
-            // imul eax, eax, 10
-            gadget[index++] = 0x6b; gadget[index++] = 0xc0; gadget[index++] = 0x0a;
-
-            // push rdx
-            gadget[index++] = 0x52;
-
-            // mov rdx, imm64
-            gadget[index++] = 0x48; gadget[index++] = 0xba;
-            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)my_gdt_storing_region;
-            index += 8;
-
-            // add rax, rdx
-            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
-
-            // lgdt [rax]
-            gadget[index++] = 0x0f; gadget[index++] = 0x01; gadget[index++] = 0x10;
-
-            // pop rdx
-            gadget[index++] = 0x5a;
+            // Calculate the next index position after the inserted sequence
+            uint32_t index = sizeof(restore_gdt_instruction_sequence);
 
             return &gadget[index];
         }
 
         uint8_t* generate_restore_tr(uint8_t* gadget, segment_selector* my_tr_storing_region) {
-            uint32_t index = 0;
+            static const uint8_t restore_tr_instruction_sequence[] = {
+                0x65, 0x48, 0x8B, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00,  // mov rax, gs:[20h]
+                0x8B, 0x80, 0x24, 0x00, 0x00, 0x00,                    // mov eax, [rax+24h]
+                0x89, 0xC0,                                            // mov eax, eax (clear upper 32 bits)
+                0x6B, 0xC0, 0x02,                                      // imul eax, eax, 2
+                0x52,                                                  // push rdx
+                0x48, 0xBA,                                            // mov rdx, imm64 (placeholder for my_tr_storing_region)
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x48, 0x01, 0xD0,                                      // add rax, rdx
+                0x66, 0x8B, 0x00,                                      // mov ax, [rax]
+                0x66, 0x8B, 0xC0,                                      // mov ax, ax
+                0x0F, 0x00, 0xD8,                                      // ltr ax
+                0x5A                                                   // pop rdx
+            };
 
+            // First, we need to insert the TSS available gadget which sets up the TSS descriptor
             gadget = generate_tss_available_gadget(gadget);
 
-            // This is basically mov eax, curr_processor_number (Ty KeGetCurrentProcessorNumberEx)
-            // mov rax, gs:[20h]
-            gadget[index++] = 0x65; gadget[index++] = 0x48; gadget[index++] = 0x8b; gadget[index++] = 0x04;
-            gadget[index++] = 0x25; gadget[index++] = 0x20; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            // Now, copy the precompiled instruction sequence into the gadget buffer
+            crt::memcpy(gadget, restore_tr_instruction_sequence, sizeof(restore_tr_instruction_sequence));
 
-            // mov eax, [rax+24h]
-            gadget[index++] = 0x8b; gadget[index++] = 0x80; gadget[index++] = 0x24; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            // Insert the actual memory address of my_tr_storing_region into the instruction sequence
+            *reinterpret_cast<uint64_t*>(&gadget[23]) = reinterpret_cast<uint64_t>(my_tr_storing_region);
 
-            // Clear the top 32 bits of rax to ensure proper address calculation
-            // mov eax, eax
-            gadget[index++] = 0x89; gadget[index++] = 0xc0;
-
-            // Calculate the byte offset of base (using processor_index * 2)
-            // imul eax, eax, 2
-            gadget[index++] = 0x6b; gadget[index++] = 0xc0; gadget[index++] = 0x02;
-
-            // push rdx
-            gadget[index++] = 0x52;
-
-            // mov rdx, imm64
-            gadget[index++] = 0x48; gadget[index++] = 0xba;
-            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)my_tr_storing_region;
-            index += 8;
-
-            // add rax, rdx
-            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
-
-            // mov ax, [rax]
-            gadget[index++] = 0x66; gadget[index++] = 0x8b; gadget[index++] = 0x00;
-
-            // mov ax, ax
-            gadget[index++] = 0x66; gadget[index++] = 0x8b; gadget[index++] = 0xc0;
-
-            // ltr ax
-            gadget[index++] = 0x0f; gadget[index++] = 0x00; gadget[index++] = 0xd8;
-
-            // pop rdx
-            gadget[index++] = 0x5a;
+            // Calculate the next index position after the inserted sequence
+            uint32_t index = sizeof(restore_tr_instruction_sequence);
 
             return &gadget[index];
         }
 
         uint8_t* generate_restore_idt(uint8_t* gadget, idt_ptr_t* my_idt_storing_region) {
-            uint32_t index = 0;
+            static const uint8_t restore_idt_instruction_sequence[] = {
+                0x65, 0x48, 0x8B, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00,  // mov rax, gs:[20h]
+                0x8B, 0x80, 0x24, 0x00, 0x00, 0x00,                    // mov eax, [rax+24h]
+                0x89, 0xC0,                                            // mov eax, eax (clear upper 32 bits)
+                0x6B, 0xC0, 0x0A,                                      // imul eax, eax, 10
+                0x52,                                                  // push rdx
+                0x48, 0xBA,                                            // mov rdx, imm64 (placeholder for my_idt_storing_region)
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x48, 0x01, 0xD0,                                      // add rax, rdx
+                0x0F, 0x01, 0x18,                                      // lidt [rax]
+                0x5A                                                   // pop rdx
+            };
 
-            // This is basically mov eax, curr_processor_number (Ty KeGetCurrentProcessorNumberEx)
-            // mov rax, gs:[20h]
-            gadget[index++] = 0x65; gadget[index++] = 0x48; gadget[index++] = 0x8B; gadget[index++] = 0x04;
-            gadget[index++] = 0x25; gadget[index++] = 0x20; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            // Copy the precompiled instruction sequence into the gadget buffer
+            crt::memcpy(gadget, restore_idt_instruction_sequence, sizeof(restore_idt_instruction_sequence));
 
-            // mov eax, [rax+24h]
-            gadget[index++] = 0x8b; gadget[index++] = 0x80; gadget[index++] = 0x24; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            // Insert the actual memory address of my_idt_storing_region into the instruction sequence
+            *reinterpret_cast<uint64_t*>(&gadget[23]) = reinterpret_cast<uint64_t>(my_idt_storing_region);
 
-            // Clear the top 32 bits of rax to ensure proper address calculation
-            // mov eax, eax
-            gadget[index++] = 0x89; gadget[index++] = 0xc0;
-
-            // Calculate the byte offset of base (using processor_index * 10)
-            // imul eax, eax, 10
-            gadget[index++] = 0x6b; gadget[index++] = 0xc0; gadget[index++] = 0x0a;
-
-            // push rdx
-            gadget[index++] = 0x52;
-
-            // mov rdx, imm64
-            gadget[index++] = 0x48; gadget[index++] = 0xba;
-            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)my_idt_storing_region;
-            index += 8;
-
-            // add rax, rdx
-            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
-
-            // lidt [rax]
-            gadget[index++] = 0x0f; gadget[index++] = 0x01; gadget[index++] = 0x18;
-
-            // pop rdx
-            gadget[index++] = 0x5a;
+            // Calculate the next index position after the inserted sequence
+            uint32_t index = sizeof(restore_idt_instruction_sequence);
 
             return &gadget[index];
         }
@@ -580,401 +381,271 @@ namespace executed_gadgets {
     namespace gadget_util {
         // Gernate the main part of the gadget, which is writing to cr3 and forcing the page to be flushed
         uint8_t* generate_change_cr3(uint8_t* gadget, uint64_t* address_space_switching_cr3_storing_region) {
-            uint32_t index = 0;
-            // This is basically mov eax, curr_processor_number (Ty KeGetCurrentProcessorNumberEx)
-            // mov rax, gs:[20h]
-            gadget[index++] = 0x65; gadget[index++] = 0x48; gadget[index++] = 0x8B; gadget[index++] = 0x04;
-            gadget[index++] = 0x25; gadget[index++] = 0x20; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            static const uint8_t change_cr3_instruction_sequence[] = {
+                0x65, 0x48, 0x8B, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00,  // mov rax, gs:[20h]
+                0x8B, 0x80, 0x24, 0x00, 0x00, 0x00,                    // mov eax, [rax+24h]
+                0x89, 0xC0,                                            // mov eax, eax (clear upper 32 bits)
+                0x6B, 0xC0, 0x08,                                      // imul eax, eax, 8
+                0x52,                                                  // push rdx
+                0x48, 0xBA,                                            // mov rdx, imm64 (placeholder for cr3_storing_region)
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x48, 0x01, 0xD0,                                      // add rax, rdx
+                0x0F, 0x20, 0xDA,                                      // mov rdx, cr3
+                0x48, 0x89, 0x10,                                      // mov [rax], rdx
+                0x5A,                                                  // pop rdx
+                0x48, 0xB8,                                            // mov rax, imm64 (placeholder for cr3_value)
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x0F, 0x22, 0xD8                                       // mov cr3, rax
+            };
 
-            // mov eax, [rax+24h]
-            gadget[index++] = 0x8b; gadget[index++] = 0x80; gadget[index++] = 0x24; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            // Copy the precompiled instruction sequence into the gadget buffer
+            crt::memcpy(gadget, change_cr3_instruction_sequence, sizeof(change_cr3_instruction_sequence));
 
-            // Calculate the byte offset of base (using processor_index * 8)
-            // imul eax, eax, 8
-            gadget[index++] = 0x6b; gadget[index++] = 0xc0; gadget[index++] = 0x08;
-
-            // push rdx
-            gadget[index++] = 0x52;
-
-            // mov rdx, imm64
-            gadget[index++] = 0x48; gadget[index++] = 0xba;
-            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)address_space_switching_cr3_storing_region;
-            index += 8;
-
-            // add rax, rdx
-            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
-
-            // mov rdx, cr3
-            gadget[index++] = 0x0f; gadget[index++] = 0x20; gadget[index++] = 0xda;
-
-            // mov [rax], rdx
-            gadget[index++] = 0x48; gadget[index++] = 0x89; gadget[index++] = 0x10;
-
-            // pop rdx
-            gadget[index++] = 0x5a;
-
-            // mov rax, imm64
-            gadget[index++] = 0x48; gadget[index++] = 0xb8;
+            // Insert the actual memory addresses into the instruction sequence
+            *reinterpret_cast<uint64_t*>(&gadget[23]) = reinterpret_cast<uint64_t>(address_space_switching_cr3_storing_region);
             uint64_t cr3_value = physmem::get_physmem_instance()->get_kernel_cr3().flags;
-            *(uint64_t*)&gadget[index] = cr3_value;
-            index += 8;
+            *reinterpret_cast<uint64_t*>(&gadget[43]) = cr3_value;
 
-            // mov cr3, rax
-            gadget[index++] = 0x0f; gadget[index++] = 0x22; gadget[index++] = 0xd8;
+            // Calculate the next index position after the inserted sequence
+            uint32_t index = sizeof(change_cr3_instruction_sequence);
 
             return &gadget[index];
         }
 
         // Generate the gdt changing part of the gadget
         uint8_t* generate_change_gdt(uint8_t* gadget, gdt_ptr_t* kernel_gdt_storing_region, gdt_ptr_t* address_space_switching_gdt_storing_region) {
-            uint32_t index = 0;
+            static const uint8_t change_gdt_instruction_sequence[] = {
+                0x65, 0x48, 0x8B, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00,  // mov rax, gs:[20h]
+                0x8B, 0x80, 0x24, 0x00, 0x00, 0x00,                    // mov eax, [rax+24h]
+                0x89, 0xC0,                                            // mov eax, eax (clear upper 32 bits)
+                0x48, 0x6B, 0xC0, 0x0A,                                // imul rax, rax, 10
+                0x52,                                                  // push rdx
+                0x50,                                                  // push rax
+                0x48, 0xBA,                                            // mov rdx, imm64 (placeholder for address_space_switching_gdt_storing_region)
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x48, 0x01, 0xD0,                                      // add rax, rdx
+                0x0F, 0x01, 0x00,                                      // sgdt [rax]
+                0x58,                                                  // pop rax
+                0x48, 0xBA,                                            // mov rdx, imm64 (placeholder for kernel_gdt_storing_region)
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x48, 0x01, 0xD0,                                      // add rax, rdx
+                0x0F, 0x01, 0x10,                                      // lgdt [rax]
+                0x5A                                                   // pop rdx
+            };
 
-            // This is basically mov eax, curr_processor_number (Ty KeGetCurrentProcessorNumberEx)
-            // mov rax, gs:[20h]
-            gadget[index++] = 0x65; gadget[index++] = 0x48; gadget[index++] = 0x8B; gadget[index++] = 0x04;
-            gadget[index++] = 0x25; gadget[index++] = 0x20; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            // Copy the precompiled instruction sequence into the gadget buffer
+            crt::memcpy(gadget, change_gdt_instruction_sequence, sizeof(change_gdt_instruction_sequence));
 
-            // mov eax, [rax+24h]
-            gadget[index++] = 0x8B; gadget[index++] = 0x80; gadget[index++] = 0x24; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            // Insert the actual memory addresses into the instruction sequence
+            *reinterpret_cast<uint64_t*>(&gadget[25]) = reinterpret_cast<uint64_t>(address_space_switching_gdt_storing_region);
+            *reinterpret_cast<uint64_t*>(&gadget[42]) = reinterpret_cast<uint64_t>(kernel_gdt_storing_region);
 
-            // Clear the top 32 bits of rax to ensure proper address calculation
-            // mov eax, eax
-            gadget[index++] = 0x89; gadget[index++] = 0xc0;
-
-            // Calculate the byte offset of base (using processor_index * 10)
-            // imul rax, rax, 10
-            gadget[index++] = 0x48; gadget[index++] = 0x6b;
-            gadget[index++] = 0xc0; gadget[index++] = 0x0a;
-
-            // push rdx
-            gadget[index++] = 0x52;
-
-            // push rax
-            gadget[index++] = 0x50;
-
-            // mov rdx, imm64
-            gadget[index++] = 0x48; gadget[index++] = 0xba;
-            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)address_space_switching_gdt_storing_region;
-            index += 8;
-
-            // add rax, rdx
-            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
-
-            // sgdt [rax]
-            gadget[index++] = 0x0f; gadget[index++] = 0x01; gadget[index++] = 0x00;
-
-            // pop rax
-            gadget[index++] = 0x58;
-
-            // mov rdx, imm64
-            gadget[index++] = 0x48; gadget[index++] = 0xba;
-            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)kernel_gdt_storing_region;
-            index += 8;
-
-            // add rax, rdx
-            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
-
-            // lgdt [rax]
-            gadget[index++] = 0x0f; gadget[index++] = 0x01; gadget[index++] = 0x10;
-
-            // pop rdx
-            gadget[index++] = 0x5a;
+            // Calculate the next index position after the inserted sequence
+            uint32_t index = sizeof(change_gdt_instruction_sequence);
 
             return &gadget[index];
         }
 
         // Call generate_tss_available_gadget, store tr, and load the new tr
         uint8_t* generate_change_tr(uint8_t* gadget, segment_selector* kernel_tr_storing_region, segment_selector* address_space_switching_tr_storing_region) {
-            uint32_t index = 0;
-
+            // First call to prepare TSS as available
             gadget = generate_tss_available_gadget(gadget);
 
-            // This is basically mov eax, curr_processor_number (Ty KeGetCurrentProcessorNumberEx)
-            // mov rax, gs:[20h]
-            gadget[index++] = 0x65; gadget[index++] = 0x48; gadget[index++] = 0x8B; gadget[index++] = 0x04;
-            gadget[index++] = 0x25; gadget[index++] = 0x20; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            // Static instruction sequence
+            static const uint8_t change_tr_instruction_sequence[] = {
+                0x65, 0x48, 0x8B, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00,  // mov rax, gs:[20h]
+                0x8B, 0x80, 0x24, 0x00, 0x00, 0x00,                    // mov eax, [rax+24h]
+                0x89, 0xC0,                                            // mov eax, eax (clear upper 32 bits)
+                0x48, 0x6B, 0xC0, 0x02,                                // imul rax, rax, 2
+                0x52,                                                  // push rdx
+                0x50,                                                  // push rax
+                0x48, 0xBA,                                            // mov rdx, imm64 (placeholder for address_space_switching_tr_storing_region)
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x48, 0x01, 0xD0,                                      // add rax, rdx
+                0x0F, 0x00, 0x08,                                      // str [rax]
+                0x58,                                                  // pop rax
+                0x48, 0xBA,                                            // mov rdx, imm64 (placeholder for kernel_tr_storing_region)
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x48, 0x01, 0xD0,                                      // add rax, rdx
+                0x66, 0x8B, 0x00,                                      // mov ax, [rax]
+                0x66, 0x8B, 0xC0,                                      // mov ax, ax
+                0x0F, 0x00, 0xD8,                                      // ltr ax
+                0x5A                                                   // pop rdx
+            };
 
-            // mov eax, [rax+24h]
-            gadget[index++] = 0x8B; gadget[index++] = 0x80; gadget[index++] = 0x24; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            // Copy the precompiled instruction sequence into the gadget buffer
+            crt::memcpy(gadget, change_tr_instruction_sequence, sizeof(change_tr_instruction_sequence));
 
-            // Clear the top 32 bits of rax to ensure proper address calculation
-            // mov eax, eax
-            gadget[index++] = 0x89; gadget[index++] = 0xc0;
+            // Insert the actual memory addresses into the instruction sequence
+            *reinterpret_cast<uint64_t*>(&gadget[25]) = reinterpret_cast<uint64_t>(address_space_switching_tr_storing_region);
+            *reinterpret_cast<uint64_t*>(&gadget[42]) = reinterpret_cast<uint64_t>(kernel_tr_storing_region);
 
-            // Calculate the byte offset of base (using processor_index * 2)
-            // imul rax, rax, 2
-            gadget[index++] = 0x48; gadget[index++] = 0x6b;
-            gadget[index++] = 0xc0; gadget[index++] = 0x02;
-
-            // push rdx
-            gadget[index++] = 0x52;
-
-            // push rax
-            gadget[index++] = 0x50;
-
-            // mov rdx, imm64
-            gadget[index++] = 0x48; gadget[index++] = 0xba;
-            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)address_space_switching_tr_storing_region;
-            index += 8;
-
-            // add rax, rdx
-            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
-
-            // str [rax]
-            gadget[index++] = 0x0f; gadget[index++] = 0x00; gadget[index++] = 0x08;
-
-            // pop rax
-            gadget[index++] = 0x58;
-
-            // mov rdx, imm64
-            gadget[index++] = 0x48; gadget[index++] = 0xba;
-            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)kernel_tr_storing_region;
-            index += 8;
-
-            // add rax, rdx
-            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
-
-
-            // mov ax, [rax]
-            gadget[index++] = 0x66; gadget[index++] = 0x8B; gadget[index++] = 0x00;
-
-            // mov ax, ax
-            gadget[index++] = 0x66; gadget[index++] = 0x8B; gadget[index++] = 0xC0;
-
-            // ltr ax
-            gadget[index++] = 0x0f; gadget[index++] = 0x00; gadget[index++] = 0xD8;
-
-            // pop rdx
-            gadget[index++] = 0x5a;
+            // Calculate the next index position after the inserted sequence
+            uint32_t index = sizeof(change_tr_instruction_sequence);
 
             return &gadget[index];
         }
 
         // Generate the idt changing part of the gadget
         uint8_t* generate_change_idt(uint8_t* gadget, idt_ptr_t* kernel_idt_storing_region, idt_ptr_t* address_space_switching_idt_storing_region) {
-            uint32_t index = 0;
+            // Precompiled sequence of instructions that are mostly static
+            static const uint8_t change_idt_instruction_sequence[] = {
+                0x65, 0x48, 0x8B, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00,  // mov rax, gs:[20h]
+                0x8B, 0x80, 0x24, 0x00, 0x00, 0x00,                    // mov eax, [rax+24h]
+                0x89, 0xC0,                                            // mov eax, eax (clear upper 32 bits)
+                0x6B, 0xC0, 0x0A,                                      // imul eax, eax, 10
+                0x52,                                                  // push rdx
+                0x48, 0xBA,                                            // mov rdx, imm64 (placeholder for address_space_switching_idt_storing_region)
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x48, 0x01, 0xD0,                                      // add rax, rdx
+                0x0F, 0x01, 0x08,                                      // sidt [rax]
+                0x48, 0xB8,                                            // mov rax, imm64 (placeholder for kernel_idt_storing_region)
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x0F, 0x01, 0x18,                                      // lidt [rax]
+                0x5A                                                   // pop rdx
+            };
 
-            // This is basically mov eax, curr_processor_number (Ty KeGetCurrentProcessorNumberEx)
-            // mov rax, gs:[20h]
-            gadget[index++] = 0x65; gadget[index++] = 0x48; gadget[index++] = 0x8B; gadget[index++] = 0x04;
-            gadget[index++] = 0x25; gadget[index++] = 0x20; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            // Copy the precompiled instruction sequence into the gadget buffer
+            crt::memcpy(gadget, change_idt_instruction_sequence, sizeof(change_idt_instruction_sequence));
 
-            // mov eax, [rax+24h]
-            gadget[index++] = 0x8b; gadget[index++] = 0x80; gadget[index++] = 0x24; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            // Insert the actual memory addresses into the instruction sequence
+            *reinterpret_cast<uint64_t*>(&gadget[23]) = reinterpret_cast<uint64_t>(address_space_switching_idt_storing_region);
+            *reinterpret_cast<uint64_t*>(&gadget[39]) = reinterpret_cast<uint64_t>(kernel_idt_storing_region);
 
-            // Clear the top 32 bits of rax to ensure proper address calculation
-            // mov eax, eax
-            gadget[index++] = 0x89; gadget[index++] = 0xc0;
-
-            // Calculate the byte offset of base (using processor_index * 10)
-            // imul eax, eax, 10
-            gadget[index++] = 0x6b; gadget[index++] = 0xc0; gadget[index++] = 0x0a;
-
-            // push rdx
-            gadget[index++] = 0x52;
-
-            // mov rdx, imm64
-            gadget[index++] = 0x48; gadget[index++] = 0xba;
-            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)address_space_switching_idt_storing_region;
-            index += 8;
-
-            // add rax, rdx
-            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
-
-            // sidt [rax]
-            gadget[index++] = 0x0f; gadget[index++] = 0x01; gadget[index++] = 0x08;
-
-            // mov rax, imm64
-            gadget[index++] = 0x48; gadget[index++] = 0xb8;
-            *(uint64_t*)&gadget[index] = (uint64_t)kernel_idt_storing_region;
-            index += 8;
-
-            // lidt [rax]
-            gadget[index++] = 0x0f; gadget[index++] = 0x01; gadget[index++] = 0x18;
-
-            // pop rdx
-            gadget[index++] = 0x5a;
+            // Calculate the next index position after the inserted sequence
+            uint32_t index = sizeof(change_idt_instruction_sequence);
 
             return &gadget[index];
         }
 
         // Generate the function calling part of the gadget
         uint8_t* generate_call_function(uint8_t* gadget, void* function_address) {
-            uint32_t index = 0;
+            // Static instruction sequence with a placeholder for the function address
+            static const uint8_t call_function_instruction_sequence[] = {
+                0x48, 0xB8,                  // mov rax, imm64 (placeholder for function address)
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0xFF, 0xD0                   // call rax
+            };
 
-            // mov rax, imm64
-            gadget[index++] = 0x48; gadget[index++] = 0xb8;
-            function_address_pointer = (uint64_t*)&gadget[index];
-            *(uint64_t*)&gadget[index] = (uint64_t)function_address;
-            index += 8;
+            // Copy the static instruction sequence to the gadget buffer
+            crt::memcpy(gadget, call_function_instruction_sequence, sizeof(call_function_instruction_sequence));
 
-            // call rax
-            gadget[index++] = 0xff; gadget[index++] = 0xd0;
- 
+            // Set the function address in the placeholder position
+            *reinterpret_cast<uint64_t*>(&gadget[2]) = reinterpret_cast<uint64_t>(function_address);
+
+            // Calculate the index for the next insertion point after the current sequence
+            uint32_t index = sizeof(call_function_instruction_sequence);
+
             return &gadget[index];
         }
 
         uint8_t* generate_restore_cr3(uint8_t* gadget, uint64_t* address_space_switching_cr3_storing_region) {
-            uint32_t index = 0;
-            // This is basically mov eax, curr_processor_number (Ty KeGetCurrentProcessorNumberEx)
-             // mov rax, gs:[20h]
-            gadget[index++] = 0x65; gadget[index++] = 0x48; gadget[index++] = 0x8B; gadget[index++] = 0x04;
-            gadget[index++] = 0x25; gadget[index++] = 0x20; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            // Static instruction sequence with placeholders for dynamic addresses
+            static const uint8_t restore_cr3_instruction_sequence[] = {
+                0x65, 0x48, 0x8B, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00,  // mov rax, gs:[20h]
+                0x8B, 0x80, 0x24, 0x00, 0x00, 0x00,                    // mov eax, [rax+24h]
+                0x89, 0xC0,                                            // mov eax, eax (clear upper 32 bits)
+                0x6B, 0xC0, 0x08,                                      // imul eax, eax, 8
+                0x52,                                                  // push rdx
+                0x48, 0xBA,                                            // mov rdx, imm64 (placeholder for address_space_switching_cr3_storing_region)
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x48, 0x01, 0xD0,                                      // add rax, rdx
+                0x48, 0x8B, 0x00,                                      // mov rax, [rax]
+                0x0F, 0x22, 0xD8,                                      // mov cr3, rax
+                0x5A                                                   // pop rdx
+            };
 
-            // mov eax, [rax+24h]
-            gadget[index++] = 0x8b; gadget[index++] = 0x80; gadget[index++] = 0x24; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            // Copy the static instruction sequence to the gadget buffer
+            crt::memcpy(gadget, restore_cr3_instruction_sequence, sizeof(restore_cr3_instruction_sequence));
 
-            // Clear the top 32 bits of rax to ensure proper address calculation
-            // mov eax, eax
-            gadget[index++] = 0x89; gadget[index++] = 0xc0;
+            // Insert the actual memory address of address_space_switching_cr3_storing_region into the instruction sequence
+            *reinterpret_cast<uint64_t*>(&gadget[23]) = reinterpret_cast<uint64_t>(address_space_switching_cr3_storing_region);
 
-            // Calculate the byte offset of base (using processor_index * 8)
-            // imul eax, eax, 8
-            gadget[index++] = 0x6b; gadget[index++] = 0xc0; gadget[index++] = 0x08;
-
-            // push rdx
-            gadget[index++] = 0x52;
-
-            // mov rdx, imm64
-            gadget[index++] = 0x48; gadget[index++] = 0xba;
-            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)address_space_switching_cr3_storing_region;
-            index += 8;
-
-            // add rax, rdx
-            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
-
-            // mov rax, [rax]
-            gadget[index++] = 0x48; gadget[index++] = 0x8b; gadget[index++] = 0x00;
-
-            // mov cr3, rax
-            gadget[index++] = 0x0f; gadget[index++] = 0x22; gadget[index++] = 0xd8;
-
-            // pop rdx
-            gadget[index++] = 0x5a;
+            // Calculate the next index position after the inserted sequence
+            uint32_t index = sizeof(restore_cr3_instruction_sequence);
 
             return &gadget[index];
         }
 
         uint8_t* generate_restore_gdt(uint8_t* gadget, gdt_ptr_t* address_space_switching_gdt_storing_region) {
-            uint32_t index = 0;
-            // This is basically mov eax, curr_processor_number (Ty KeGetCurrentProcessorNumberEx)
-            // mov rax, gs:[20h]
-            gadget[index++] = 0x65; gadget[index++] = 0x48; gadget[index++] = 0x8b; gadget[index++] = 0x04;
-            gadget[index++] = 0x25; gadget[index++] = 0x20; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            static const uint8_t restore_gdt_instruction_sequence[] = {
+                0x65, 0x48, 0x8B, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00,  // mov rax, gs:[20h]
+                0x8B, 0x80, 0x24, 0x00, 0x00, 0x00,                    // mov eax, [rax+24h]
+                0x89, 0xC0,                                            // mov eax, eax (clear upper 32 bits)
+                0x6B, 0xC0, 0x0A,                                      // imul eax, eax, 10
+                0x52,                                                  // push rdx
+                0x48, 0xBA,                                            // mov rdx, imm64 (placeholder for address_space_switching_gdt_storing_region)
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x48, 0x01, 0xD0,                                      // add rax, rdx
+                0x0F, 0x01, 0x10,                                      // lgdt [rax]
+                0x5A                                                   // pop rdx
+            };
 
-            // mov eax, [rax+24h]
-            gadget[index++] = 0x8b; gadget[index++] = 0x80; gadget[index++] = 0x24; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            // Copy the static instruction sequence to the gadget buffer
+            crt::memcpy(gadget, restore_gdt_instruction_sequence, sizeof(restore_gdt_instruction_sequence));
 
-            // Clear the top 32 bits of rax to ensure proper address calculation
-            // mov eax, eax
-            gadget[index++] = 0x89; gadget[index++] = 0xc0;
+            // Insert the actual memory address of address_space_switching_gdt_storing_region into the instruction sequence
+            *reinterpret_cast<uint64_t*>(&gadget[23]) = reinterpret_cast<uint64_t>(address_space_switching_gdt_storing_region);
 
-            // Calculate the byte offset of base (using processor_index * 10)
-            // imul eax, eax, 10
-            gadget[index++] = 0x6b; gadget[index++] = 0xc0; gadget[index++] = 0x0a;
-
-            // push rdx
-            gadget[index++] = 0x52;
-
-            // mov rdx, imm64
-            gadget[index++] = 0x48; gadget[index++] = 0xba;
-            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)address_space_switching_gdt_storing_region;
-            index += 8;
-
-            // add rax, rdx
-            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
-
-            // lgdt [rax]
-            gadget[index++] = 0x0f; gadget[index++] = 0x01; gadget[index++] = 0x10;
-
-            // pop rdx
-            gadget[index++] = 0x5a;
+            // Calculate the next index position after the inserted sequence
+            uint32_t index = sizeof(restore_gdt_instruction_sequence);
 
             return &gadget[index];
         }
 
         uint8_t* generate_restore_tr(uint8_t* gadget, segment_selector* address_space_switching_tr_storing_region) {
-            uint32_t index = 0;
-
+            // Begin with the function to set the available TSS
             gadget = generate_tss_available_gadget(gadget);
 
-            // This is basically mov eax, curr_processor_number (Ty KeGetCurrentProcessorNumberEx)
-            // mov rax, gs:[20h]
-            gadget[index++] = 0x65; gadget[index++] = 0x48; gadget[index++] = 0x8b; gadget[index++] = 0x04;
-            gadget[index++] = 0x25; gadget[index++] = 0x20; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            static const uint8_t restore_tr_instruction_sequence[] = {
+                0x65, 0x48, 0x8B, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00,  // mov rax, gs:[20h]
+                0x8B, 0x80, 0x24, 0x00, 0x00, 0x00,                    // mov eax, [rax+24h]
+                0x89, 0xC0,                                            // mov eax, eax (clear upper 32 bits)
+                0x6B, 0xC0, 0x02,                                      // imul eax, eax, 2
+                0x52,                                                  // push rdx
+                0x48, 0xBA,                                            // mov rdx, imm64 (placeholder for address_space_switching_tr_storing_region)
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x48, 0x01, 0xD0,                                      // add rax, rdx
+                0x66, 0x8B, 0x00,                                      // mov ax, [rax]
+                0x66, 0x8B, 0xC0,                                      // mov ax, ax
+                0x0F, 0x00, 0xD8,                                      // ltr ax
+                0x5A                                                   // pop rdx
+            };
 
-            // mov eax, [rax+24h]
-            gadget[index++] = 0x8b; gadget[index++] = 0x80; gadget[index++] = 0x24; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            // Copy the static instruction sequence to the gadget buffer
+            crt::memcpy(gadget, restore_tr_instruction_sequence, sizeof(restore_tr_instruction_sequence));
 
-            // Clear the top 32 bits of rax to ensure proper address calculation
-            // mov eax, eax
-            gadget[index++] = 0x89; gadget[index++] = 0xc0;
+            // Insert the actual memory address of address_space_switching_tr_storing_region into the instruction sequence
+            *reinterpret_cast<uint64_t*>(&gadget[23]) = reinterpret_cast<uint64_t>(address_space_switching_tr_storing_region);
 
-            // Calculate the byte offset of base (using processor_index * 2)
-            // imul eax, eax, 2
-            gadget[index++] = 0x6b; gadget[index++] = 0xc0; gadget[index++] = 0x02;
-
-            // push rdx
-            gadget[index++] = 0x52;
-
-            // mov rdx, imm64
-            gadget[index++] = 0x48; gadget[index++] = 0xba;
-            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)address_space_switching_tr_storing_region;
-            index += 8;
-
-            // add rax, rdx
-            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
-
-            // mov ax, [rax]
-            gadget[index++] = 0x66; gadget[index++] = 0x8b; gadget[index++] = 0x00;
-
-            // mov ax, ax
-            gadget[index++] = 0x66; gadget[index++] = 0x8b; gadget[index++] = 0xc0;
-
-            // ltr ax
-            gadget[index++] = 0x0f; gadget[index++] = 0x00; gadget[index++] = 0xd8;
-
-            // pop rdx
-            gadget[index++] = 0x5a;
+            // Calculate the next index position after the inserted sequence
+            uint32_t index = sizeof(restore_tr_instruction_sequence);
 
             return &gadget[index];
         }
 
         uint8_t* generate_restore_idt(uint8_t* gadget, idt_ptr_t* address_space_switching_idt_storing_region) {
-            uint32_t index = 0;
+            static const uint8_t restore_idt_instruction_sequence[] = {
+                0x65, 0x48, 0x8B, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00,  // mov rax, gs:[20h]
+                0x8B, 0x80, 0x24, 0x00, 0x00, 0x00,                    // mov eax, [rax+24h]
+                0x89, 0xC0,                                            // mov eax, eax (clear upper 32 bits)
+                0x6B, 0xC0, 0x0A,                                      // imul eax, eax, 10
+                0x52,                                                  // push rdx
+                0x48, 0xBA,                                            // mov rdx, imm64 (placeholder for address_space_switching_idt_storing_region)
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x48, 0x01, 0xD0,                                      // add rax, rdx
+                0x0F, 0x01, 0x18,                                      // lidt [rax]
+                0x5A                                                   // pop rdx
+            };
 
-            // This is basically mov eax, curr_processor_number (Ty KeGetCurrentProcessorNumberEx)
-            // mov rax, gs:[20h]
-            gadget[index++] = 0x65; gadget[index++] = 0x48; gadget[index++] = 0x8B; gadget[index++] = 0x04;
-            gadget[index++] = 0x25; gadget[index++] = 0x20; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            // Copy the static instruction sequence into the gadget buffer
+            crt::memcpy(gadget, restore_idt_instruction_sequence, sizeof(restore_idt_instruction_sequence));
 
-            // mov eax, [rax+24h]
-            gadget[index++] = 0x8b; gadget[index++] = 0x80; gadget[index++] = 0x24; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+            // Insert the actual memory address of address_space_switching_idt_storing_region into the instruction sequence
+            *reinterpret_cast<uint64_t*>(&gadget[23]) = reinterpret_cast<uint64_t>(address_space_switching_idt_storing_region);
 
-            // Clear the top 32 bits of rax to ensure proper address calculation
-            // mov eax, eax
-            gadget[index++] = 0x89; gadget[index++] = 0xc0;
-
-            // Calculate the byte offset of base (using processor_index * 10)
-            // imul eax, eax, 10
-            gadget[index++] = 0x6b; gadget[index++] = 0xc0; gadget[index++] = 0x0a;
-
-            // push rdx
-            gadget[index++] = 0x52;
-
-            // mov rdx, imm64
-            gadget[index++] = 0x48; gadget[index++] = 0xba;
-            *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)address_space_switching_idt_storing_region;
-            index += 8;
-
-            // add rax, rdx
-            gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
-
-            // lidt [rax]
-            gadget[index++] = 0x0f; gadget[index++] = 0x01; gadget[index++] = 0x18;
-
-            // pop rdx
-            gadget[index++] = 0x5a;
+            // Calculate the next index position after the inserted sequence
+            uint32_t index = sizeof(restore_idt_instruction_sequence);
 
             return &gadget[index];
         }
@@ -1038,65 +709,37 @@ namespace executed_gadgets {
 namespace shown_gadgets {
     // Generates shellcode which will effectively just write to cr3
     void generate_shown_jump_gadget(uint8_t* gadget, void* mem, uint64_t* my_cr3_storing_region) {
-        uint32_t index = 0;
-        // cli
-        gadget[index++] = 0xfa;
+        static const uint8_t shown_jump_gadget_sequence[] = {
+            0xfa,                           // cli
+            0x65, 0x48, 0x8B, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00, // mov rax, gs:[20h]
+            0x8B, 0x80, 0x24, 0x00, 0x00, 0x00,                 // mov eax, [rax+24h]
+            0x89, 0xC0,                                         // mov eax, eax (clear upper 32 bits)
+            0x6B, 0xC0, 0x08,                                   // imul eax, eax, 8
+            0x52,                                               // push rdx
+            0x48, 0xBA,                                         // mov rdx, imm64 (placeholder for my_cr3_storing_region)
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x48, 0x01, 0xD0,                                   // add rax, rdx
+            0x0F, 0x20, 0xDA,                                   // mov rdx, cr3
+            0x48, 0x89, 0x10,                                   // mov [rax], rdx
+            0x5A,                                               // pop rdx
+            0x48, 0xB8,                                         // mov rax, imm64 (placeholder for cr3_value)
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x0F, 0x22, 0xD8,                                   // mov cr3, rax
+            0x48, 0xB8,                                         // mov rax, imm64 (placeholder for mem)
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x0F, 0x01, 0x38,                                   // invlpg [rax]
+            0x0F, 0xAE, 0xF0,                                   // mfence
+            0xC3                                                // ret
+        };
 
-        // This is basically mov eax, curr_processor_number (Ty KeGetCurrentProcessorNumberEx)
-        // mov rax, gs:[20h]
-        gadget[index++] = 0x65; gadget[index++] = 0x48; gadget[index++] = 0x8B; gadget[index++] = 0x04;
-        gadget[index++] = 0x25; gadget[index++] = 0x20; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
+        // Copy the precompiled instruction sequence into the gadget buffer
+        crt::memcpy(gadget, shown_jump_gadget_sequence, sizeof(shown_jump_gadget_sequence));
 
-        // mov eax, [rax+24h]
-        gadget[index++] = 0x8b; gadget[index++] = 0x80; gadget[index++] = 0x24; gadget[index++] = 0x00; gadget[index++] = 0x00; gadget[index++] = 0x00;
-
-        // Calculate the byte offset of base (using processor_index * 8)
-        // imul eax, eax, 8
-        gadget[index++] = 0x6b; gadget[index++] = 0xc0; gadget[index++] = 0x08;
-
-        // push rdx
-        gadget[index++] = 0x52;
-
-        // mov rdx, imm64
-        gadget[index++] = 0x48; gadget[index++] = 0xba;
-        *reinterpret_cast<uint64_t*>(&gadget[index]) = (uint64_t)my_cr3_storing_region;
-        index += 8;
-
-        // add rax, rdx
-        gadget[index++] = 0x48; gadget[index++] = 0x01; gadget[index++] = 0xd0;
-
-        // mov rdx, cr3
-        gadget[index++] = 0x0f; gadget[index++] = 0x20; gadget[index++] = 0xda;
-
-        // mov [rax], rdx
-        gadget[index++] = 0x48; gadget[index++] = 0x89; gadget[index++] = 0x10;
-
-        // pop rdx
-        gadget[index++] = 0x5a;
-
-        // mov rax, imm64
-        gadget[index++] = 0x48; gadget[index++] = 0xb8;
-        uint64_t cr3_value = physmem::get_physmem_instance()->get_my_cr3().flags;
-        *(uint64_t*)&gadget[index] = cr3_value;
-        index += 8;
-
-        // mov cr3, rax
-        gadget[index++] = 0x0f; gadget[index++] = 0x22; gadget[index++] = 0xd8;
-
-        // mov rax, imm64
-        gadget[index++] = 0x48; gadget[index++] = 0xb8;
-        *(uint64_t*)&gadget[index] = (uint64_t)mem;
-        index += 8;
-
-        // invlpg [rax]
-        gadget[index++] = 0x0f; gadget[index++] = 0x01; gadget[index++] = 0x38;
-        // mfence
-        gadget[index++] = 0x0f; gadget[index++] = 0xae; gadget[index++] = 0xf0;
-
-        // ret (return)
-        gadget[index++] = 0xc3;
+        // Insert the actual memory addresses into the placeholders
+        *reinterpret_cast<uint64_t*>(&gadget[24]) = reinterpret_cast<uint64_t>(my_cr3_storing_region);
+        *reinterpret_cast<uint64_t*>(&gadget[44]) = physmem::get_physmem_instance()->get_my_cr3().flags;
+        *reinterpret_cast<uint64_t*>(&gadget[57]) = reinterpret_cast<uint64_t>(mem);
     }
-
 };
 
 /*

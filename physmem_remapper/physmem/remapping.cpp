@@ -37,40 +37,6 @@ uint32_t get_free_pte_table_index(page_table_t* inst) {
 }
 
 bool log_paging_hierarchy(uint64_t va, paging_structs::cr3 target_cr3) {
-    auto log_pml4 = [](const char* name, const paging_structs::pml4e_64& entry, int index) {
-        if (!entry.present)
-            return;
-
-        dbg_log_remapping("%s - Present: %u, Write: %u, Supervisor: %u, Page Frame Number: %u, Execute Disable: %u, Index: %u",
-            name, entry.present, entry.write, entry.supervisor, entry.page_frame_number, entry.execute_disable, index);
-    };
-
-    auto log_pdpte = [](const char* name, const paging_structs::pdpte_64& entry, int index) {
-        if (!entry.present) {
-            return;
-        }
-
-        dbg_log_remapping("%s - Present: %u, Write: %u, Supervisor: %u, Large Page: %u, Page Frame Number: %u, Execute Disable: %u, Index: %u ",
-            name, entry.present, entry.write, entry.supervisor, entry.large_page, entry.page_frame_number, entry.execute_disable, index);
-    };
-
-    auto log_pde = [](const char* name, const paging_structs::pde_64& entry, int index) {
-        if (!entry.present) {
-            return;
-        }
-
-        dbg_log_remapping("%s - Present: %u, Write: %u, Supervisor: %u, Large Page: %u, Page Frame Number: %u, Execute Disable: %u, Index: %u",
-            name, entry.present, entry.write, entry.supervisor, entry.large_page, entry.page_frame_number, entry.execute_disable, index);
-    };
-
-    auto log_pte = [](const char* name, const paging_structs::pte_64& entry, int index) {
-        if (!entry.present) {
-            return;
-        }
-
-        dbg_log_remapping("%s - Present: %u, Write: %u, User/Supervisor: %u, Page Frame Number: %u, Index %u",
-            name, entry.present, entry.write, entry.supervisor, entry.page_frame_number, index);
-    };
 
     physmem* instance = physmem::get_physmem_instance();
     uint64_t dummy;
@@ -96,8 +62,6 @@ bool log_paging_hierarchy(uint64_t va, paging_structs::cr3 target_cr3) {
 
     paging_structs::pml4e_64 pml4_entry = pml4_table[vaddr.pml4_idx];
 
-    log_pml4("PML4E Entry", pml4_entry, vaddr.pml4_idx);
-
     paging_structs::pdpte_64* pdpt_table = (paging_structs::pdpte_64*)instance->map_outside_physical_addr(pml4_entry.page_frame_number << 12, &dummy);
     if (!pdpt_table) {
         dbg_log_remapping("PDPT table not found");
@@ -108,12 +72,10 @@ bool log_paging_hierarchy(uint64_t va, paging_structs::cr3 target_cr3) {
     paging_structs::pdpte_64 pdpt_entry = pdpt_table[vaddr.pdpt_idx];
 
     if (pdpt_entry.large_page) {
-        log_pdpte("Large PDPTE Entry", pdpt_table[vaddr.pdpt_idx], vaddr.pdpt_idx);
+        dbg_log_remapping("PDPt large page");
         __writecr3(curr);
-        return true;
+        return false;
     }
-
-    log_pdpte("PDPTE Entry", pdpt_table[vaddr.pdpt_idx], vaddr.pdpt_idx);
 
     paging_structs::pde_64* pde_table = (paging_structs::pde_64*)instance->map_outside_physical_addr(pdpt_entry.page_frame_number << 12, &dummy);
     if (!pde_table) {
@@ -125,12 +87,10 @@ bool log_paging_hierarchy(uint64_t va, paging_structs::cr3 target_cr3) {
     paging_structs::pde_64 pde_entry = pde_table[vaddr.pd_idx];
 
     if (pde_entry.large_page) {
-        log_pde("Large PDE Entry", pde_table[vaddr.pd_idx], vaddr.pd_idx);
+        dbg_log_remapping("PDE large page");
         __writecr3(curr);
-        return true;
+        return false;
     }
-
-    log_pde("PDE Entry", pde_table[vaddr.pd_idx], vaddr.pd_idx);
 
     paging_structs::pte_64* pte_table = (paging_structs::pte_64*)instance->map_outside_physical_addr(pde_entry.page_frame_number << 12, &dummy);
     if (!pte_table) {
@@ -140,7 +100,7 @@ bool log_paging_hierarchy(uint64_t va, paging_structs::cr3 target_cr3) {
     }
 
     paging_structs::pte_64 pte_entry = pte_table[vaddr.pt_idx];
-    log_pte("PTE Entry", pte_entry, vaddr.pt_idx);
+    DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "PFN: 0x%llx", pte_entry.page_frame_number);
 
     __writecr3(curr);
     return true;
@@ -246,26 +206,32 @@ void create_new_remapping_entry(remapped_va_t new_entry, page_table_t* instance)
 usable_until get_max_usable_mapping_level(remapped_va_t* remapping_entry, uint64_t target_address) {
     virtual_address target_va = { target_address };
 
-    if (!remapping_entry || !target_address)
+    if (!remapping_entry || !target_address) {
         return non_valid;
-
+    }
+        
     // Check whether the pml4 index overlaps
-    if (remapping_entry->remapped_va.pml4_idx != target_va.pml4_idx)
+    if (remapping_entry->remapped_va.pml4_idx != target_va.pml4_idx) {
         return non_valid;
-
+    }
+  
     // Check whether the pdpt index overlaps
-    if (remapping_entry->remapped_va.pdpt_idx != target_va.pdpt_idx)
+    if (remapping_entry->remapped_va.pdpt_idx != target_va.pdpt_idx) {
         return pdpt_table_valid;
+    }
 
-    if (remapping_entry->pdpte_slot.large_page)
+    if (remapping_entry->pdpte_slot.large_page) {
         return pdpt_table_valid;
+    }
 
     // Check whether the pde index overlaps
-    if (remapping_entry->remapped_va.pd_idx != target_va.pd_idx)
+    if (remapping_entry->remapped_va.pd_idx != target_va.pd_idx) {
         return pde_table_valid;
+    }
 
-    if (remapping_entry->pde_slot.large_page)
+    if (remapping_entry->pde_slot.large_page) {
         return pde_table_valid;
+    }
 
     return pte_table_valid;
 }
@@ -289,11 +255,40 @@ bool remap_to_target_virtual_address(uint64_t source_va, uint64_t target_va, pag
 
     // First walk the whole outside paging hierachy and check whether we can remap it
     paging_structs::pml4e_64* pml4_table = (paging_structs::pml4e_64*)instance->map_outside_physical_addr(outside_cr3.address_of_page_directory << 12, &dummy);
+
+    if(!pml4_table) {
+        __writecr3(curr);
+        dbg_log_remapping("Failed to map pml4_table");
+        return false;
+    }
+
+    if (!pml4_table[source_vaddr.pml4_idx].present || !pml4_table[source_vaddr.pml4_idx].page_frame_number) {
+        dbg_log_remapping("Source pml4 table corrupted");
+        return false;
+    }
+
     paging_structs::pdpte_64* pdpt_table = (paging_structs::pdpte_64*)instance->map_outside_physical_addr(pml4_table[source_vaddr.pml4_idx].page_frame_number << 12, &dummy);
+
+    if (!pdpt_table) {
+        __writecr3(curr);
+        dbg_log_remapping("Failed to map pdpt_table");
+        return false;
+    }
+
+    if (!pdpt_table[source_vaddr.pdpt_idx].present || !pdpt_table[source_vaddr.pdpt_idx].page_frame_number) {
+        dbg_log_remapping("Source pdpt table corrupted");
+        return false;
+    }
 
     if (pdpt_table[source_vaddr.pdpt_idx].large_page) {
 
         uint32_t free_pdpte_table_index = get_free_pdpt_table_index(page_tables);
+
+        if (!instance->is_index_valid(free_pdpte_table_index)) {
+            __writecr3(curr);
+            dbg_log_remapping("Failed to get free pdpt table");
+            return false;
+        }
 
         // Assign our tables
         paging_structs::pml4e_64* my_pml4_table = page_tables->pml4_table;
@@ -332,10 +327,27 @@ bool remap_to_target_virtual_address(uint64_t source_va, uint64_t target_va, pag
 
     paging_structs::pde_64* pde_table = (paging_structs::pde_64*)instance->map_outside_physical_addr(pdpt_table[source_vaddr.pdpt_idx].page_frame_number << 12, &dummy);
 
+    if (!pde_table) {
+        __writecr3(curr);
+        dbg_log_remapping("Failed to map pde_table");
+        return false;
+    }
+
+    if (!pde_table[source_vaddr.pd_idx].present || !pde_table[source_vaddr.pd_idx].page_frame_number) {
+        dbg_log_remapping("Source pde table corrupted");
+        return false;
+    }
+
     if (pde_table[source_vaddr.pd_idx].large_page) {
 
         uint32_t free_pdpte_table_index = get_free_pdpt_table_index(page_tables);
         uint32_t free_pde_table_index = get_free_pde_table_index(page_tables);
+
+        if (!instance->is_index_valid(free_pdpte_table_index) || !instance->is_index_valid(free_pde_table_index)) {
+            __writecr3(curr);
+            dbg_log_remapping("Failed to get free pdpt or pde table");
+            return false;
+        }
 
         // Assign our tables
         paging_structs::pml4e_64* my_pml4_table = page_tables->pml4_table;
@@ -382,10 +394,27 @@ bool remap_to_target_virtual_address(uint64_t source_va, uint64_t target_va, pag
 
     paging_structs::pte_64* pte_table = (paging_structs::pte_64*)instance->map_outside_physical_addr(pde_table[source_vaddr.pd_idx].page_frame_number << 12, &dummy);
 
+    if (!pte_table) {
+        __writecr3(curr);
+        dbg_log_remapping("Failed to map pte_table");
+        return false;
+    }
+
+    if (!pte_table[source_vaddr.pt_idx].present || !pte_table[source_vaddr.pt_idx].page_frame_number) {
+        dbg_log_remapping("Source pte table corrupted");
+        return false;
+    }
+
     // Then get all of the indexes that are necessary
     uint32_t free_pdpte_table_index = get_free_pdpt_table_index(page_tables);
     uint32_t free_pde_table_index = get_free_pde_table_index(page_tables);
     uint32_t free_pte_table_index = get_free_pte_table_index(page_tables);
+
+    if (!instance->is_index_valid(free_pdpte_table_index) || !instance->is_index_valid(free_pde_table_index) || !instance->is_index_valid(free_pte_table_index)) {
+        __writecr3(curr);
+        dbg_log_remapping("Failed to get table index");
+        return false;
+    }
 
     // Assign our tables
     paging_structs::pml4e_64* my_pml4_table = page_tables->pml4_table;
@@ -397,6 +426,11 @@ bool remap_to_target_virtual_address(uint64_t source_va, uint64_t target_va, pag
     uint64_t pdpt_phys = instance->get_outside_physical_addr((uint64_t)my_pdpt_table, instance->get_kernel_cr3());
     uint64_t pde_phys = instance->get_outside_physical_addr((uint64_t)my_pde_table, instance->get_kernel_cr3());
     uint64_t pte_phys = instance->get_outside_physical_addr((uint64_t)my_pte_table, instance->get_kernel_cr3());
+
+    if(!pdpt_phys || !pde_phys || !pte_phys) {
+        dbg_log_remapping("Failed to get table phys address");
+        return false;
+    }
 
     // Copy over the base of the outside paging hierachy to use a skeleton
     crt::memcpy(&my_pml4_table[target_vaddr.pml4_idx], &pml4_table[source_vaddr.pml4_idx], sizeof(paging_structs::pml4e_64));
@@ -463,7 +497,28 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
 
     // First walk the whole outside paging hierachy and check whether we can remap it
     paging_structs::pml4e_64* pml4_table = (paging_structs::pml4e_64*)instance->map_outside_physical_addr(outside_cr3.address_of_page_directory << 12, &dummy);
+
+    if (!pml4_table) {
+        dbg_log_remapping("Failed to map pml4_table");
+        return false;
+    }
+
+    if (!pml4_table[source_vaddr.pml4_idx].present || !pml4_table[source_vaddr.pml4_idx].page_frame_number) {
+        dbg_log_remapping("Source pml4 table corrupted");
+        return false;
+    }
+
     paging_structs::pdpte_64* pdpt_table = (paging_structs::pdpte_64*)instance->map_outside_physical_addr(pml4_table[source_vaddr.pml4_idx].page_frame_number << 12, &dummy);
+
+    if (!pdpt_table) {
+        dbg_log_remapping("Failed to map pdpt_table");
+        return false;
+    }
+
+    if (!pdpt_table[source_vaddr.pdpt_idx].present || !pdpt_table[source_vaddr.pdpt_idx].page_frame_number) {
+        dbg_log_remapping("Source pdpt table corrupted");
+        return false;
+    }
 
     if (pdpt_table[source_vaddr.pdpt_idx].large_page) {
         switch (max_usable) {
@@ -498,6 +553,16 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
 
     paging_structs::pde_64* pde_table = (paging_structs::pde_64*)instance->map_outside_physical_addr(pdpt_table[source_vaddr.pdpt_idx].page_frame_number << 12, &dummy);
 
+    if (!pde_table) {
+        dbg_log_remapping("Failed to map pde_table");
+        return false;
+    }
+
+    if (!pde_table[source_vaddr.pd_idx].present || !pde_table[source_vaddr.pd_idx].page_frame_number) {
+        dbg_log_remapping("Source pde table corrupted");
+        return false;
+    }
+
     if (pde_table[source_vaddr.pd_idx].large_page) {
         switch (max_usable) {
         case pdpt_table_valid: {
@@ -505,8 +570,20 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
 
             uint32_t free_pde_table_index = get_free_pde_table_index(page_tables);
 
+            if(!instance->is_index_valid(free_pde_table_index)) {
+                dbg_log_remapping("Failed to get pde table index");
+                return false;
+            }
+
             // Replace the pde table it points to
-            my_pdpt_table[target_vaddr.pdpt_idx].page_frame_number = instance->get_outside_physical_addr((uint64_t)&page_tables->pde_table[free_pde_table_index][0], instance->get_kernel_cr3()) >> 12;
+            uint64_t pde_table_pfn = instance->get_outside_physical_addr((uint64_t)&page_tables->pde_table[free_pde_table_index][0], instance->get_kernel_cr3()) >> 12;
+
+            if (!pde_table_pfn) {
+                dbg_log_remapping("Failed to get pde_table_pfn");
+                return false;
+            }
+
+            my_pdpt_table[target_vaddr.pdpt_idx].page_frame_number = pde_table_pfn;
 
             paging_structs::pde_64* my_pde_table = &page_tables->pde_table[free_pde_table_index][0];
 
@@ -568,6 +645,16 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
 
     paging_structs::pte_64* pte_table = (paging_structs::pte_64*)instance->map_outside_physical_addr(pde_table[source_vaddr.pd_idx].page_frame_number << 12, &dummy);
 
+    if (!pte_table) {
+        dbg_log_remapping("Failed to map pte_table");
+        return false;
+    }
+
+    if (!pte_table[source_vaddr.pt_idx].present || !pte_table[source_vaddr.pt_idx].page_frame_number) {
+        dbg_log_remapping("Source pte table corrupted");
+        return false;
+    }
+
     switch (max_usable) {
     case pdpt_table_valid: {
 
@@ -581,7 +668,14 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
         }
 
         // Replace the pde table it points to
-        my_pdpt_table[target_vaddr.pdpt_idx].page_frame_number = instance->get_outside_physical_addr((uint64_t)&page_tables->pde_table[free_pde_table_index][0], instance->get_kernel_cr3()) >> 12;
+        uint64_t pde_table_pfn = instance->get_outside_physical_addr((uint64_t)&page_tables->pde_table[free_pde_table_index][0], instance->get_kernel_cr3()) >> 12;
+
+        if (!pde_table_pfn) {
+            dbg_log_remapping("Failed to get pde_table_pfn");
+            return false;
+        }
+
+        my_pdpt_table[target_vaddr.pdpt_idx].page_frame_number = pde_table_pfn;
 
         paging_structs::pde_64* my_pde_table = &page_tables->pde_table[free_pde_table_index][0];
 
@@ -595,7 +689,14 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
         }
 
         // Replace the pte table it points to
-        my_pde_table[target_vaddr.pd_idx].page_frame_number = instance->get_outside_physical_addr((uint64_t)&page_tables->pte_table[free_pte_table_index][0], instance->get_kernel_cr3()) >> 12;
+        uint64_t pte_table_pfn = instance->get_outside_physical_addr((uint64_t)&page_tables->pte_table[free_pte_table_index][0], instance->get_kernel_cr3()) >> 12;
+
+        if (!pte_table_pfn) {
+            dbg_log_remapping("Failed to get pde_table_pfn");
+            return false;
+        }
+
+        my_pde_table[target_vaddr.pd_idx].page_frame_number = pte_table_pfn;
 
         paging_structs::pte_64* my_pte_table = &page_tables->pte_table[free_pte_table_index][0];
 
@@ -638,7 +739,14 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
         }
 
         // Replace the pte table it points to
-        my_pde_table[target_vaddr.pd_idx].page_frame_number = instance->get_outside_physical_addr((uint64_t)&page_tables->pte_table[free_pte_table_index][0], instance->get_kernel_cr3()) >> 12;
+        uint64_t pte_table_pfn = instance->get_outside_physical_addr((uint64_t)&page_tables->pte_table[free_pte_table_index][0], instance->get_kernel_cr3()) >> 12;
+
+        if (!pte_table_pfn) {
+            dbg_log_remapping("Failed to get pde_table_pfn");
+            return false;
+        }
+
+        my_pde_table[target_vaddr.pd_idx].page_frame_number = pte_table_pfn;
 
         paging_structs::pte_64* my_pte_table = &page_tables->pte_table[free_pte_table_index][0];
 

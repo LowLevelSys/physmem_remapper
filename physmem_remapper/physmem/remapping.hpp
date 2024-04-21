@@ -18,7 +18,7 @@ bool ensure_address_space_mapping(uint64_t base, uint64_t size, paging_structs::
 #define ENABLE_REMAPPING_LOGGING
 
 #ifdef ENABLE_REMAPPING_LOGGING
-#define dbg_log_remapping(fmt, ...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL,"[REMAPPING] " fmt, ##__VA_ARGS__)
+#define dbg_log_remapping(fmt, ...) dbg_log("[REMAPPING] " fmt, ##__VA_ARGS__)
 #else
 #define dbg_log_remapping(fmt, ...) (void)0
 #endif
