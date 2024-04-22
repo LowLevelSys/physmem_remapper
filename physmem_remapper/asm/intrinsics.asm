@@ -24,9 +24,28 @@ __read_cs proc
     ret
 __read_cs endp
 
+; Reads rip of the caller function into rax
 __read_rip proc
     mov rax, [rsp] ; mov the ret address into rax
     ret
 __read_rip endp
+
+; Stores interrupt flags
+_sti proc
+    sti
+    ret
+_sti endp
+
+; Clears interrupt flags
+_cli proc
+    cli 
+    ret
+_cli endp
+
+; Raises a #ud exception
+__ud2 proc
+    ud2 
+    ret
+__ud2 endp
 
 end

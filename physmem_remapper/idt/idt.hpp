@@ -25,3 +25,6 @@ inline idt_entry_t my_idt_table[256];
 
 bool init_idt(void);
 extern "C" void asm_non_maskable_interrupt_handler(void);
+extern "C" void asm_ecode_interrupt_handler(void);
+extern "C" void asm_no_ecode_interrupt_handler(void);
+extern "C" void __ud2(void);

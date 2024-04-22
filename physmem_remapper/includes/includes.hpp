@@ -15,6 +15,8 @@ using uint64_t = unsigned long long;
 extern "C" uint64_t __read_rax(void);
 extern "C" uint64_t __read_rcx(void);
 extern "C" uint64_t __read_rip(void);
+extern "C" void _sti(void);
+extern "C" void _cli(void);
 
 extern "C" void asm_handler(void);
 
