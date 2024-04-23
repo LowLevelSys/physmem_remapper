@@ -43,13 +43,13 @@ bool allocate_gdt_structures(void) {
 		return false;
 	}
 
-	crt::memset(my_gdt_state.cpu_gdt_state, 0, sizeof(per_vcpu_gdt_t) * my_gdt_state.core_count);
+	safe_crt::memset(my_gdt_state.cpu_gdt_state, 0, sizeof(per_vcpu_gdt_t) * my_gdt_state.core_count);
 
-	crt::memset(gdt_ptrs, 0, sizeof(gdt_ptr_t) * my_gdt_state.core_count);
-	crt::memset(gdt_storing_region, 0, sizeof(gdt_ptr_t) * my_gdt_state.core_count);
+	safe_crt::memset(gdt_ptrs, 0, sizeof(gdt_ptr_t) * my_gdt_state.core_count);
+	safe_crt::memset(gdt_storing_region, 0, sizeof(gdt_ptr_t) * my_gdt_state.core_count);
 
-	crt::memset(tr_ptrs, 0, sizeof(task_state_segment_64) * my_gdt_state.core_count);
-	crt::memset(tr_storing_region, 0, sizeof(task_state_segment_64) * my_gdt_state.core_count);
+	safe_crt::memset(tr_ptrs, 0, sizeof(task_state_segment_64) * my_gdt_state.core_count);
+	safe_crt::memset(tr_storing_region, 0, sizeof(task_state_segment_64) * my_gdt_state.core_count);
 
 
 	for (uint64_t i = 0; i < my_gdt_state.core_count; i++) {
@@ -128,8 +128,8 @@ bool init_gdt(void) {
 			return false;
 		}
 
-		crt::memcpy(&curr_tss, (void*)segment_base(gdt_value, tr), sizeof(task_state_segment_64));
-		crt::memcpy(&curr_gdt_state.my_gdt, (void*)(gdt_value.base), gdt_value.limit * 8);
+		safe_crt::memcpy(&curr_tss, (void*)segment_base(gdt_value, tr), sizeof(task_state_segment_64));
+		safe_crt::memcpy(&curr_gdt_state.my_gdt, (void*)(gdt_value.base), gdt_value.limit * 8);
 
 		// Point our gdt at the tr index to our tss
 		tss_addr base = (tss_addr)&curr_gdt_state.my_tss;

@@ -197,7 +197,7 @@ void create_new_remapping_entry(remapped_va_t new_entry, page_table_t* instance)
             continue;
 
         // Copy in the new entry
-        crt::memcpy(curr_entry, &new_entry, sizeof(remapped_va_t));
+        safe_crt::memcpy(curr_entry, &new_entry, sizeof(remapped_va_t));
         break;
     }
 }
@@ -298,12 +298,12 @@ bool remap_to_target_virtual_address(uint64_t source_va, uint64_t target_va, pag
         uint64_t pdpt_phys = instance->get_outside_physical_addr((uint64_t)my_pdpt_table, instance->get_kernel_cr3());
 
         // Copy over the base of the outside paging hierachy to use a skeleton
-        crt::memcpy(&my_pml4_table[target_vaddr.pml4_idx], &pml4_table[source_vaddr.pml4_idx], sizeof(paging_structs::pml4e_64));
-        crt::memcpy(my_pdpt_table, pdpt_table, sizeof(paging_structs::pdpte_64) * 512);
+        safe_crt::memcpy(&my_pml4_table[target_vaddr.pml4_idx], &pml4_table[source_vaddr.pml4_idx], sizeof(paging_structs::pml4e_64));
+        safe_crt::memcpy(my_pdpt_table, pdpt_table, sizeof(paging_structs::pdpte_64) * 512);
 
         // Replace where the page tables point to (the pfn; also in the pdpt level we copy the whole entry because the source and target entry might be in the same table)
         my_pml4_table[target_vaddr.pml4_idx].page_frame_number = pdpt_phys >> 12;
-        crt::memcpy(&my_pdpt_table[target_vaddr.pdpt_idx], &pdpt_table[source_vaddr.pdpt_idx], sizeof(paging_structs::pdpte_1gb_64));
+        safe_crt::memcpy(&my_pdpt_table[target_vaddr.pdpt_idx], &pdpt_table[source_vaddr.pdpt_idx], sizeof(paging_structs::pdpte_1gb_64));
 
         my_pdpt_table[target_vaddr.pdpt_idx].present = true;
         my_pdpt_table[target_vaddr.pdpt_idx].write = true;
@@ -359,14 +359,14 @@ bool remap_to_target_virtual_address(uint64_t source_va, uint64_t target_va, pag
         uint64_t pde_phys = instance->get_outside_physical_addr((uint64_t)my_pde_table, instance->get_kernel_cr3());
 
         // Copy over the base of the outside paging hierachy to use a skeleton
-        crt::memcpy(&my_pml4_table[target_vaddr.pml4_idx], &pml4_table[source_vaddr.pml4_idx], sizeof(paging_structs::pml4e_64));
-        crt::memcpy(my_pdpt_table, pdpt_table, sizeof(paging_structs::pdpte_64) * 512);
-        crt::memcpy(my_pde_table, pde_table, sizeof(paging_structs::pde_64) * 512);
+        safe_crt::memcpy(&my_pml4_table[target_vaddr.pml4_idx], &pml4_table[source_vaddr.pml4_idx], sizeof(paging_structs::pml4e_64));
+        safe_crt::memcpy(my_pdpt_table, pdpt_table, sizeof(paging_structs::pdpte_64) * 512);
+        safe_crt::memcpy(my_pde_table, pde_table, sizeof(paging_structs::pde_64) * 512);
 
         // Replace where the page tables point to (the pfn; also in the pd level we copy the whole entry because the source and target entry might be in the same table)
         my_pml4_table[target_vaddr.pml4_idx].page_frame_number = pdpt_phys >> 12;
         my_pdpt_table[target_vaddr.pdpt_idx].page_frame_number = pde_phys >> 12;
-        crt::memcpy(&my_pde_table[target_vaddr.pd_idx], &pde_table[source_vaddr.pd_idx], sizeof(paging_structs::pde_2mb_64));
+        safe_crt::memcpy(&my_pde_table[target_vaddr.pd_idx], &pde_table[source_vaddr.pd_idx], sizeof(paging_structs::pde_2mb_64));
 
         // Ensure it is present and write
         my_pde_table[target_vaddr.pd_idx].present = true;
@@ -433,16 +433,16 @@ bool remap_to_target_virtual_address(uint64_t source_va, uint64_t target_va, pag
     }
 
     // Copy over the base of the outside paging hierachy to use a skeleton
-    crt::memcpy(&my_pml4_table[target_vaddr.pml4_idx], &pml4_table[source_vaddr.pml4_idx], sizeof(paging_structs::pml4e_64));
-    crt::memcpy(my_pdpt_table, pdpt_table, sizeof(paging_structs::pdpte_64) * 512);
-    crt::memcpy(my_pde_table, pde_table, sizeof(paging_structs::pde_64) * 512);
-    crt::memcpy(my_pte_table, pte_table, sizeof(paging_structs::pte_64) * 512);
+    safe_crt::memcpy(&my_pml4_table[target_vaddr.pml4_idx], &pml4_table[source_vaddr.pml4_idx], sizeof(paging_structs::pml4e_64));
+    safe_crt::memcpy(my_pdpt_table, pdpt_table, sizeof(paging_structs::pdpte_64) * 512);
+    safe_crt::memcpy(my_pde_table, pde_table, sizeof(paging_structs::pde_64) * 512);
+    safe_crt::memcpy(my_pte_table, pte_table, sizeof(paging_structs::pte_64) * 512);
 
     // Replace where the page tables point to (the pfn; also in the pt level we copy the whole entry because the source and target entry might be in the same table)
     my_pml4_table[target_vaddr.pml4_idx].page_frame_number = pdpt_phys >> 12;
     my_pdpt_table[target_vaddr.pdpt_idx].page_frame_number = pde_phys >> 12;
     my_pde_table[target_vaddr.pd_idx].page_frame_number = pte_phys >> 12;
-    crt::memcpy(&my_pte_table[target_vaddr.pt_idx], &pte_table[source_vaddr.pt_idx], sizeof(paging_structs::pte_64));
+    safe_crt::memcpy(&my_pte_table[target_vaddr.pt_idx], &pte_table[source_vaddr.pt_idx], sizeof(paging_structs::pte_64));
 
     // Ensure it is present and write
     my_pte_table[target_vaddr.pt_idx].present = true;
@@ -526,7 +526,7 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
         case pdpt_table_valid: {
             paging_structs::pdpte_64* my_pdpt_table = &page_tables->pdpt_table[remapping_status->pdpte_slot.slot][0];
 
-            crt::memcpy(&my_pdpt_table[target_vaddr.pdpt_idx], &pdpt_table[source_vaddr.pdpt_idx], sizeof(paging_structs::pdpte_1gb_64));
+            safe_crt::memcpy(&my_pdpt_table[target_vaddr.pdpt_idx], &pdpt_table[source_vaddr.pdpt_idx], sizeof(paging_structs::pdpte_1gb_64));
 
             // Create a new entry for this mapping
             remapped_va_t new_entry = { 0 };
@@ -588,10 +588,10 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
             paging_structs::pde_64* my_pde_table = &page_tables->pde_table[free_pde_table_index][0];
 
             // Copy the Pde table
-            crt::memcpy(my_pde_table, pde_table, sizeof(paging_structs::pde_64) * 512);
+            safe_crt::memcpy(my_pde_table, pde_table, sizeof(paging_structs::pde_64) * 512);
 
             // Copy the specific entry just in case source and dst are on same pde table
-            crt::memcpy(&my_pde_table[target_vaddr.pd_idx], &pde_table[source_vaddr.pd_idx], sizeof(paging_structs::pde_2mb_64));
+            safe_crt::memcpy(&my_pde_table[target_vaddr.pd_idx], &pde_table[source_vaddr.pd_idx], sizeof(paging_structs::pde_2mb_64));
 
             // Create a new entry for this mapping
             remapped_va_t new_entry = { 0 };
@@ -615,7 +615,7 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
             paging_structs::pde_64* my_pde_table = &page_tables->pde_table[remapping_status->pde_slot.slot][0];
 
             // Copy the specific entry just in case source and dst are on same pde table
-            crt::memcpy(&my_pde_table[target_vaddr.pd_idx], &pde_table[source_vaddr.pd_idx], sizeof(paging_structs::pde_64));
+            safe_crt::memcpy(&my_pde_table[target_vaddr.pd_idx], &pde_table[source_vaddr.pd_idx], sizeof(paging_structs::pde_64));
 
             // Create a new entry for this mapping
             remapped_va_t new_entry = { 0 };
@@ -680,7 +680,7 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
         paging_structs::pde_64* my_pde_table = &page_tables->pde_table[free_pde_table_index][0];
 
         // Copy the Pde table
-        crt::memcpy(my_pde_table, pde_table, sizeof(paging_structs::pde_64) * 512);
+        safe_crt::memcpy(my_pde_table, pde_table, sizeof(paging_structs::pde_64) * 512);
         uint32_t free_pte_table_index = get_free_pte_table_index(page_tables);
         if (!instance->is_index_valid(free_pte_table_index)) {
             dbg_log_remapping("Failed to get free pde index");
@@ -701,10 +701,10 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
         paging_structs::pte_64* my_pte_table = &page_tables->pte_table[free_pte_table_index][0];
 
         // Copy the Pte table
-        crt::memcpy(my_pte_table, pte_table, sizeof(paging_structs::pte_64) * 512);
+        safe_crt::memcpy(my_pte_table, pte_table, sizeof(paging_structs::pte_64) * 512);
 
         // Copy the specific entry just in case source and dst are on same pte table
-        crt::memcpy(&my_pte_table[target_vaddr.pt_idx], &pte_table[source_vaddr.pt_idx], sizeof(paging_structs::pte_64));
+        safe_crt::memcpy(&my_pte_table[target_vaddr.pt_idx], &pte_table[source_vaddr.pt_idx], sizeof(paging_structs::pte_64));
 
         // Create a new entry for this mapping
         remapped_va_t new_entry = { 0 };
@@ -751,10 +751,10 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
         paging_structs::pte_64* my_pte_table = &page_tables->pte_table[free_pte_table_index][0];
 
         // Copy the Pte table
-        crt::memcpy(my_pte_table, pte_table, sizeof(paging_structs::pte_64) * 512);
+        safe_crt::memcpy(my_pte_table, pte_table, sizeof(paging_structs::pte_64) * 512);
 
         // Copy the specific entry just in case source and dst are on same pte table
-        crt::memcpy(&my_pte_table[target_vaddr.pt_idx], &pte_table[source_vaddr.pt_idx], sizeof(paging_structs::pte_64));
+        safe_crt::memcpy(&my_pte_table[target_vaddr.pt_idx], &pte_table[source_vaddr.pt_idx], sizeof(paging_structs::pte_64));
 
         // Create a new entry for this mapping
         remapped_va_t new_entry = { 0 };
@@ -781,7 +781,7 @@ bool remap_to_target_virtual_address_with_previous_mapping(uint64_t source_va, u
 
         // Everything up until to the pte table is already done; We only need to replace a pte entry
         paging_structs::pte_64* my_pte_table = &page_tables->pte_table[remapping_status->pte_slot][0];
-        crt::memcpy(&my_pte_table[target_vaddr.pt_idx], &pte_table[source_vaddr.pt_idx], sizeof(paging_structs::pte_64));
+        safe_crt::memcpy(&my_pte_table[target_vaddr.pt_idx], &pte_table[source_vaddr.pt_idx], sizeof(paging_structs::pte_64));
 
         // Create a new entry for this mapping
         remapped_va_t new_entry = { 0 };

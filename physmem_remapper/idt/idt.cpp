@@ -1,3 +1,5 @@
+#include "../idt/safe_crt.hpp"
+
 #include "idt.hpp"
 
 extern "C" int _fltused = 0; // Compiler issues
@@ -187,11 +189,11 @@ bool init_idt(void) {
 	idt_ptr_t idt;
 	__sidt(&idt);
 
-	crt::memset(my_idt_table, 0, sizeof(my_idt_table[0]) * 256);
+	safe_crt::memset(my_idt_table, 0, sizeof(my_idt_table[0]) * 256);
 
 #ifdef PARTIALLY_USE_SYSTEM_IDT
 	// Copy over the "normal" kernel idt
-	crt::memcpy(my_idt_table, (void*)idt.base, idt.limit);
+	safe_crt::memcpy(my_idt_table, (void*)idt.base, idt.limit);
 #endif // PARTIALLY_USE_SYSTEM_IDT
 
 	// Replace the nmi handler
@@ -232,12 +234,14 @@ bool init_idt(void) {
 		return false;
 	}
 
-	crt::memset(idt_storing_region, 0, sizeof(idt_ptr_t) * processor_count);
+	safe_crt::memset(idt_storing_region, 0, sizeof(idt_ptr_t) * processor_count);
 
 	if (!test_idt()) {
 		dbg_log_idt("Failed to test my idt");
 		return false;
 	}
+
+	is_idt_inited = true;
 
 	return true;
 }

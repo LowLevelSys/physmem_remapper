@@ -108,6 +108,9 @@
     <ClInclude Include="communication\function_typedefs.hpp">
       <Filter>communication</Filter>
     </ClInclude>
+    <ClInclude Include="idt\safe_crt.hpp">
+      <Filter>idt</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="asm\handler_asm.asm">

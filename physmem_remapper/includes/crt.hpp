@@ -89,8 +89,7 @@ namespace crt {
         return dest;
     }
 
-    inline int memcmp(const void* s1, const void* s2, unsigned __int64 n)
-    {
+    inline int memcmp(const void* s1, const void* s2, unsigned __int64 n) {
         if (n != 0) {
             const unsigned char* p1 = (unsigned char*)s1, * p2 = (unsigned char*)s2;
             do {

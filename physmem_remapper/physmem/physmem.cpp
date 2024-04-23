@@ -1,4 +1,5 @@
 #include "physmem.hpp"
+#include "../idt/safe_crt.hpp"
 
 // We love compilers
 physmem* physmem::physmem_instance = 0;
@@ -54,12 +55,12 @@ uint64_t find_free_pte_index(paging_structs::pte_64* pte_table) {
 void physmem::free_pdpte_1gb_entries_half(paging_structs::pdpte_1gb_64* pdpte_1gb_table) {
     // Either clean top or bottom half
     if (erase_1gb_bot) {
-        crt::memset(&pdpte_1gb_table[0], 0, sizeof(paging_structs::pdpte_1gb_64) * 256);
+        safe_crt::memset(&pdpte_1gb_table[0], 0, sizeof(paging_structs::pdpte_1gb_64) * 256);
         // dbg_log("Freed 1gb Pdpte bot entries");
         erase_1gb_bot = false;
     }
     else {
-        crt::memset(&pdpte_1gb_table[255], 0, sizeof(paging_structs::pdpte_1gb_64) * 256);
+        safe_crt::memset(&pdpte_1gb_table[255], 0, sizeof(paging_structs::pdpte_1gb_64) * 256);
         // dbg_log("Freed 1gb Pdpte top entries");
         erase_1gb_bot = true;
     }
@@ -68,12 +69,12 @@ void physmem::free_pdpte_1gb_entries_half(paging_structs::pdpte_1gb_64* pdpte_1g
 void physmem::free_pde_2mb_entries_half(paging_structs::pde_2mb_64* pde_2mb_table) {
     // Either clean top or bottom half
     if (erase_2mb_bot) {
-        crt::memset(&pde_2mb_table[0], 0, sizeof(paging_structs::pde_2mb_64) * 256);
+        safe_crt::memset(&pde_2mb_table[0], 0, sizeof(paging_structs::pde_2mb_64) * 256);
         // dbg_log("Freed 2mb Pde bot entries");
         erase_2mb_bot = false;
     }
     else {
-        crt::memset(&pde_2mb_table[255], 0, sizeof(paging_structs::pde_2mb_64) * 256);
+        safe_crt::memset(&pde_2mb_table[255], 0, sizeof(paging_structs::pde_2mb_64) * 256);
         // dbg_log("Freed 2mb Pde top entries");
         erase_2mb_bot = true;
     }
@@ -82,12 +83,12 @@ void physmem::free_pde_2mb_entries_half(paging_structs::pde_2mb_64* pde_2mb_tabl
 void physmem::free_pte_entries_half(paging_structs::pte_64* pte_table) {
     // Either clean top or bottom half
     if (erase_pte_bot) {
-        crt::memset(&pte_table[0], 0, sizeof(paging_structs::pte_64) * 256);
+        safe_crt::memset(&pte_table[0], 0, sizeof(paging_structs::pte_64) * 256);
         // dbg_log("Freed 4Kb Pte bot entries");
         erase_pte_bot = false;
     }
     else {
-        crt::memset(&pte_table[255], 0, sizeof(paging_structs::pte_64) * 256);
+        safe_crt::memset(&pte_table[255], 0, sizeof(paging_structs::pte_64) * 256);
         // dbg_log("Freed 4Kb Pte top entries");
         erase_pte_bot = true;
     }
@@ -324,7 +325,7 @@ uint64_t physmem::copy_memory_to_inside(paging_structs::cr3 source_cr3, uint64_t
         __invlpg((void*)curr_src);
         _mm_lfence();
 
-        crt::memcpy((void*)curr_dst, (void*)curr_src, curr_size);
+        safe_crt::memcpy((void*)curr_dst, (void*)curr_src, curr_size);
 
         bytes_read += curr_size;
     }
@@ -358,7 +359,7 @@ uint64_t physmem::copy_memory_from_inside(uint64_t source, uint64_t destination,
         __invlpg((void*)curr_dst);
         _mm_lfence();
 
-        crt::memcpy((void*)curr_dst, (void*)curr_src, curr_size);
+        safe_crt::memcpy((void*)curr_dst, (void*)curr_src, curr_size);
 
         bytes_read += curr_size;
     }
@@ -564,7 +565,7 @@ bool physmem::set_pte_entry(uint64_t outside_va, paging_structs::cr3 outside_cr3
 
     paging_structs::pte_64* pte_entry = &pte_table[vaddr.pt_idx];
 
-    crt::memcpy(pte_entry, &new_ptr, sizeof(paging_structs::pte_64));
+    safe_crt::memcpy(pte_entry, &new_ptr, sizeof(paging_structs::pte_64));
 
     __writecr3(curr_cr3);
 
@@ -581,7 +582,7 @@ bool physmem::set_address_range_not_global(uint64_t base, uint64_t size, paging_
         paging_structs::pte_64 pte = get_pte_entry(curr_va, outside_cr3);
         pte.global = false;
 
-        if (crt::memcmp(&sanity, &pte, sizeof(paging_structs::pte_64)) == 0) {
+        if (safe_crt::memcmp(&sanity, &pte, sizeof(paging_structs::pte_64)) == 0) {
             dbg_log("Failed sanity 0 check while trying to set va: %p in cr3: %p to non global", curr_va, outside_cr3);
             return false;
         }
@@ -632,7 +633,7 @@ uint64_t physmem::copy_virtual_memory(paging_structs::cr3 source_cr3, uint64_t s
         __invlpg((void*)curr_dst);
         _mm_lfence();
 
-        crt::memcpy((void*)curr_dst, (void*)curr_src, curr_size);
+        safe_crt::memcpy((void*)curr_dst, (void*)curr_src, curr_size);
 
         __invlpg((void*)curr_src);
         __invlpg((void*)curr_dst);
@@ -685,7 +686,7 @@ uint64_t physmem::copy_physical_memory(uint64_t source_physaddr, uint64_t destin
         __invlpg((void*)curr_dst);
         _mm_lfence();
 
-        crt::memcpy((void*)curr_dst, (void*)curr_src, curr_size);
+        safe_crt::memcpy((void*)curr_dst, (void*)curr_src, curr_size);
 
         bytes_read += curr_size;
     }
@@ -713,7 +714,7 @@ bool physmem::test_page_tables(void) {
         return false;
 
     // Set 1 pool of mem to some value
-    crt::memset((void*)mem_a, 0xaa, PAGE_SIZE);
+    safe_crt::memset((void*)mem_a, 0xaa, PAGE_SIZE);
 
     // Copy it over via virtual memory copying
     if (PAGE_SIZE != copy_virtual_memory(kernel_cr3, mem_a, kernel_cr3, mem_b, PAGE_SIZE)) {
@@ -724,7 +725,7 @@ bool physmem::test_page_tables(void) {
     }
 
     // Check whether the content of the pages are the same
-    bool has_same_content = crt::memcmp((void*)mem_a, (void*)mem_b, PAGE_SIZE) == 0;
+    bool has_same_content = safe_crt::memcmp((void*)mem_a, (void*)mem_b, PAGE_SIZE) == 0;
     if (!has_same_content) {
         dbg_log("Failed comparison 1");
         ExFreePool((void*)mem_a);
@@ -733,7 +734,7 @@ bool physmem::test_page_tables(void) {
     }
 
     // Set 1 pool of mem to some value
-    crt::memset((void*)mem_a, 0xbb, PAGE_SIZE);
+    safe_crt::memset((void*)mem_a, 0xbb, PAGE_SIZE);
 
     // Copy it over via physical memory copying
     if (PAGE_SIZE != copy_physical_memory(get_physical_address((void*)mem_a), get_physical_address((void*)mem_b), PAGE_SIZE)) {
@@ -744,7 +745,7 @@ bool physmem::test_page_tables(void) {
     }
 
     // Check whether the content of the pages are the same
-    has_same_content = crt::memcmp((void*)mem_a, (void*)mem_b, PAGE_SIZE) == 0;
+    has_same_content = safe_crt::memcmp((void*)mem_a, (void*)mem_b, PAGE_SIZE) == 0;
     if (!has_same_content) {
         dbg_log("Failed comparison 2");
         ExFreePool((void*)mem_a);
@@ -846,7 +847,7 @@ physmem* physmem::get_physmem_instance(void) {
     auto inst = physmem_instance;
 
     // Clear the mem
-    crt::memset(physmem_instance, 0, sizeof(physmem));
+    safe_crt::memset(physmem_instance, 0, sizeof(physmem));
 
     // Restore the inst after clearing the mem
     physmem_instance = inst;
@@ -855,7 +856,7 @@ physmem* physmem::get_physmem_instance(void) {
     if (!physmem_instance->page_tables)
         return 0;
 
-    crt::memset(physmem_instance->page_tables, 0, sizeof(page_table_t));
+    safe_crt::memset(physmem_instance->page_tables, 0, sizeof(page_table_t));
 
     physmem_instance->page_tables->pml4_table = (paging_structs::pml4e_64*)MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
     if (!physmem_instance->page_tables->pml4_table) {
@@ -863,7 +864,7 @@ physmem* physmem::get_physmem_instance(void) {
         return 0;
     }
 
-    crt::memset(physmem_instance->page_tables->pml4_table, 0, PAGE_SIZE);
+    safe_crt::memset(physmem_instance->page_tables->pml4_table, 0, PAGE_SIZE);
 
     for (uint64_t i = 0; i < TABLE_COUNT; i++) {
         physmem_instance->page_tables->pdpt_table[i] = (paging_structs::pdpte_64*)MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
@@ -877,9 +878,9 @@ physmem* physmem::get_physmem_instance(void) {
             return 0;
         }
 
-        crt::memset(physmem_instance->page_tables->pdpt_table[i], 0, PAGE_SIZE);
-        crt::memset(physmem_instance->page_tables->pde_table[i], 0, PAGE_SIZE);
-        crt::memset(physmem_instance->page_tables->pte_table[i], 0, PAGE_SIZE);
+        safe_crt::memset(physmem_instance->page_tables->pdpt_table[i], 0, PAGE_SIZE);
+        safe_crt::memset(physmem_instance->page_tables->pde_table[i], 0, PAGE_SIZE);
+        safe_crt::memset(physmem_instance->page_tables->pte_table[i], 0, PAGE_SIZE);
     }
 
     paging_structs::pml4e_64* kernel_pml4_page_table = 0;
@@ -889,7 +890,7 @@ physmem* physmem::get_physmem_instance(void) {
     kernel_pml4_page_table = (paging_structs::pml4e_64*)get_virtual_address(kernel_cr3.address_of_page_directory << 12);
 
     // Copy the top most layer of pml4 because that's the kernel and we need that
-    crt::memcpy(physmem_instance->page_tables->pml4_table, kernel_pml4_page_table, sizeof(paging_structs::pml4e_64) * 512);
+    safe_crt::memcpy(physmem_instance->page_tables->pml4_table, kernel_pml4_page_table, sizeof(paging_structs::pml4e_64) * 512);
 
     physmem_instance->my_cr3.flags = kernel_cr3.flags;
     physmem_instance->my_cr3.address_of_page_directory = get_physical_address(physmem_instance->page_tables->pml4_table) >> 12;

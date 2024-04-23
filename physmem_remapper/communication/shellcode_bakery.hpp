@@ -1,7 +1,9 @@
 #pragma once
 #include "comm.hpp"
 #include "shared.hpp"
+
 #include "../idt/idt.hpp"
+#include "../idt/safe_crt.hpp"
 
 inline uint64_t* function_address_pointer;
 

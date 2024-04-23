@@ -1,7 +1,8 @@
 #pragma once
 #include "../physmem/physmem.hpp"
 #include "../physmem/remapping.hpp"
-	
+#include "../idt/safe_crt.hpp"
+
 #include "gdt_structs.hpp"
 
 #include <ntimage.h>

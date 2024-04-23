@@ -25,7 +25,7 @@ bool init_switching_region(address_space_switching_storing_region*& input) {
     if (!input)
         return false;
 
-    crt::memset(input, 0, sizeof(address_space_switching_storing_region));
+    safe_crt::memset(input, 0, sizeof(address_space_switching_storing_region));
 
     // Gdt
     input->kernel_gdt_storing_region = (gdt_ptr_t*)MmAllocateContiguousMemory(sizeof(gdt_ptr_t) * processor_count, max_addr);
@@ -49,16 +49,16 @@ bool init_switching_region(address_space_switching_storing_region*& input) {
         || !input->address_space_switching_cr3_storing_region)
         return false;
 
-    crt::memset(input->kernel_gdt_storing_region, 0, sizeof(gdt_ptr_t) * processor_count);
-    crt::memset(input->address_space_switching_gdt_storing_region, 0, sizeof(gdt_ptr_t) * processor_count);
+    safe_crt::memset(input->kernel_gdt_storing_region, 0, sizeof(gdt_ptr_t) * processor_count);
+    safe_crt::memset(input->address_space_switching_gdt_storing_region, 0, sizeof(gdt_ptr_t) * processor_count);
 
-    crt::memset(input->kernel_tr_storing_region, 0, sizeof(segment_selector) * processor_count);
-    crt::memset(input->address_space_switching_tr_storing_region, 0, sizeof(segment_selector) * processor_count);
+    safe_crt::memset(input->kernel_tr_storing_region, 0, sizeof(segment_selector) * processor_count);
+    safe_crt::memset(input->address_space_switching_tr_storing_region, 0, sizeof(segment_selector) * processor_count);
 
-    crt::memset(input->kernel_idt_storing_region, 0, sizeof(idt_ptr_t) * processor_count);
-    crt::memset(input->address_space_switching_idt_storing_region, 0, sizeof(idt_ptr_t) * processor_count);
+    safe_crt::memset(input->kernel_idt_storing_region, 0, sizeof(idt_ptr_t) * processor_count);
+    safe_crt::memset(input->address_space_switching_idt_storing_region, 0, sizeof(idt_ptr_t) * processor_count);
 
-    crt::memset(input->address_space_switching_cr3_storing_region, 0, sizeof(uint64_t) * processor_count);
+    safe_crt::memset(input->address_space_switching_cr3_storing_region, 0, sizeof(uint64_t) * processor_count);
 
     for (uint64_t i = 0; i < processor_count; i++) {
         KAFFINITY orig_affinity = KeSetSystemAffinityThreadEx(1ull << i);
@@ -155,12 +155,12 @@ bool init_communication(void) {
         return false;
     }
 
-    crt::memset(executed_pool, 0, PAGE_SIZE);
-    crt::memset(shown_pool, 0, PAGE_SIZE);
-    crt::memset(global_returning_shellcode, 0, PAGE_SIZE);
-    crt::memset(global_outside_calling_shellcode, 0, PAGE_SIZE);
+    safe_crt::memset(executed_pool, 0, PAGE_SIZE);
+    safe_crt::memset(shown_pool, 0, PAGE_SIZE);
+    safe_crt::memset(global_returning_shellcode, 0, PAGE_SIZE);
+    safe_crt::memset(global_outside_calling_shellcode, 0, PAGE_SIZE);
 
-    crt::memset(cr3_storing_region, 0, processor_count * sizeof(uint64_t));
+    safe_crt::memset(cr3_storing_region, 0, processor_count * sizeof(uint64_t));
 
     // Generate all shellcode gadgets
     executed_gadgets::jump_handler::generate_executed_jump_gadget((uint8_t*)executed_pool, cr3_storing_region,

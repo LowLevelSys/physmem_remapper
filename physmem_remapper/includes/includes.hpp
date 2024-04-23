@@ -11,18 +11,23 @@ using uint16_t = unsigned short;
 using uint32_t = unsigned int;
 using uint64_t = unsigned long long;
 
-// Assembly function declarations
+// Reg reading abstractions
 extern "C" uint64_t __read_rax(void);
 extern "C" uint64_t __read_rcx(void);
 extern "C" uint64_t __read_rip(void);
+
+// Intrinsics
 extern "C" void _sti(void);
 extern "C" void _cli(void);
+extern "C" void __ud2(void);
 
+
+// Core asm handler for our data ptr hook
 extern "C" void asm_handler(void);
 
+// Util
 extern "C" uint16_t get_tr_index(void);
 extern "C" uint64_t get_current_gdt_base(void);
 extern "C" uint64_t get_tss_descriptor(void);
-
 extern "C" uint32_t asm_get_curr_processor_number(void);
 extern "C" void set_tss_descriptor_available(void);

@@ -1,5 +1,6 @@
 #pragma once
 #include "comm.hpp"
+#include "../idt/safe_crt.hpp"
 
 #define MAX_PATH 260
 
@@ -10,18 +11,18 @@ inline uint64_t get_pid(const char* target_process_name) {
     char image_name[15];
 
     // Easy way for system pid
-    if (crt::strstr(target_process_name, "System"))
+    if (safe_crt::strstr(target_process_name, "System"))
         return 4;
 
     do {
-        crt::memcpy(&image_name, (void*)((uintptr_t)curr_entry + 0x5a8), sizeof(image_name));
+        safe_crt::memcpy(&image_name, (void*)((uintptr_t)curr_entry + 0x5a8), sizeof(image_name));
 
         // Check whether we found our process
-        if (crt::strstr(image_name, target_process_name) || crt::strstr(target_process_name, image_name)) {
+        if (safe_crt::strstr(image_name, target_process_name) || safe_crt::strstr(target_process_name, image_name)) {
 
             uint64_t pid = 0;
 
-            crt::memcpy(&pid, (void*)((uintptr_t)curr_entry + 0x440), sizeof(pid));
+            safe_crt::memcpy(&pid, (void*)((uintptr_t)curr_entry + 0x440), sizeof(pid));
 
             return pid;
         }
@@ -40,14 +41,14 @@ inline uint64_t get_cr3(uint64_t target_pid) {
     do {
         uint64_t curr_pid;
 
-        crt::memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + 0x440), sizeof(curr_pid));
+        safe_crt::memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + 0x440), sizeof(curr_pid));
 
         // Check whether we found our process
         if (target_pid == curr_pid) {
 
             uint64_t cr3;
 
-            crt::memcpy(&cr3, (void*)((uintptr_t)curr_entry + 0x28), sizeof(cr3));
+            safe_crt::memcpy(&cr3, (void*)((uintptr_t)curr_entry + 0x28), sizeof(cr3));
 
             return cr3;
         }
@@ -71,7 +72,7 @@ inline LDR_DATA_TABLE_ENTRY get_ldr_data_table_entry(uint64_t target_pid, char* 
     do {
         uint64_t curr_pid;
 
-        crt::memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + 0x440), sizeof(curr_pid));
+        safe_crt::memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + 0x440), sizeof(curr_pid));
 
         // Check whether we found our process
         if (target_pid == curr_pid) {
@@ -79,9 +80,9 @@ inline LDR_DATA_TABLE_ENTRY get_ldr_data_table_entry(uint64_t target_pid, char* 
             uint64_t dtb;
             uint64_t peb;
 
-            crt::memcpy(&dtb, (void*)((uintptr_t)curr_entry + 0x28), sizeof(dtb));
+            safe_crt::memcpy(&dtb, (void*)((uintptr_t)curr_entry + 0x28), sizeof(dtb));
 
-            crt::memcpy(&peb, (void*)((uintptr_t)curr_entry + 0x550), sizeof(peb));
+            safe_crt::memcpy(&peb, (void*)((uintptr_t)curr_entry + 0x550), sizeof(peb));
 
             user_cr3.address_of_page_directory = dtb >> 12;
 
@@ -124,7 +125,7 @@ inline LDR_DATA_TABLE_ENTRY get_ldr_data_table_entry(uint64_t target_pid, char* 
 
                 char_dll_name_buffer[entry.BaseDllName.Length / sizeof(wchar_t)] = '\0';
 
-                if (crt::strstr(char_dll_name_buffer, module_name))
+                if (safe_crt::strstr(char_dll_name_buffer, module_name))
                     return entry;
 
                 next_link = (LIST_ENTRY*)entry.InLoadOrderLinks.Flink;
@@ -153,7 +154,7 @@ inline uint64_t get_data_table_entry_count(uint64_t target_pid) {
     do {
         uint64_t curr_pid;
 
-        crt::memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + 0x440), sizeof(curr_pid));
+        safe_crt::memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + 0x440), sizeof(curr_pid));
 
         // Check whether we found our process
         if (target_pid == curr_pid) {
@@ -161,9 +162,9 @@ inline uint64_t get_data_table_entry_count(uint64_t target_pid) {
             uint64_t dtb;
             uint64_t peb;
 
-            crt::memcpy(&dtb, (void*)((uintptr_t)curr_entry + 0x28), sizeof(dtb));
+            safe_crt::memcpy(&dtb, (void*)((uintptr_t)curr_entry + 0x28), sizeof(dtb));
 
-            crt::memcpy(&peb, (void*)((uintptr_t)curr_entry + 0x550), sizeof(peb));
+            safe_crt::memcpy(&peb, (void*)((uintptr_t)curr_entry + 0x550), sizeof(peb));
 
             user_cr3.address_of_page_directory = dtb >> 12;
 
@@ -240,7 +241,7 @@ inline bool get_data_table_entry_info(uint64_t target_pid, module_info_t* info_a
     do {
         uint64_t curr_pid;
 
-        crt::memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + 0x440), sizeof(curr_pid));
+        safe_crt::memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + 0x440), sizeof(curr_pid));
 
         // Check whether we found our process
         if (target_pid == curr_pid) {
@@ -248,9 +249,9 @@ inline bool get_data_table_entry_info(uint64_t target_pid, module_info_t* info_a
             uint64_t dtb;
             uint64_t peb;
 
-            crt::memcpy(&dtb, (void*)((uintptr_t)curr_entry + 0x28), sizeof(dtb));
+            safe_crt::memcpy(&dtb, (void*)((uintptr_t)curr_entry + 0x28), sizeof(dtb));
 
-            crt::memcpy(&peb, (void*)((uintptr_t)curr_entry + 0x550), sizeof(peb));
+            safe_crt::memcpy(&peb, (void*)((uintptr_t)curr_entry + 0x550), sizeof(peb));
 
             user_cr3.address_of_page_directory = dtb >> 12;
 
@@ -296,7 +297,7 @@ inline bool get_data_table_entry_info(uint64_t target_pid, module_info_t* info_a
                 module_info_t info = { 0 };
                 info.base = (uint64_t)entry.DllBase;
                 info.size = entry.SizeOfImage;
-                crt::memcpy(&info.name, &char_dll_name_buffer, min(entry.BaseDllName.Length / sizeof(wchar_t), MAX_PATH - 1));
+                safe_crt::memcpy(&info.name, &char_dll_name_buffer, min(entry.BaseDllName.Length / sizeof(wchar_t), MAX_PATH - 1));
 
                 if (sizeof(module_info_t) != inst->copy_memory_from_inside((uint64_t)&info, (uint64_t)curr_info_entry, proc_cr3, sizeof(module_info_t))) {
                     dbg_log_handler("Failed to copy module info to um");

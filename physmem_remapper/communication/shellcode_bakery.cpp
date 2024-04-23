@@ -38,7 +38,7 @@ namespace executed_gadgets {
             0x5A                    // pop rdx
         };
 
-        crt::memcpy(gadget, precomputed_sequence, sizeof(precomputed_sequence));
+        safe_crt::memcpy(gadget, precomputed_sequence, sizeof(precomputed_sequence));
         uint32_t index = sizeof(precomputed_sequence);
         return &gadget[index];
     }
@@ -71,7 +71,7 @@ namespace executed_gadgets {
                 0x0f, 0xae, 0xf0                        // mfence
             };
 
-            crt::memcpy(gadget, instruction_sequence, sizeof(instruction_sequence));
+            safe_crt::memcpy(gadget, instruction_sequence, sizeof(instruction_sequence));
 
             *reinterpret_cast<uint64_t*>(&gadget[24]) = reinterpret_cast<uint64_t>(my_cr3_storing_region);
             *reinterpret_cast<uint64_t*>(&gadget[44]) = physmem::get_physmem_instance()->get_my_cr3().flags;
@@ -104,7 +104,7 @@ namespace executed_gadgets {
                 0x5A                                                  // pop rdx
             };
 
-            crt::memcpy(gadget, instruction_sequence, sizeof(instruction_sequence));
+            safe_crt::memcpy(gadget, instruction_sequence, sizeof(instruction_sequence));
             uint32_t index = sizeof(instruction_sequence);
 
             // Fill in the placeholders with the actual addresses
@@ -141,7 +141,7 @@ namespace executed_gadgets {
                 0x5A                                                  // pop rdx
             };
 
-            crt::memcpy(gadget, instruction_sequence, sizeof(instruction_sequence));
+            safe_crt::memcpy(gadget, instruction_sequence, sizeof(instruction_sequence));
             uint32_t index = sizeof(instruction_sequence);
 
             // Fill in the placeholders with the actual addresses
@@ -171,7 +171,7 @@ namespace executed_gadgets {
                 0x5A                                                  // pop rdx
             };
 
-            crt::memcpy(gadget, instruction_sequence, sizeof(instruction_sequence));
+            safe_crt::memcpy(gadget, instruction_sequence, sizeof(instruction_sequence));
             uint32_t index = sizeof(instruction_sequence);
 
             // Fill in the placeholders with actual addresses
@@ -192,7 +192,7 @@ namespace executed_gadgets {
                 0xFF, 0xE0                       // jmp rax
             };
 
-            crt::memcpy(gadget, instruction_sequence, sizeof(instruction_sequence));
+            safe_crt::memcpy(gadget, instruction_sequence, sizeof(instruction_sequence));
             uint32_t index = sizeof(instruction_sequence);
 
             // Fill in the placeholder for the jump address
@@ -236,7 +236,7 @@ namespace executed_gadgets {
             };
 
             // Copy the precompiled instruction sequence into the gadget buffer
-            crt::memcpy(gadget, restore_cr3_instruction_sequence, sizeof(restore_cr3_instruction_sequence));
+            safe_crt::memcpy(gadget, restore_cr3_instruction_sequence, sizeof(restore_cr3_instruction_sequence));
 
             // Insert the actual memory address of my_cr3_storing_region into the instruction sequence
             *reinterpret_cast<uint64_t*>(&gadget[23]) = reinterpret_cast<uint64_t>(my_cr3_storing_region);
@@ -262,7 +262,7 @@ namespace executed_gadgets {
             };
 
             // Copy the precompiled instruction sequence into the gadget buffer
-            crt::memcpy(gadget, restore_gdt_instruction_sequence, sizeof(restore_gdt_instruction_sequence));
+            safe_crt::memcpy(gadget, restore_gdt_instruction_sequence, sizeof(restore_gdt_instruction_sequence));
 
             // Insert the actual memory address of my_gdt_storing_region into the instruction sequence
             *reinterpret_cast<uint64_t*>(&gadget[23]) = reinterpret_cast<uint64_t>(my_gdt_storing_region);
@@ -293,7 +293,7 @@ namespace executed_gadgets {
             gadget = generate_tss_available_gadget(gadget);
 
             // Now, copy the precompiled instruction sequence into the gadget buffer
-            crt::memcpy(gadget, restore_tr_instruction_sequence, sizeof(restore_tr_instruction_sequence));
+            safe_crt::memcpy(gadget, restore_tr_instruction_sequence, sizeof(restore_tr_instruction_sequence));
 
             // Insert the actual memory address of my_tr_storing_region into the instruction sequence
             *reinterpret_cast<uint64_t*>(&gadget[23]) = reinterpret_cast<uint64_t>(my_tr_storing_region);
@@ -319,7 +319,7 @@ namespace executed_gadgets {
             };
 
             // Copy the precompiled instruction sequence into the gadget buffer
-            crt::memcpy(gadget, restore_idt_instruction_sequence, sizeof(restore_idt_instruction_sequence));
+            safe_crt::memcpy(gadget, restore_idt_instruction_sequence, sizeof(restore_idt_instruction_sequence));
 
             // Insert the actual memory address of my_idt_storing_region into the instruction sequence
             *reinterpret_cast<uint64_t*>(&gadget[23]) = reinterpret_cast<uint64_t>(my_idt_storing_region);
@@ -399,7 +399,7 @@ namespace executed_gadgets {
             };
 
             // Copy the precompiled instruction sequence into the gadget buffer
-            crt::memcpy(gadget, change_cr3_instruction_sequence, sizeof(change_cr3_instruction_sequence));
+            safe_crt::memcpy(gadget, change_cr3_instruction_sequence, sizeof(change_cr3_instruction_sequence));
 
             // Insert the actual memory addresses into the instruction sequence
             *reinterpret_cast<uint64_t*>(&gadget[23]) = reinterpret_cast<uint64_t>(address_space_switching_cr3_storing_region);
@@ -434,7 +434,7 @@ namespace executed_gadgets {
             };
 
             // Copy the precompiled instruction sequence into the gadget buffer
-            crt::memcpy(gadget, change_gdt_instruction_sequence, sizeof(change_gdt_instruction_sequence));
+            safe_crt::memcpy(gadget, change_gdt_instruction_sequence, sizeof(change_gdt_instruction_sequence));
 
             // Insert the actual memory addresses into the instruction sequence
             *reinterpret_cast<uint64_t*>(&gadget[25]) = reinterpret_cast<uint64_t>(address_space_switching_gdt_storing_region);
@@ -474,7 +474,7 @@ namespace executed_gadgets {
             };
 
             // Copy the precompiled instruction sequence into the gadget buffer
-            crt::memcpy(gadget, change_tr_instruction_sequence, sizeof(change_tr_instruction_sequence));
+            safe_crt::memcpy(gadget, change_tr_instruction_sequence, sizeof(change_tr_instruction_sequence));
 
             // Insert the actual memory addresses into the instruction sequence
             *reinterpret_cast<uint64_t*>(&gadget[25]) = reinterpret_cast<uint64_t>(address_space_switching_tr_storing_region);
@@ -506,7 +506,7 @@ namespace executed_gadgets {
             };
 
             // Copy the precompiled instruction sequence into the gadget buffer
-            crt::memcpy(gadget, change_idt_instruction_sequence, sizeof(change_idt_instruction_sequence));
+            safe_crt::memcpy(gadget, change_idt_instruction_sequence, sizeof(change_idt_instruction_sequence));
 
             // Insert the actual memory addresses into the instruction sequence
             *reinterpret_cast<uint64_t*>(&gadget[23]) = reinterpret_cast<uint64_t>(address_space_switching_idt_storing_region);
@@ -528,7 +528,7 @@ namespace executed_gadgets {
             };
 
             // Copy the static instruction sequence to the gadget buffer
-            crt::memcpy(gadget, call_function_instruction_sequence, sizeof(call_function_instruction_sequence));
+            safe_crt::memcpy(gadget, call_function_instruction_sequence, sizeof(call_function_instruction_sequence));
 
             // Set the function address in the placeholder position
             *reinterpret_cast<uint64_t*>(&gadget[2]) = reinterpret_cast<uint64_t>(function_address);
@@ -556,7 +556,7 @@ namespace executed_gadgets {
             };
 
             // Copy the static instruction sequence to the gadget buffer
-            crt::memcpy(gadget, restore_cr3_instruction_sequence, sizeof(restore_cr3_instruction_sequence));
+            safe_crt::memcpy(gadget, restore_cr3_instruction_sequence, sizeof(restore_cr3_instruction_sequence));
 
             // Insert the actual memory address of address_space_switching_cr3_storing_region into the instruction sequence
             *reinterpret_cast<uint64_t*>(&gadget[23]) = reinterpret_cast<uint64_t>(address_space_switching_cr3_storing_region);
@@ -582,7 +582,7 @@ namespace executed_gadgets {
             };
 
             // Copy the static instruction sequence to the gadget buffer
-            crt::memcpy(gadget, restore_gdt_instruction_sequence, sizeof(restore_gdt_instruction_sequence));
+            safe_crt::memcpy(gadget, restore_gdt_instruction_sequence, sizeof(restore_gdt_instruction_sequence));
 
             // Insert the actual memory address of address_space_switching_gdt_storing_region into the instruction sequence
             *reinterpret_cast<uint64_t*>(&gadget[23]) = reinterpret_cast<uint64_t>(address_space_switching_gdt_storing_region);
@@ -613,7 +613,7 @@ namespace executed_gadgets {
             };
 
             // Copy the static instruction sequence to the gadget buffer
-            crt::memcpy(gadget, restore_tr_instruction_sequence, sizeof(restore_tr_instruction_sequence));
+            safe_crt::memcpy(gadget, restore_tr_instruction_sequence, sizeof(restore_tr_instruction_sequence));
 
             // Insert the actual memory address of address_space_switching_tr_storing_region into the instruction sequence
             *reinterpret_cast<uint64_t*>(&gadget[23]) = reinterpret_cast<uint64_t>(address_space_switching_tr_storing_region);
@@ -639,7 +639,7 @@ namespace executed_gadgets {
             };
 
             // Copy the static instruction sequence into the gadget buffer
-            crt::memcpy(gadget, restore_idt_instruction_sequence, sizeof(restore_idt_instruction_sequence));
+            safe_crt::memcpy(gadget, restore_idt_instruction_sequence, sizeof(restore_idt_instruction_sequence));
 
             // Insert the actual memory address of address_space_switching_idt_storing_region into the instruction sequence
             *reinterpret_cast<uint64_t*>(&gadget[23]) = reinterpret_cast<uint64_t>(address_space_switching_idt_storing_region);
@@ -733,7 +733,7 @@ namespace shown_gadgets {
         };
 
         // Copy the precompiled instruction sequence into the gadget buffer
-        crt::memcpy(gadget, shown_jump_gadget_sequence, sizeof(shown_jump_gadget_sequence));
+        safe_crt::memcpy(gadget, shown_jump_gadget_sequence, sizeof(shown_jump_gadget_sequence));
 
         // Insert the actual memory addresses into the placeholders
         *reinterpret_cast<uint64_t*>(&gadget[24]) = reinterpret_cast<uint64_t>(my_cr3_storing_region);

@@ -1,5 +1,7 @@
 #pragma once
 #include "../includes/includes.hpp"
+#include "../idt/safe_crt.hpp"
+
 #include "physmem_structs.hpp"
 #include "physmem.hpp"
 

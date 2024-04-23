@@ -82,6 +82,7 @@
     <ClInclude Include="gdt\gdt_structs.hpp" />
     <ClInclude Include="idt\idt.hpp" />
     <ClInclude Include="idt\idt_structs.hpp" />
+    <ClInclude Include="idt\safe_crt.hpp" />
     <ClInclude Include="includes\crt.hpp" />
     <ClInclude Include="includes\includes.hpp" />
     <ClInclude Include="physmem\remapping.hpp" />

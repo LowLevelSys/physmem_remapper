@@ -71,8 +71,8 @@ bool physmem_experiment(void) {
     generate_gadget(sohwn_gadget, mem, 0x1);
     generate_gadget(executed_gadget, mem, 0x1337);
 
-    crt::memcpy(mem, &sohwn_gadget, sizeof(sohwn_gadget));
-    crt::memcpy(diff_mem, &executed_gadget, sizeof(executed_gadget));
+    safe_crt::memcpy(mem, &sohwn_gadget, sizeof(sohwn_gadget));
+    safe_crt::memcpy(diff_mem, &executed_gadget, sizeof(executed_gadget));
 
     // Map the c3 bytes instead of the cc bytes (Source is what will be displayed and Target is where the memory will appear)
     if (!remap_outside_virtual_address((uint64_t)diff_mem, (uint64_t)mem, kernel_cr3)) {

@@ -2,6 +2,7 @@
 #include "../physmem/physmem.hpp"
 #include "../physmem/remapping.hpp"
 #include "../idt/idt.hpp"
+#include "../idt/safe_crt.hpp"
 
 #include <ntimage.h>
 
@@ -197,7 +198,7 @@ inline void* get_driver_module_base(const wchar_t* module_name) {
     while (curr != head) {
         LDR_DATA_TABLE_ENTRY* curr_mod = CONTAINING_RECORD(curr, LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
 
-        if (crt::_wcsicmp(curr_mod->BaseDllName.Buffer, module_name) == 0) {
+        if (safe_crt::_wcsicmp(curr_mod->BaseDllName.Buffer, module_name) == 0) {
             return curr_mod->DllBase;
         }
 
@@ -215,12 +216,12 @@ inline PEPROCESS get_eprocess(const char* process_name) {
     char image_name[15];
 
     do {
-        crt::memcpy((void*)(&image_name), (void*)((uintptr_t)curr_entry + 0x5a8), sizeof(image_name));
+        safe_crt::memcpy((void*)(&image_name), (void*)((uintptr_t)curr_entry + 0x5a8), sizeof(image_name));
 
-        if (crt::strcmp(image_name, process_name) == 0) {
+        if (safe_crt::strcmp(image_name, process_name) == 0) {
             uint32_t active_threads;
 
-            crt::memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + 0x5f0), sizeof(active_threads));
+            safe_crt::memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + 0x5f0), sizeof(active_threads));
 
             if (active_threads) 
                 return curr_entry;
@@ -279,7 +280,7 @@ inline uintptr_t search_pattern_in_section(void* module_handle, const char* sect
 
     for (uint32_t i = 0; i < nt_headers->FileHeader.NumberOfSections; i++) {
         // Check if this is the section we are interested in
-        if (crt::strncmp((const char*)sections[i].Name, section_name, IMAGE_SIZEOF_SHORT_NAME) == 0) {
+        if (safe_crt::strncmp((const char*)sections[i].Name, section_name, IMAGE_SIZEOF_SHORT_NAME) == 0) {
             // Calculate the start address of the section
             uintptr_t section_start = (uintptr_t)module_handle + sections[i].VirtualAddress;
             uint32_t section_size = sections[i].Misc.VirtualSize;
