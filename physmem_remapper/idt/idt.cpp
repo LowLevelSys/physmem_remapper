@@ -1,6 +1,12 @@
 #include "../idt/safe_crt.hpp"
 
 #include "idt.hpp"
+/*
+* APC related
+#define MISC_FLAG_ALERTABLE		4
+#define MISC_FLAG_APC			14
+ULONG originalFlags;
+*/
 
 extern "C" int _fltused = 0; // Compiler issues
 
@@ -9,6 +15,40 @@ extern "C" void handle_non_maskable_interrupt(trap_frame_t* trap_frame) {
 
 	// To do: Implement a system to hide from eac's NMI's
 }
+
+/*
+* APC
+extern "C" bool remove_apc() {
+
+	KThread* Thread = reinterpret_cast<KThread*>(KeGetCurrentThread());
+
+	if (!Thread)
+		return STATUS_NOT_FOUND;
+
+	originalFlags = Thread->MiscFlags;
+
+	Thread->MiscFlags &= ~(1UL << MISC_FLAG_ALERTABLE); // Null Alertable
+	Thread->MiscFlags &= ~(1UL << MISC_FLAG_APC); // Null APC
+
+	dbg_log("REMOVED APC! (Thread->MiscFlags : %i)\n", Thread->MiscFlags);
+
+	return true;
+}
+
+extern "C" bool restore_apc() {
+
+	KThread* Thread = reinterpret_cast<KThread*>(KeGetCurrentThread());
+
+	if (!Thread)
+		return STATUS_NOT_FOUND;
+
+	Thread->MiscFlags = originalFlags;
+
+	dbg_log("RESTORED APC! (Thread->MiscFlags : %i)\n", Thread->MiscFlags);
+
+	return true;
+}
+*/
 
 extern "C" void handle_ecode_interrupt(trap_frame_ecode_t* regs) {
 	IMAGE_DOS_HEADER* dos_header = (IMAGE_DOS_HEADER*)my_driver_base;
