@@ -89,15 +89,40 @@ namespace crt {
         return dest;
     }
 
-    inline int memcmp(const void* s1, const void* s2, unsigned __int64 n) {
-        if (n != 0) {
-            const unsigned char* p1 = (unsigned char*)s1, * p2 = (unsigned char*)s2;
-            do {
-                if (*p1++ != *p2++) 
-                    return (*--p1 - *--p2);
-            } while (--n != 0);
+        inline int memcmp(const void* s1, const void* s2, size_t n) {
+        auto p1 = static_cast<const unsigned char*>(s1);
+        auto p2 = static_cast<const unsigned char*>(s2);
+
+        while (n >= 32) {
+            __m256i v1 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(p1));
+            __m256i v2 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(p2));
+
+            // 32 bytes comparison
+            __m256i result = _mm256_cmpeq_epi8(v1, v2);
+            int mask = _mm256_movemask_epi8(result);
+
+            // not all bytes are equal
+            if (mask != -1) {
+                for (int i = 0; i < 32; ++i) {
+                    if (p1[i] != p2[i]) {
+                        return p1[i] - p2[i];
+                    }
+                }
+            }
+
+            p1 += 32;
+            p2 += 32;
+            n -= 32;
         }
-        return 0;
+
+        // remaining
+        while (n--) {
+            if (*p1 != *p2) {
+                return *p1 - *p2;
+            }
+            p1++;
+            p2++;
+        }
     }
 
     inline void* memcpy(void* dest, const void* src, size_t count) {
