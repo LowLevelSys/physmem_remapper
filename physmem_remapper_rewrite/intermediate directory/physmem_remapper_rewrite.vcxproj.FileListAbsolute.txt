@@ -1,0 +1,3 @@
+C:\Users\cool_guy\source\repos\physmem_remapper_rewrite\physmem_remapper_rewrite\intermediate directory\physmem_remapper_rewrite.vcxproj.MdMergeInputs.cache
+C:\Users\cool_guy\source\repos\physmem_remapper_rewrite\physmem_remapper_rewrite\intermediate directory\physmem_remapper_rewrite.vcxproj.cppwinrt_plat.cache
+C:\Users\cool_guy\source\repos\physmem_remapper_rewrite\physmem_remapper_rewrite\intermediate directory\physmem_remapper_rewrite.vcxproj.cppwinrt_comp.cache
