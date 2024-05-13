@@ -31,6 +31,8 @@ enum project_status {
 	status_no_available_page_tables,
 	status_invalid_parameter,
 	status_not_initialized,
+	status_data_mismatch,
+	status_wrong_context
 };
 
 /*
@@ -57,4 +59,13 @@ inline uint64_t win_get_virtual_address(uint64_t physical_address) {
 	phys_addr.QuadPart = physical_address;
 
 	return (uint64_t)(MmGetVirtualForPhysical(phys_addr));
+}
+
+inline void sleep(LONG milliseconds) {
+	LARGE_INTEGER interval;
+
+	// Convert milliseconds to 100-nanosecond intervals
+	interval.QuadPart = -((LONGLONG)milliseconds * 10000);
+
+	KeDelayExecutionThread(KernelMode, false, &interval);
 }

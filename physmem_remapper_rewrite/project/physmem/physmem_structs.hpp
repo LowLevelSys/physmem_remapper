@@ -16,6 +16,16 @@ typedef union {
     uint64_t flags;
 } cr3;
 
+typedef union
+{
+    struct {
+        uint64_t task_priority_level : 4;
+        uint64_t reserved : 60;
+    };
+
+    uint64_t flags;
+} cr8;
+
 typedef union {
     struct {
         uint64_t present : 1;

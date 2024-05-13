@@ -1,11 +1,25 @@
 #include "physmem.hpp"
 
 namespace physmem {
+	/*
+		Definitions
+	*/
+	constexpr int stress_test_count = 10'000;
+	constexpr uint64_t KERNEL_CR3 = 0x1ad000;
+
+	/*
+		Global variables
+	*/
+
 	cr3 constructed_cr3 = { 0 };
 	cr3 kernel_cr3 = { 0 };
 
 	constructed_page_tables page_tables = { 0 };
 	bool initialized = false;
+
+	/*
+		Initialization functions
+	*/
 
 	void* allocate_zero_table(PHYSICAL_ADDRESS max_addr) {
 		void* table = (void*)MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
@@ -39,7 +53,7 @@ namespace physmem {
 	project_status copy_kernel_page_tables(void) {
 		pml4e_64* kernel_pml4_page_table = 0;
 
-		kernel_cr3.flags = __readcr3();
+		kernel_cr3.flags = KERNEL_CR3;
 		kernel_pml4_page_table = (pml4e_64*)win_get_virtual_address(kernel_cr3.address_of_page_directory << 12);
 
 		if (!kernel_pml4_page_table)
@@ -172,12 +186,31 @@ namespace physmem {
 		return status_success;
 	}
 
+
+	/*
+		Util
+	*/
+	void log_remaining_pte_entries(pte_64* pte_table) {
+		for (uint32_t i = 0; i < 512; i++) {
+			project_log_info("%d present flag: %d", i, pte_table[i].present);
+		}
+	}
+
+	/*
+		Core functions
+	*/
+
 	project_status map_4kb_page(uint64_t physical_address, void*& generated_va) {
 		if (!initialized)
 			return status_not_initialized;
 
 		if (!physical_address || !physical_address >> 12)
 			return status_invalid_parameter;
+
+		if (__readcr3() != constructed_cr3.flags) {
+			project_log_error("Wrong ctx");
+			return status_wrong_context;
+		}
 
 		uint32_t pt_idx = pt_helpers::find_free_pt_index(page_tables.memcpy_pt_table);
 		if (!pt_helpers::is_index_valid(pt_idx))
@@ -208,6 +241,9 @@ namespace physmem {
 		if (!initialized)
 			return;
 
+		if (__readcr3() != constructed_cr3.flags)
+			return;
+
 		va_64 va = { 0 };
 		va.flags = (uint64_t)mapped_page;
 
@@ -226,14 +262,21 @@ namespace physmem {
 		if (!initialized)
 			return status_not_initialized;
 
+		if (__readcr3() != constructed_cr3.flags) {
+			project_log_error("Wrong ctx: %p", __readcr3());
+			return status_wrong_context;
+		}
+
+		UNREFERENCED_PARAMETER(physical_address);
 		cr3 target_cr3 = { 0 };
-		target_cr3.flags = outside_target_cr3;
 		va_64 va = { 0 };
+
+		target_cr3.flags = outside_target_cr3;
 		va.flags = (uint64_t)virtual_address;
 
-
-		project_status status = status_failure;
+		project_status status = status_success;
 		pml4e_64* mapped_pml4_table = 0;
+		/*
 		pml4e_64* mapped_pml4_entry = 0;
 
 		pdpte_64* mapped_pdpt_table = 0;
@@ -244,18 +287,12 @@ namespace physmem {
 
 		pte_64* mapped_pte_table = 0;
 		pte_64* mapped_pte_entry = 0;
-
-		uint64_t translated_physical_address = 0;
-
-		uint64_t curr_cr3 = __readcr3();
-
-		__writecr3(constructed_cr3.flags);
-
+		*/
 		status = map_4kb_page(target_cr3.address_of_page_directory << 12, (void*&)mapped_pml4_table);
 
 		if (status != status_success)
 			goto cleanup;
-
+		/*
 		mapped_pml4_entry = &mapped_pml4_table[va.pml4e_idx];
 
 		mapped_pdpt_table = 0;
@@ -270,7 +307,7 @@ namespace physmem {
 			pdpte_1gb_64 mapped_pdpte_1gb_entry;
 			mapped_pdpte_1gb_entry.flags = mapped_pdpt_entry->flags;
 
-			translated_physical_address = (mapped_pdpte_1gb_entry.page_frame_number << 30) + va.offset_1gb;
+			physical_address = (mapped_pdpte_1gb_entry.page_frame_number << 30) + va.offset_1gb;
 			goto cleanup;
 		}
 
@@ -286,7 +323,7 @@ namespace physmem {
 			pde_2mb_64 mapped_pde_2mb_entry;
 			mapped_pde_2mb_entry.flags = mapped_pde_entry->flags;
 
-			translated_physical_address = (mapped_pde_2mb_entry.page_frame_number << 30) + va.offset_2mb;
+			physical_address = (mapped_pde_2mb_entry.page_frame_number << 30) + va.offset_2mb;
 			goto cleanup;
 		}
 
@@ -297,21 +334,200 @@ namespace physmem {
 			goto cleanup;
 
 		mapped_pte_entry = &mapped_pte_table[va.pte_idx];
-		translated_physical_address = mapped_pte_entry->page_frame_number << 12;
+		physical_address = mapped_pte_entry->page_frame_number << 12;
 
 		goto cleanup;
-
+		*/
 	cleanup:
 		safely_unmap_4kb_page(mapped_pml4_table);
-		safely_unmap_4kb_page(mapped_pdpt_table);
-		safely_unmap_4kb_page(mapped_pde_table);
-		safely_unmap_4kb_page(mapped_pte_table);
-
-		physical_address = translated_physical_address;
-
-		__writecr3(curr_cr3);
+		//safely_unmap_4kb_page(mapped_pdpt_table);
+		//safely_unmap_4kb_page(mapped_pde_table);
+		//safely_unmap_4kb_page(mapped_pte_table);
 
 		return status;
 	}
 
+	/*
+		Exposed API's
+	*/
+
+	project_status copy_physical_memory(uint64_t destination_physical, uint64_t source_physical, uint64_t size) {
+		if (!initialized)
+			return status_not_initialized;
+
+		project_status status = status_success;
+		uint64_t copied_bytes = 0;
+		uint64_t curr_cr3 = __readcr3();
+
+		_mm_lfence();
+		__writecr3(constructed_cr3.flags);
+		_mm_lfence();
+
+		while (copied_bytes < size) {
+			void* current_virtual_mapped_source = 0;
+			void* current_virtual_mapped_destination = 0;
+			uint64_t copyable_size = 0;
+
+			// Map the pa's
+
+			status = map_4kb_page(source_physical + copied_bytes, current_virtual_mapped_source);
+			if (status != status_success) {
+				safely_unmap_4kb_page(current_virtual_mapped_source);
+				break;
+			}
+
+			status = map_4kb_page(destination_physical + copied_bytes, current_virtual_mapped_destination);
+			if (status != status_success) {
+				safely_unmap_4kb_page(current_virtual_mapped_source);
+				safely_unmap_4kb_page(current_virtual_mapped_destination);
+				break;
+			}
+
+			copyable_size = min(PAGE_SIZE, size - copied_bytes);
+
+			// Then copy the mem
+
+			__invlpg(current_virtual_mapped_source);
+			__invlpg(current_virtual_mapped_destination);
+			_mm_lfence();
+
+			memcpy(current_virtual_mapped_destination, current_virtual_mapped_source, copyable_size);
+
+			copied_bytes += copyable_size;
+
+			safely_unmap_4kb_page(current_virtual_mapped_source);
+			safely_unmap_4kb_page(current_virtual_mapped_destination);
+		}
+
+		_mm_lfence();
+		__writecr3(curr_cr3);
+		_mm_lfence();
+
+		return status;
+	}
+
+	project_status copy_virtual_memory(void* destination, void* source, uint64_t size, uint64_t destination_cr3, uint64_t source_cr3) {
+		if (!initialized)
+			return status_not_initialized;
+
+
+		cr3 target_source_cr3 = { 0 };
+		cr3 target_destination_cr3 = { 0 };
+
+		target_source_cr3.flags = source_cr3;
+		target_destination_cr3.flags = destination_cr3;
+
+		project_status status = status_success;
+		uint64_t copied_bytes = 0;
+		uint64_t curr_cr3 = __readcr3();
+
+		_mm_lfence();
+		__writecr3(constructed_cr3.flags);
+		_mm_lfence();
+
+		while (copied_bytes < size) {
+			//void* current_virtual_mapped_source = 0;
+			//void* current_virtual_mapped_destination = 0;
+
+			uint64_t current_physical_source = 0;
+			uint64_t current_physical_destination = 0;
+
+			uint64_t copyable_size = PAGE_SIZE;
+			
+			// First translate the va's to pa's 
+
+			status = translate_to_physical_address(source_cr3, (void*)((uint64_t)source + copied_bytes), current_physical_source);
+			if (status != status_success)
+				break;
+
+			status = translate_to_physical_address(source_cr3, (void*)((uint64_t)destination + copied_bytes), current_physical_destination);
+			if (status != status_success)
+				break;
+			/*
+			// Then map the pa's
+
+			status = map_4kb_page(current_physical_source, current_virtual_mapped_source);
+			if (status != status_success) {
+				safely_unmap_4kb_page(current_virtual_mapped_source);
+				break;
+			}
+
+			status = map_4kb_page(current_physical_destination, current_virtual_mapped_destination);
+			if (status != status_success) {
+				safely_unmap_4kb_page(current_virtual_mapped_source);
+				safely_unmap_4kb_page(current_virtual_mapped_destination);
+				break;
+			}
+
+			copyable_size = min(PAGE_SIZE, size - copied_bytes);
+
+			// Then copy the mem
+
+			__invlpg(current_virtual_mapped_source);
+			__invlpg(current_virtual_mapped_destination);
+			_mm_lfence();
+
+			memcpy(current_virtual_mapped_destination, current_virtual_mapped_source, copyable_size);
+			
+
+			safely_unmap_4kb_page(current_virtual_mapped_source);
+			safely_unmap_4kb_page(current_virtual_mapped_destination);
+			*/
+			copied_bytes += copyable_size;
+		}
+
+		_mm_lfence();
+		__writecr3(curr_cr3);
+		_mm_lfence();
+
+		return status;
+	}
+
+	/*
+		Exposed tests
+	*/
+
+	project_status stress_test_memory_copy(void) {
+		uint64_t test_size = PAGE_SIZE * 10;
+		PHYSICAL_ADDRESS max_addr = { 0 };
+		project_status status = status_success;
+
+		max_addr.QuadPart = MAXULONG64;
+
+		void* pool = ExAllocatePool(NonPagedPool, test_size);
+		void* contiguous_mem = MmAllocateContiguousMemory(test_size, max_addr);
+
+		if (!pool || !contiguous_mem)
+			return status_memory_allocation_failed;
+
+		project_log_info("Stresstest environment cr3: %p", __readcr3());
+		project_log_info("Constructed environment cr3: %p", constructed_cr3.flags);
+		project_log_info("Kernel environment cr3: %p", kernel_cr3.flags);
+
+		for (int i = 0; i < stress_test_count; i++) {
+			memset(contiguous_mem, i, test_size);
+			memcpy(pool, contiguous_mem, test_size);
+
+			status = copy_virtual_memory(contiguous_mem, pool, test_size, __readcr3(), __readcr3());
+			if (status != status_success)
+				goto cleanup;
+
+			if (memcmp(pool, contiguous_mem, test_size) != 0) {
+				status = status_data_mismatch;
+				goto cleanup;
+			}
+		}
+
+		status = status_success;
+
+	cleanup:
+		if (pool) ExFreePool(pool);
+		if (contiguous_mem) MmFreeContiguousMemory(contiguous_mem);
+
+		if (status == status_success) {
+			project_log_success("Stress test finished successfully");
+		}
+
+		return status;
+	}
 }

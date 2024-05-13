@@ -18,14 +18,11 @@ NTSTATUS driver_entry(uint64_t driver_base, uint64_t driver_size) {
 		return STATUS_UNSUCCESSFUL;
 	}
 	
-	uint64_t physbase;
-	status = physmem::translate_to_physical_address(__readcr3(), (void*)driver_base, physbase);
+	status = physmem::stress_test_memory_copy();
 	if (status != status_success) {
-		project_log_error("Failed to find driver physmem base with status %d", status);
+		project_log_error("Failed to stress test memory copy with status %d", status);
 		return STATUS_UNSUCCESSFUL;
 	}
-
-	project_log_success("Driver loaded at physical address %p", physbase);
 
 	project_log_success("Loading process finished");
 
