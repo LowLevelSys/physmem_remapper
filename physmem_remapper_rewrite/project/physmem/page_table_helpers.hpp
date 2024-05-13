@@ -75,7 +75,7 @@ namespace pt_manager {
         for (uint32_t i = 0; i < TABLE_COUNT; i++) {
             if (!table->is_pd_table_occupied[i]) {
                 table->is_pd_table_occupied[i] = true;
-                return table->pde_table[i];
+                return table->pd_table[i];
             }
         }
 
@@ -86,7 +86,7 @@ namespace pt_manager {
         for (uint32_t i = 0; i < TABLE_COUNT; i++) {
             if (!table->is_pd_table_occupied[i]) {
                 table->is_pd_table_occupied[i] = true;
-                return table->pde_2mb_table[i];
+                return table->pd_2mb_table[i];
             }
         }
 
@@ -97,7 +97,7 @@ namespace pt_manager {
         for (uint32_t i = 0; i < TABLE_COUNT; i++) {
             if (!table->is_pt_table_occupied[i]) {
                 table->is_pt_table_occupied[i] = true;
-                return table->pte_table[i];
+                return table->pt_table[i];
             }
         }
 

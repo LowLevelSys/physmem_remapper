@@ -149,27 +149,27 @@ typedef union {
 typedef union {
 
     struct {
-        UINT64 offset_1gb : 30;
-        UINT64 pdpt_idx : 9;
-        UINT64 pml4e_idx : 9;
-        UINT64 reserved : 16;
+        uint64_t offset_1gb : 30;
+        uint64_t pdpte_idx : 9;
+        uint64_t pml4e_idx : 9;
+        uint64_t reserved : 16;
     };
 
     struct {
-        UINT64 offset_2mb : 21;
-        UINT64 pd_idx : 9;
-        UINT64 pdpte_idx : 9;
-        UINT64 pml4e_idx : 9;
-        UINT64 reserved : 16;
+        uint64_t offset_2mb : 21;
+        uint64_t pde_idx : 9;
+        uint64_t pdpte_idx : 9;
+        uint64_t pml4e_idx : 9;
+        uint64_t reserved : 16;
     };
 
     struct {
-        UINT64 offset_4kb : 12;
-        UINT64 pt_idx : 9;
-        UINT64 pd_idx : 9;
-        UINT64 pdpte_idx : 9;
-        UINT64 pml4e_idx : 9;
-        UINT64 reserved : 16;
+        uint64_t offset_4kb : 12;
+        uint64_t pte_idx : 9;
+        uint64_t pde_idx : 9;
+        uint64_t pdpte_idx : 9;
+        uint64_t pml4e_idx : 9;
+        uint64_t reserved : 16;
     };
 
     uint64_t flags;
@@ -185,13 +185,23 @@ struct constructed_page_tables {
         pdpte_1gb_64* pdpt_1gb_table[TABLE_COUNT];
     };
     union {
-        pde_64* pde_table[TABLE_COUNT];
-        pde_2mb_64* pde_2mb_table[TABLE_COUNT];
+        pde_64* pd_table[TABLE_COUNT];
+        pde_2mb_64* pd_2mb_table[TABLE_COUNT];
     };
 
-    pte_64* pte_table[TABLE_COUNT];
+    pte_64* pt_table[TABLE_COUNT];
 
-    uint32_t used_pml4e_slot;
+    // memcpy slots
+    pdpte_1gb_64* memcpy_pdpt_1gb_table;
+    pde_2mb_64* memcpy_pd_2mb_table;
+    pte_64* memcpy_pt_table;
+
+    uint32_t memcpy_pml4e_idx;
+    uint32_t memcpy_pdpt_idx;
+    uint32_t memcpy_pdpt_large_idx;
+    uint32_t memcpy_pd_idx;
+    uint32_t memcpy_pd_large_idx;
+    uint32_t memcpy_pt_idx;
 
     bool is_pdpt_table_occupied[TABLE_COUNT];
     bool is_pd_table_occupied[TABLE_COUNT];

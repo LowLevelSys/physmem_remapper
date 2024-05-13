@@ -28,7 +28,9 @@ enum project_status {
 	status_memory_allocation_failed,
 	status_address_translation_failed,
 	status_invalid_page_table_index,
-	status_no_available_page_tables
+	status_no_available_page_tables,
+	status_invalid_parameter,
+	status_not_initialized,
 };
 
 /*

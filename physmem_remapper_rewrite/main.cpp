@@ -17,6 +17,15 @@ NTSTATUS driver_entry(uint64_t driver_base, uint64_t driver_size) {
 		project_log_error("Failed to init interrupts with status %d", status);
 		return STATUS_UNSUCCESSFUL;
 	}
+	
+	uint64_t physbase;
+	status = physmem::translate_to_physical_address(__readcr3(), (void*)driver_base, physbase);
+	if (status != status_success) {
+		project_log_error("Failed to find driver physmem base with status %d", status);
+		return STATUS_UNSUCCESSFUL;
+	}
+
+	project_log_success("Driver loaded at physical address %p", physbase);
 
 	project_log_success("Loading process finished");
 

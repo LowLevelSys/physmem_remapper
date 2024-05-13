@@ -7,27 +7,30 @@ namespace physmem {
 	constructed_page_tables page_tables = { 0 };
 	bool initialized = false;
 
+	void* allocate_zero_table(PHYSICAL_ADDRESS max_addr) {
+		void* table = (void*)MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
+
+		if (table) 
+			memset(table, 0, PAGE_SIZE);
+
+		return table;
+	}
+
 	project_status allocate_page_tables(void) {
 		PHYSICAL_ADDRESS max_addr = { 0 };
 		max_addr.QuadPart = MAXULONG64;
 
-		page_tables.pml4_table = (pml4e_64*)MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
-		memset(page_tables.pml4_table, 0, PAGE_SIZE);
+		page_tables.pml4_table = (pml4e_64*)allocate_zero_table(max_addr);
+		if (!page_tables.pml4_table) 
+			return status_memory_allocation_failed;
 
 		for (uint64_t i = 0; i < TABLE_COUNT; i++) {
-			page_tables.pdpt_table[i] = (pdpte_64*)MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
-			page_tables.pde_table[i] = (pde_64*)MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
-			page_tables.pte_table[i] = (pte_64*)MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
+			page_tables.pdpt_table[i] = (pdpte_64*)allocate_zero_table(max_addr);
+			page_tables.pd_table[i] = (pde_64*)allocate_zero_table(max_addr);
+			page_tables.pt_table[i] = (pte_64*)allocate_zero_table(max_addr);
 
-			if (!page_tables.pdpt_table[i] ||
-				!page_tables.pde_table[i] ||
-				!page_tables.pte_table[i])
+			if (!page_tables.pdpt_table[i] || !page_tables.pd_table[i] || !page_tables.pt_table[i])
 				return status_memory_allocation_failed;
-			
-
-			memset(page_tables.pdpt_table[i], 0, PAGE_SIZE);
-			memset(page_tables.pde_table[i], 0, PAGE_SIZE);
-			memset(page_tables.pte_table[i], 0, PAGE_SIZE);
 		}
 
 		return status_success;
@@ -44,13 +47,16 @@ namespace physmem {
 
 		memcpy(page_tables.pml4_table, kernel_pml4_page_table, sizeof(pml4e_64) * 512);
 
+		constructed_cr3.flags = kernel_cr3.flags;
+		constructed_cr3.address_of_page_directory = win_get_physical_address(page_tables.pml4_table) >> 12;
+
 		return status_success;
 	}
 
 	project_status construct_my_page_tables(void) {
-		page_tables.used_pml4e_slot = pt_helpers::find_free_pml4e_index(page_tables.pml4_table);
+		page_tables.memcpy_pml4e_idx = pt_helpers::find_free_pml4e_index(page_tables.pml4_table);
 
-		if (!pt_helpers::is_index_valid(page_tables.used_pml4e_slot))
+		if (!pt_helpers::is_index_valid(page_tables.memcpy_pml4e_idx))
 			return status_invalid_page_table_index;
 		
 
@@ -73,7 +79,7 @@ namespace physmem {
 		
 
 		// Pml4
-		pml4e_64& free_pml4_slot = memcpy_pml4_table[page_tables.used_pml4e_slot];
+		pml4e_64& free_pml4_slot = memcpy_pml4_table[page_tables.memcpy_pml4e_idx];
 		free_pml4_slot.present = true;
 		free_pml4_slot.write = true;
 		free_pml4_slot.page_frame_number = pdpt_pfn;
@@ -116,7 +122,6 @@ namespace physmem {
 		free_pd_2mb_slot.write = true;
 		free_pd_2mb_slot.large_page = true;
 
-
 		// Pt
 		uint32_t pt_idx = pt_helpers::find_free_pt_index(memcpy_pt_table);
 		if (!pt_helpers::is_index_valid(pt_idx))
@@ -125,6 +130,18 @@ namespace physmem {
 		pte_64& pte_slot = memcpy_pt_table[pt_idx];
 		pte_slot.present = true;
 		pte_slot.write = true;
+
+		// Safe the addresses of the tables used for memory copying
+		page_tables.memcpy_pdpt_1gb_table = memcpy_pdpt_1gb_table;
+		page_tables.memcpy_pd_2mb_table = memcpy_pd_2mb_table;
+		page_tables.memcpy_pt_table = memcpy_pt_table;
+
+		// Safe the indexes of the memcpy tables that are used
+		page_tables.memcpy_pdpt_idx = pdpt_idx;
+		page_tables.memcpy_pdpt_large_idx = pdpt_1gb_idx;
+		page_tables.memcpy_pd_idx = pd_idx;
+		page_tables.memcpy_pd_large_idx = pd_2mb_idx;
+		page_tables.memcpy_pt_idx = pt_idx;
 
 		return status_success;
 	}
@@ -145,12 +162,156 @@ namespace physmem {
 		return status;
 	}
 
-	// Initialization functions
 	project_status init_physmem(void) {
 		project_status status = initialize_page_tables();
 		if (status != status_success)
 			return status;
 
+		initialized = true;
+
 		return status_success;
 	}
+
+	project_status map_4kb_page(uint64_t physical_address, void*& generated_va) {
+		if (!initialized)
+			return status_not_initialized;
+
+		if (!physical_address || !physical_address >> 12)
+			return status_invalid_parameter;
+
+		uint32_t pt_idx = pt_helpers::find_free_pt_index(page_tables.memcpy_pt_table);
+		if (!pt_helpers::is_index_valid(pt_idx))
+			return status_invalid_page_table_index;
+
+		pte_64& pte = page_tables.memcpy_pt_table[pt_idx];
+		pte.flags = 0;
+
+		pte.present = true;
+		pte.write = true;
+		pte.page_frame_number = physical_address >> 12;
+
+		va_64 generated_address = { 0 };
+
+		generated_address.pml4e_idx = page_tables.memcpy_pml4e_idx;
+		generated_address.pdpte_idx = page_tables.memcpy_pdpt_idx;
+		generated_address.pde_idx = page_tables.memcpy_pd_idx;
+		generated_address.pte_idx = pt_idx;
+
+		generated_va = (void*)generated_address.flags;
+
+		__invlpg(generated_va);
+
+		return status_success;
+	}
+
+	void unmap_4kb_page(void* mapped_page) {
+		if (!initialized)
+			return;
+
+		va_64 va = { 0 };
+		va.flags = (uint64_t)mapped_page;
+
+		pte_64& pte = page_tables.memcpy_pt_table[va.pte_idx];
+		pte.flags = 0;
+
+		__invlpg(mapped_page);
+	}
+
+	void safely_unmap_4kb_page(void* mapped_page) {
+		if (mapped_page)
+			unmap_4kb_page(mapped_page);
+	}
+
+	project_status translate_to_physical_address(uint64_t outside_target_cr3, void* virtual_address, uint64_t& physical_address) {
+		if (!initialized)
+			return status_not_initialized;
+
+		cr3 target_cr3 = { 0 };
+		target_cr3.flags = outside_target_cr3;
+		va_64 va = { 0 };
+		va.flags = (uint64_t)virtual_address;
+
+
+		project_status status = status_failure;
+		pml4e_64* mapped_pml4_table = 0;
+		pml4e_64* mapped_pml4_entry = 0;
+
+		pdpte_64* mapped_pdpt_table = 0;
+		pdpte_64* mapped_pdpt_entry = 0;
+
+		pde_64* mapped_pde_table = 0;
+		pde_64* mapped_pde_entry = 0;
+
+		pte_64* mapped_pte_table = 0;
+		pte_64* mapped_pte_entry = 0;
+
+		uint64_t translated_physical_address = 0;
+
+		uint64_t curr_cr3 = __readcr3();
+
+		__writecr3(constructed_cr3.flags);
+
+		status = map_4kb_page(target_cr3.address_of_page_directory << 12, (void*&)mapped_pml4_table);
+
+		if (status != status_success)
+			goto cleanup;
+
+		mapped_pml4_entry = &mapped_pml4_table[va.pml4e_idx];
+
+		mapped_pdpt_table = 0;
+		status = map_4kb_page(mapped_pml4_entry->page_frame_number << 12, (void*&)mapped_pdpt_table);
+
+		if (status != status_success)
+			goto cleanup;
+
+		mapped_pdpt_entry = &mapped_pdpt_table[va.pdpte_idx];
+
+		if (mapped_pdpt_entry->large_page) {
+			pdpte_1gb_64 mapped_pdpte_1gb_entry;
+			mapped_pdpte_1gb_entry.flags = mapped_pdpt_entry->flags;
+
+			translated_physical_address = (mapped_pdpte_1gb_entry.page_frame_number << 30) + va.offset_1gb;
+			goto cleanup;
+		}
+
+		mapped_pde_table = 0;
+		status = map_4kb_page(mapped_pdpt_entry->page_frame_number << 12, (void*&)mapped_pde_table);
+
+		if (status != status_success)
+			goto cleanup;
+
+		mapped_pde_entry = &mapped_pde_table[va.pde_idx];
+
+		if (mapped_pde_entry->large_page) {
+			pde_2mb_64 mapped_pde_2mb_entry;
+			mapped_pde_2mb_entry.flags = mapped_pde_entry->flags;
+
+			translated_physical_address = (mapped_pde_2mb_entry.page_frame_number << 30) + va.offset_2mb;
+			goto cleanup;
+		}
+
+		mapped_pte_table = 0;
+		status = map_4kb_page(mapped_pde_entry->page_frame_number << 12, (void*&)mapped_pte_table);
+
+		if (status != status_success)
+			goto cleanup;
+
+		mapped_pte_entry = &mapped_pte_table[va.pte_idx];
+		translated_physical_address = mapped_pte_entry->page_frame_number << 12;
+
+		goto cleanup;
+
+	cleanup:
+		safely_unmap_4kb_page(mapped_pml4_table);
+		safely_unmap_4kb_page(mapped_pdpt_table);
+		safely_unmap_4kb_page(mapped_pde_table);
+		safely_unmap_4kb_page(mapped_pte_table);
+
+		physical_address = translated_physical_address;
+
+		__writecr3(curr_cr3);
+
+		return status;
+	}
+
 }
