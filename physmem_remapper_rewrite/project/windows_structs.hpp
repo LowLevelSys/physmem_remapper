@@ -11,14 +11,14 @@ union _KEXECUTE_OPTIONS {
     UCHAR ImageDispatchEnable : 1;                                            //0x0
     UCHAR DisableExceptionChainValidation : 1;                                //0x0
     UCHAR Spare : 1;                                                          //0x0
-    volatile UCHAR ExecuteOptions;                                          //0x0
-    UCHAR ExecuteOptionsNV;                                                 //0x0
+    volatile UCHAR ExecuteOptions;                                            //0x0
+    UCHAR ExecuteOptionsNV;                                                   //0x0
 };
 
 union _KSTACK_COUNT {
     LONG Value;                                                             //0x0
-    ULONG State : 3;                                                          //0x0
-    ULONG StackCount : 29;                                                    //0x0
+    ULONG State : 3;                                                        //0x0
+    ULONG StackCount : 29;                                                  //0x0
 };
 
 struct _KAFFINITY_EX {
@@ -42,10 +42,8 @@ struct _KPROCESS {
     struct _SINGLE_LIST_ENTRY SwapListEntry;                                //0x168
     volatile struct _KAFFINITY_EX ActiveProcessors;                         //0x170
     ULONGLONG ActiveProcessorsPadding[12];                                  //0x218
-    union
-    {
-        struct
-        {
+    union {
+        struct {
             ULONG AutoAlignment : 1;                                          //0x278
             ULONG DisableBoost : 1;                                           //0x278
             ULONG DisableQuantum : 1;                                         //0x278
@@ -85,11 +83,9 @@ struct _KPROCESS {
     UCHAR AddressPolicy;                                                    //0x390
     UCHAR Spare2[71];                                                       //0x391
     VOID* InstrumentationCallback;                                          //0x3d8
-    union
-    {
+    union {
         ULONGLONG SecureHandle;                                             //0x3e0
-        struct
-        {
+        struct {
             ULONGLONG SecureProcess : 1;                                    //0x3e0
             ULONGLONG Unused : 1;                                           //0x3e0
         } Flags;                                                            //0x3e0
