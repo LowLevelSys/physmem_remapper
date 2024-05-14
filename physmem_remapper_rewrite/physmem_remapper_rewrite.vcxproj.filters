@@ -48,5 +48,8 @@
     <ClInclude Include="project\physmem\page_table_helpers.hpp">
       <Filter>project\physmem</Filter>
     </ClInclude>
+    <ClInclude Include="project\windows_structs.hpp">
+      <Filter>project</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

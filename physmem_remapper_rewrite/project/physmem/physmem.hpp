@@ -1,4 +1,6 @@
 #include "../project_includes.hpp"
+#include "../windows_structs.hpp"
+
 #include "physmem_structs.hpp"
 #include "page_table_helpers.hpp"
 

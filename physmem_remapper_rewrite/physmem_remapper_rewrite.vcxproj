@@ -76,6 +76,7 @@
     <ClInclude Include="project\physmem\physmem_structs.hpp" />
     <ClInclude Include="project\project_api.hpp" />
     <ClInclude Include="project\project_includes.hpp" />
+    <ClInclude Include="project\windows_structs.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -196,6 +196,18 @@ namespace physmem {
 		}
 	}
 
+	// This utility should be replaced asap with proper idt handlers
+	uint64_t overwrite_kproc_dtb(uint64_t new_dtb) {
+		PKPROCESS kproc = (PKPROCESS)PsGetCurrentProcess();
+
+		uint64_t old_val = kproc->DirectoryTableBase;
+
+		kproc->DirectoryTableBase = new_dtb;
+
+		return old_val;
+	}
+
+
 	/*
 		Core functions
 	*/
@@ -276,7 +288,7 @@ namespace physmem {
 
 		project_status status = status_success;
 		pml4e_64* mapped_pml4_table = 0;
-		/*
+
 		pml4e_64* mapped_pml4_entry = 0;
 
 		pdpte_64* mapped_pdpt_table = 0;
@@ -287,12 +299,12 @@ namespace physmem {
 
 		pte_64* mapped_pte_table = 0;
 		pte_64* mapped_pte_entry = 0;
-		*/
+
 		status = map_4kb_page(target_cr3.address_of_page_directory << 12, (void*&)mapped_pml4_table);
 
 		if (status != status_success)
 			goto cleanup;
-		/*
+
 		mapped_pml4_entry = &mapped_pml4_table[va.pml4e_idx];
 
 		mapped_pdpt_table = 0;
@@ -337,12 +349,12 @@ namespace physmem {
 		physical_address = mapped_pte_entry->page_frame_number << 12;
 
 		goto cleanup;
-		*/
+
 	cleanup:
 		safely_unmap_4kb_page(mapped_pml4_table);
-		//safely_unmap_4kb_page(mapped_pdpt_table);
-		//safely_unmap_4kb_page(mapped_pde_table);
-		//safely_unmap_4kb_page(mapped_pte_table);
+		safely_unmap_4kb_page(mapped_pdpt_table);
+		safely_unmap_4kb_page(mapped_pde_table);
+		safely_unmap_4kb_page(mapped_pte_table);
 
 		return status;
 	}
@@ -359,9 +371,7 @@ namespace physmem {
 		uint64_t copied_bytes = 0;
 		uint64_t curr_cr3 = __readcr3();
 
-		_mm_lfence();
 		__writecr3(constructed_cr3.flags);
-		_mm_lfence();
 
 		while (copied_bytes < size) {
 			void* current_virtual_mapped_source = 0;
@@ -399,9 +409,7 @@ namespace physmem {
 			safely_unmap_4kb_page(current_virtual_mapped_destination);
 		}
 
-		_mm_lfence();
 		__writecr3(curr_cr3);
-		_mm_lfence();
 
 		return status;
 	}
@@ -421,13 +429,11 @@ namespace physmem {
 		uint64_t copied_bytes = 0;
 		uint64_t curr_cr3 = __readcr3();
 
-		_mm_lfence();
 		__writecr3(constructed_cr3.flags);
-		_mm_lfence();
 
 		while (copied_bytes < size) {
-			//void* current_virtual_mapped_source = 0;
-			//void* current_virtual_mapped_destination = 0;
+			void* current_virtual_mapped_source = 0;
+			void* current_virtual_mapped_destination = 0;
 
 			uint64_t current_physical_source = 0;
 			uint64_t current_physical_destination = 0;
@@ -443,7 +449,7 @@ namespace physmem {
 			status = translate_to_physical_address(source_cr3, (void*)((uint64_t)destination + copied_bytes), current_physical_destination);
 			if (status != status_success)
 				break;
-			/*
+
 			// Then map the pa's
 
 			status = map_4kb_page(current_physical_source, current_virtual_mapped_source);
@@ -472,13 +478,11 @@ namespace physmem {
 
 			safely_unmap_4kb_page(current_virtual_mapped_source);
 			safely_unmap_4kb_page(current_virtual_mapped_destination);
-			*/
+
 			copied_bytes += copyable_size;
 		}
 
-		_mm_lfence();
 		__writecr3(curr_cr3);
-		_mm_lfence();
 
 		return status;
 	}
@@ -500,9 +504,11 @@ namespace physmem {
 		if (!pool || !contiguous_mem)
 			return status_memory_allocation_failed;
 
-		project_log_info("Stresstest environment cr3: %p", __readcr3());
+		project_log_info("Stress-test environment cr3: %p", __readcr3());
 		project_log_info("Constructed environment cr3: %p", constructed_cr3.flags);
 		project_log_info("Kernel environment cr3: %p", kernel_cr3.flags);
+
+		uint64_t old_dtb = overwrite_kproc_dtb(constructed_cr3.flags);
 
 		for (int i = 0; i < stress_test_count; i++) {
 			memset(contiguous_mem, i, test_size);
@@ -521,6 +527,8 @@ namespace physmem {
 		status = status_success;
 
 	cleanup:
+		overwrite_kproc_dtb(old_dtb);
+
 		if (pool) ExFreePool(pool);
 		if (contiguous_mem) MmFreeContiguousMemory(contiguous_mem);
 
