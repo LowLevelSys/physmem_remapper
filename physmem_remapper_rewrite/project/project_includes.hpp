@@ -32,7 +32,13 @@ enum project_status {
 	status_invalid_parameter,
 	status_not_initialized,
 	status_data_mismatch,
-	status_wrong_context
+	status_wrong_context,
+	status_non_matching_page_offsets,
+	status_non_aligned,
+	status_paging_wrong_granularity,
+	status_paging_hierchy_mismatch,
+	status_invalid_my_page_table,
+	status_invalid_return_value
 };
 
 /*

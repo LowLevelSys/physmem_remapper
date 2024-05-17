@@ -49,6 +49,7 @@ namespace pt_helpers {
 }
 
 namespace pt_manager {
+    // Allocation helpers
     inline pdpte_64* get_free_pdpt_table(constructed_page_tables* table) {
         for (uint32_t i = 0; i < TABLE_COUNT; i++) {
             if (!table->is_pdpt_table_occupied[i]) {
@@ -102,5 +103,45 @@ namespace pt_manager {
         }
 
         return 0;
+    }
+
+    // Freeing helpers
+    inline void safely_free_pdpt_table(constructed_page_tables* table, pdpte_64* pdpt_table) {
+        if (!pdpt_table)
+            return;
+
+        for (uint32_t i = 0; i < TABLE_COUNT; i++) {
+            if (table->pdpt_table[i] == pdpt_table) {
+                table->is_pdpt_table_occupied[i] = false;
+                memset(pdpt_table, 0, 512 * sizeof(pdpte_64));
+                return;
+            }
+        }
+    }
+
+    inline void safely_free_pd_table(constructed_page_tables* table, pde_64* pd_table) {
+        if (!pd_table)
+            return;
+
+        for (uint32_t i = 0; i < TABLE_COUNT; i++) {
+            if (table->pd_table[i] == pd_table) {
+                table->is_pd_table_occupied[i] = false;
+                memset(pd_table, 0, 512 * sizeof(pde_64));
+                return;
+            }
+        }
+    }
+
+    inline void safely_free_pt_table(constructed_page_tables* table, pte_64* pt_table) {
+        if (!pt_table)
+            return;
+
+        for (uint32_t i = 0; i < TABLE_COUNT; i++) {
+            if (table->pt_table[i] == pt_table) {
+                table->is_pd_table_occupied[i] = false;
+                memset(pt_table, 0, 512 * sizeof(pte_64));
+                return;
+            }
+        }
     }
 }
