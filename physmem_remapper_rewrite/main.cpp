@@ -18,6 +18,12 @@ NTSTATUS driver_entry(uint64_t driver_base, uint64_t driver_size) {
 		return STATUS_UNSUCCESSFUL;
 	}
 
+	status = physmem::stress_test_memory_copy();
+	if (status != status_success) {
+		project_log_error("Failed to stress test memory copying with status %d", status);
+		return STATUS_UNSUCCESSFUL;
+	}
+
 	status = physmem::stress_test_memory_remapping();
 	if (status != status_success) {
 		project_log_error("Failed to stress test memory remapping with status %d", status);

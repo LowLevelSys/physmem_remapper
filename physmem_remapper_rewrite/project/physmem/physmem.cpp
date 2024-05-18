@@ -520,17 +520,10 @@ namespace physmem {
 			if (translate_to_physical_address(KERNEL_CR3, my_1gb_pdpt_table, pdpt_phys) != status_success)
 				goto cleanup;
 
-			/*
-			// Copy the pml4 entry and set the pfn to our table
-			memcpy(&my_pml4_table[mem_va.pml4e_idx], &mapped_pml4_table[mem_va.pml4e_idx], sizeof(pml4e_64));
-			my_pml4_table[mem_va.pml4e_idx].page_frame_number = pdpt_phys >> 12;
-
-			// Copy the pdpt table
 			memcpy(my_1gb_pdpt_table, mapped_pdpt_table, sizeof(pdpte_1gb_64) * 512);
+			memcpy(&my_pml4_table[mem_va.pml4e_idx], &mapped_pml4_table[mem_va.pml4e_idx], sizeof(pml4e_64));
 
-			my_1gb_pdpt_table[mem_va.pdpte_idx].present = true;
-			my_1gb_pdpt_table[mem_va.pdpte_idx].write = true;
-			*/
+			my_pml4_table[mem_va.pml4e_idx].page_frame_number = pdpt_phys >> 12;
 
 			goto cleanup;
 		}
@@ -558,21 +551,14 @@ namespace physmem {
 			if (translate_to_physical_address(KERNEL_CR3, my_2mb_pde_table, pd_phys) != status_success)
 				goto cleanup;
 
-			/*
-			// Copy the pml4 entry and set the pfn to our table
-			memcpy(&my_pml4_table[mem_va.pml4e_idx], &mapped_pml4_table[mem_va.pml4e_idx], sizeof(pml4e_64));
-			my_pml4_table[mem_va.pml4e_idx].page_frame_number = pdpt_phys >> 12;
 
-			// Copy the pdpt table
+			memcpy(my_2mb_pde_table, mapped_pde_table, sizeof(pde_2mb_64) * 512);
 			memcpy(my_pdpt_table, mapped_pdpt_table, sizeof(pdpte_64) * 512);
+			memcpy(&my_pml4_table[mem_va.pml4e_idx], &mapped_pml4_table[mem_va.pml4e_idx], sizeof(pml4e_64));
+
+			my_pml4_table[mem_va.pml4e_idx].page_frame_number = pdpt_phys >> 12;
 			my_pdpt_table[mem_va.pdpte_idx].page_frame_number = pd_phys >> 12;
 
-			// Copy the pd table
-			memcpy(my_2mb_pde_table, mapped_pde_table, sizeof(pde_2mb_64) * 512);
-
-			my_2mb_pde_table[mem_va.pde_idx].present = true;
-			my_2mb_pde_table[mem_va.pde_idx].write = true;
-			*/
 			goto cleanup;
 		}
 
@@ -786,8 +772,6 @@ namespace physmem {
 
 		__writecr3(constructed_cr3.flags);
 
-		log_paging_hierachy(target_address, constructed_cr3.flags);
-
 		// First ensure the mapping of the target address
 		// in our cr3
 		status = ensure_memory_mapping(target_address, target_address_cr3);
@@ -809,8 +793,6 @@ namespace physmem {
 		target_pte->page_frame_number = new_mem_pte->page_frame_number;
 
 		__invlpg(target_address);
-		
-		log_paging_hierachy(target_address, constructed_cr3.flags);
 
 		goto cleanup;
 		
@@ -841,9 +823,11 @@ namespace physmem {
 		if (!pool || !contiguous_mem)
 			return status_memory_allocation_failed;
 
+		/*
 		project_log_info("Stress-test environment cr3: %p", __readcr3());
 		project_log_info("Constructed environment cr3: %p", constructed_cr3.flags);
 		project_log_info("Kernel environment cr3: %p", kernel_cr3.flags);
+		*/
 
 		for (int i = 0; i < stress_test_count; i++) {
 			memset(contiguous_mem, i, test_size);
@@ -880,6 +864,7 @@ namespace physmem {
 		void* mema = 0;
 		void* memb = 0;
 		uint64_t curr_cr3 = 0;
+		uint64_t old_dtb = 0;
 
 		mema = MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
 		memb = MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
@@ -894,6 +879,8 @@ namespace physmem {
 		status = overwrite_virtual_address_mapping(mema, memb, KERNEL_CR3, KERNEL_CR3);
 
 	    curr_cr3 = __readcr3();
+		old_dtb = overwrite_kproc_dtb(constructed_cr3.flags);
+
 		__writecr3(constructed_cr3.flags);
 
 		if (memcmp(mema, memb, PAGE_SIZE) == 0) {
@@ -902,8 +889,12 @@ namespace physmem {
 		else {
 			project_log_info("Memory remapping test failed");
 		}
+		
 
 	cleanup:
+		if (old_dtb) {
+			overwrite_kproc_dtb(old_dtb);
+		}
 		if (curr_cr3) {
 			__writecr3(curr_cr3);
 		}
