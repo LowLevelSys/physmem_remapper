@@ -8,11 +8,17 @@ namespace physmem {
 	constexpr uint64_t KERNEL_CR3 = 0x1ad000;
 
 	/*
+		Declarations
+	*/
+	void log_remaining_pte_entries(pte_64* pte_table);
+
+	/*
 		Global variables
 	*/
 
 	cr3 constructed_cr3 = { 0 };
 	cr3 kernel_cr3 = { 0 };
+
 
 	constructed_page_tables page_tables = { 0 };
 	bool initialized = false;
@@ -207,6 +213,215 @@ namespace physmem {
 		return old_val;
 	}
 
+	project_status get_remapping_entry(void* mem, remapped_entry_t*& remapping_entry) {
+		project_status status = status_remapping_entry_found;
+		va_64 target_va = { 0 };
+		remapped_entry_t dummy = { 0 };
+		remapped_entry_t* curr_closest_entry = &dummy;
+		
+		target_va.flags = (uint64_t)mem;
+
+		for (uint32_t i = 0; i < REMAPPING_COUNT; i++) {
+			remapped_entry_t* curr_entry = &page_tables.remapping_list[i];
+
+			// Sort out all the irrelevant ones
+			if (!curr_entry->used)
+				continue;
+
+			// Check whether the pml4 index overlaps
+			if (curr_entry->remapped_va.pml4e_idx != target_va.pml4e_idx)
+				continue;
+
+			// Check whether the pdpt index overlaps
+			if (curr_entry->remapped_va.pdpte_idx != target_va.pdpte_idx) {
+
+				// The curr closest entry is already as good as the entry at the current index
+				if (curr_closest_entry->remapped_va.pml4e_idx == target_va.pml4e_idx) 
+					continue;
+
+				// Set the curr entry as closest entry
+				curr_closest_entry = curr_entry;
+				continue;
+			}
+
+			// If it points to an entry marked as large page
+			// we can return it immediately as there won't be
+			// a more fitting entry than this one (paging hierachy
+			// for that va range ends there
+			if (curr_entry->pdpt_table.large_page) {
+				curr_closest_entry = curr_entry;
+				goto cleanup;
+			}
+
+			// Check whether the pde index overlaps
+			if (curr_entry->remapped_va.pde_idx != target_va.pde_idx) {
+
+				// The curr closest entry is already as good as the entry at the current index
+				if (curr_closest_entry->remapped_va.pml4e_idx == target_va.pml4e_idx &&
+					curr_closest_entry->remapped_va.pdpte_idx == target_va.pdpte_idx)
+					continue;
+
+				// Set the curr entry as closest entry
+				curr_closest_entry = curr_entry;
+				continue;
+			}
+
+			if (curr_entry->pd_table.large_page) {
+				curr_closest_entry = curr_entry;
+				goto cleanup;
+			}
+	
+			// Check whether the pte index overlaps
+			if (curr_entry->remapped_va.pte_idx != target_va.pte_idx) {
+
+				// The curr closest entry is already as good as the entry at the current index
+				if (curr_closest_entry->remapped_va.pml4e_idx == target_va.pml4e_idx &&
+					curr_closest_entry->remapped_va.pdpte_idx == target_va.pdpte_idx &&
+					curr_closest_entry->remapped_va.pde_idx == target_va.pde_idx)
+					continue;
+
+				// Set the curr entry as closest entry
+				curr_closest_entry = curr_entry;
+				continue;
+			}
+
+			// Everything overlapped, the address resides in the same pte table
+			// as another one we mapped, we can reuse everything
+			curr_closest_entry = curr_entry;
+			goto cleanup;
+		}
+
+	cleanup:
+
+		if (curr_closest_entry == &dummy) {
+			status = status_no_valid_remapping_entry;
+		}
+		else {
+			remapping_entry = curr_closest_entry;
+		}
+
+		return status;
+	}
+
+	project_status add_remapping_entry(remapped_entry_t new_entry) {
+		project_status status = status_success;
+
+		for (uint32_t i = 0; i < REMAPPING_COUNT; i++) {
+			remapped_entry_t* curr_entry = &page_tables.remapping_list[i];
+
+			// Check whether the current entry is present/occupied
+			if (curr_entry->used)
+				continue;
+			memcpy(curr_entry, &new_entry, sizeof(remapped_entry_t));
+			curr_entry->used = true;
+
+			break;
+		}
+
+		status = status_remapping_list_full;
+		return status;
+	}
+
+	project_status remove_remapping_entry(remapped_entry_t* remapping_entry) {
+		if (!remapping_entry)
+			return status_invalid_parameter;
+
+		project_status status = status_success;
+
+		for (uint32_t i = 0; i < REMAPPING_COUNT; i++) {
+			remapped_entry_t* curr_entry = &page_tables.remapping_list[i];
+
+			if (curr_entry != remapping_entry)
+				continue;
+
+			memset(curr_entry, 0, sizeof(remapped_entry_t));
+
+			status = status_success;
+			return status;
+		}
+
+		status = status_remapping_entry_not_found;
+		return status;
+
+	}
+
+	project_status get_max_remapping_level(remapped_entry_t* remapping_entry, uint64_t target_address, usable_until& usable_level) {
+		va_64 target_va = { 0 };
+		target_va.flags = target_address;
+
+		if (!remapping_entry || !target_address) {
+			usable_level = non_valid;
+			return status_invalid_parameter;
+		}
+
+		// Check whether the pml4 index overlaps
+		if (remapping_entry->remapped_va.pml4e_idx != target_va.pml4e_idx) {
+			usable_level = non_valid;
+			return status_invalid_parameter;
+		}
+
+		// Check whether the pdpt index overlaps
+		if (remapping_entry->remapped_va.pdpte_idx != target_va.pdpte_idx) {
+			usable_level = pdpt_table_valid;
+			return status_success;
+		}
+
+		if (remapping_entry->pdpt_table.large_page) {
+			usable_level = pdpt_table_valid;
+			return status_success;
+		}
+
+		// Check whether the pde index overlaps
+		if (remapping_entry->remapped_va.pde_idx != target_va.pde_idx) {
+			usable_level = pde_table_valid;
+			return status_success;
+		}
+
+		if (remapping_entry->pd_table.large_page) {
+			usable_level = pde_table_valid;
+			return status_success;
+		}
+
+		usable_level = pte_table_valid;
+		return status_success;
+	}
+
+	void safely_set_reusable_level(restorable_until& old_level, restorable_until new_level) {
+		if (new_level > old_level) {
+			new_level = old_level;
+		}
+	}
+
+	project_status get_max_restorable_level(remapped_entry_t* remapping_entry, restorable_until& restorable_level) {
+		restorable_level = pdpt_table_removeable;
+
+		for (uint32_t i = 0; i < REMAPPING_COUNT; i++) {
+			remapped_entry_t* curr_entry = &page_tables.remapping_list[i];
+
+			// Check whether it is a valid entry to compare against
+			if (!curr_entry->used || curr_entry == remapping_entry)
+				continue;
+
+			// Check whether pt tables overlap
+			if (curr_entry->pt_table == remapping_entry->pt_table) {
+				safely_set_reusable_level(restorable_level, nothing_removeable);
+			}
+
+			// Check whether pd tables overlap
+			if (curr_entry->pd_table.table == remapping_entry->pd_table.table) {
+				safely_set_reusable_level(restorable_level, pte_table_removeable);
+			}
+
+			// Check whether pdpt tables overlap
+			if (curr_entry->pdpt_table.table == remapping_entry->pdpt_table.table) {
+				safely_set_reusable_level(restorable_level, pde_table_removeable);
+			}
+			
+		}
+
+		return status_success;
+	}
+
 	/*
 		Core functions
 	*/
@@ -347,6 +562,21 @@ namespace physmem {
 		return status;
 	}
 
+	void log_paging_hierachy(void* mem, uint64_t mem_cr3_u64) {
+		project_status status = status_success;
+		pte_64* pte = 0;
+		status = get_pte_entry(mem, mem_cr3_u64, pte);
+
+		if (pte && status == status_success) {
+			project_log_info("Va %p points to pa %p", mem, pte->page_frame_number << 12);
+		}
+		else {
+			project_log_error("Failed to get pte");
+		}
+
+		safely_unmap_4kb_page(pte);
+	}
+
 	project_status translate_to_physical_address(uint64_t outside_target_cr3, void* virtual_address, uint64_t& physical_address) {
 		if (!initialized)
 			return status_not_initialized;
@@ -383,7 +613,6 @@ namespace physmem {
 
 		mapped_pml4_entry = &mapped_pml4_table[va.pml4e_idx];
 
-		mapped_pdpt_table = 0;
 		status = map_4kb_page(mapped_pml4_entry->page_frame_number << 12, (void*&)mapped_pdpt_table);
 
 		if (status != status_success)
@@ -403,7 +632,6 @@ namespace physmem {
 			goto cleanup;
 		}
 
-		mapped_pde_table = 0;
 		status = map_4kb_page(mapped_pdpt_entry->page_frame_number << 12, (void*&)mapped_pde_table);
 
 		if (status != status_success)
@@ -423,7 +651,6 @@ namespace physmem {
 			goto cleanup;
 		}
 
-		mapped_pte_table = 0;
 		status = map_4kb_page(mapped_pde_entry->page_frame_number << 12, (void*&)mapped_pte_table);
 
 		if (status != status_success)
@@ -450,22 +677,7 @@ namespace physmem {
 		return status;
 	}
 
-	void log_paging_hierachy(void* mem, uint64_t mem_cr3_u64) {
-		project_status status = status_success;
-		pte_64* pte = 0;
-		status = get_pte_entry(mem, mem_cr3_u64, pte);
-
-		if (pte && status == status_success) {
-			project_log_info("Va %p points to pa %p", mem, pte->page_frame_number << 12);
-		}
-		else {
-			project_log_error("Failed to get pte");
-		}
-
-		safely_unmap_4kb_page(pte);
-	}
-
-	project_status ensure_memory_mapping(void* mem, uint64_t mem_cr3_u64) {
+	project_status ensure_memory_mapping_without_previous_mapping(void* mem, uint64_t mem_cr3_u64) {
 		if (!initialized)
 			return status_not_initialized;
 
@@ -498,6 +710,9 @@ namespace physmem {
 		uint64_t pd_phys = 0;
 		uint64_t pt_phys = 0;
 
+		// A new entry for remapping
+		remapped_entry_t new_entry = { 0 };
+
 		my_pml4_table = page_tables.pml4_table;
 
 		status = map_4kb_page(mem_cr3.address_of_page_directory << 12, (void*&)mapped_pml4_table);
@@ -525,6 +740,15 @@ namespace physmem {
 
 			my_pml4_table[mem_va.pml4e_idx].page_frame_number = pdpt_phys >> 12;
 
+			// Create a new remapping entry
+			new_entry.used = true;
+			new_entry.remapped_va = mem_va;
+
+			new_entry.pdpt_table.large_page = true;
+			new_entry.pdpt_table.table = my_pdpt_table;
+
+			add_remapping_entry(new_entry);
+
 			goto cleanup;
 		}
 
@@ -539,25 +763,39 @@ namespace physmem {
 				goto cleanup;
 			}
 
-			pde_2mb_64* my_2mb_pde_table = pt_manager::get_free_pd_2mb_table(&page_tables);
-			if (!my_2mb_pde_table) {
+			my_pde_table = pt_manager::get_free_pd_table(&page_tables);
+			if (!my_pde_table) {
 				status = status_invalid_my_page_table;
 				goto cleanup;
 			}
 
+			pde_2mb_64* my_2mb_pd_table = (pde_2mb_64*)my_pde_table;
+
 			if (translate_to_physical_address(KERNEL_CR3, my_pdpt_table, pdpt_phys) != status_success)
 				goto cleanup;
 
-			if (translate_to_physical_address(KERNEL_CR3, my_2mb_pde_table, pd_phys) != status_success)
+			if (translate_to_physical_address(KERNEL_CR3, my_pde_table, pd_phys) != status_success)
 				goto cleanup;
 
 
-			memcpy(my_2mb_pde_table, mapped_pde_table, sizeof(pde_2mb_64) * 512);
+			memcpy(my_2mb_pd_table, mapped_pde_table, sizeof(pde_2mb_64) * 512);
 			memcpy(my_pdpt_table, mapped_pdpt_table, sizeof(pdpte_64) * 512);
 			memcpy(&my_pml4_table[mem_va.pml4e_idx], &mapped_pml4_table[mem_va.pml4e_idx], sizeof(pml4e_64));
 
 			my_pml4_table[mem_va.pml4e_idx].page_frame_number = pdpt_phys >> 12;
 			my_pdpt_table[mem_va.pdpte_idx].page_frame_number = pd_phys >> 12;
+
+			// Create a new remapping entry
+			new_entry.used = true;
+			new_entry.remapped_va = mem_va;
+
+			new_entry.pdpt_table.large_page = false;
+			new_entry.pdpt_table.table = my_pdpt_table;
+
+			new_entry.pd_table.large_page = true;
+			new_entry.pd_table.table = my_pde_table;
+
+			add_remapping_entry(new_entry);
 
 			goto cleanup;
 		}
@@ -605,6 +843,20 @@ namespace physmem {
 		my_pdpt_table[mem_va.pdpte_idx].page_frame_number = pd_phys >> 12;
 		my_pde_table[mem_va.pde_idx].page_frame_number = pt_phys >> 12;
 
+		// Create a new remapping entry
+		new_entry.used = true;
+		new_entry.remapped_va = mem_va;
+
+		new_entry.pdpt_table.large_page = false;
+		new_entry.pdpt_table.table = my_pdpt_table;
+
+		new_entry.pd_table.large_page = false;
+		new_entry.pd_table.table = my_pde_table;
+
+		new_entry.pt_table = my_pte_table;
+
+		add_remapping_entry(new_entry);
+
 	cleanup:
 
 		safely_unmap_4kb_page(mapped_pml4_table);
@@ -621,6 +873,317 @@ namespace physmem {
 		}
 		else {
 			__invlpg(mem);
+		}
+
+		return status;
+	}
+
+	project_status ensure_memory_mapping_with_previous_mapping(void* mem, uint64_t mem_cr3_u64, remapped_entry_t* remapping_entry) {
+		if (!initialized)
+			return status_not_initialized;
+
+		if (__readcr3() != constructed_cr3.flags) {
+			project_log_error("Wrong ctx: %p", __readcr3());
+			return status_wrong_context;
+		}
+
+		va_64 mem_va = { 0 };
+		cr3 mem_cr3 = { 0 };
+
+		mem_va.flags = (uint64_t)mem;
+		mem_cr3.flags = mem_cr3_u64;
+		project_status status = status_success;
+
+		// Pointers to mapped system tables
+		pml4e_64* mapped_pml4_table = 0;
+		pdpte_64* mapped_pdpt_table = 0;
+		pde_64* mapped_pde_table = 0;
+		pte_64* mapped_pte_table = 0;
+
+		// Pointers to my tables
+		pml4e_64* my_pml4_table = 0;
+		pdpte_64* my_pdpt_table = 0;
+		pde_64* my_pde_table = 0;
+		pte_64* my_pte_table = 0;
+
+		// Physical addresses of my page tables
+		uint64_t pd_phys = 0;
+		uint64_t pt_phys = 0;
+
+		// A new entry for remapping
+		remapped_entry_t new_entry = { 0 };
+
+		usable_until max_usable = non_valid;
+		status = get_max_remapping_level(remapping_entry, (uint64_t)mem, max_usable);
+		if (status != status_success)
+			goto cleanup;
+
+		my_pml4_table = page_tables.pml4_table;
+
+		status = map_4kb_page(mem_cr3.address_of_page_directory << 12, (void*&)mapped_pml4_table);
+		if (status != status_success)
+			goto cleanup;
+
+		status = map_4kb_page(mapped_pml4_table[mem_va.pml4e_idx].page_frame_number << 12, (void*&)mapped_pdpt_table);
+		if (status != status_success)
+			goto cleanup;
+
+		if (mapped_pdpt_table[mem_va.pdpte_idx].large_page) {
+			switch (max_usable) {
+			case pdpt_table_valid:
+			case pde_table_valid:
+			case pte_table_valid: {
+				my_pdpt_table = (pdpte_64*)remapping_entry->pdpt_table.table;
+				if (mem_va.pdpte_idx == remapping_entry->remapped_va.pdpte_idx) {
+					status = status_address_already_remapped;
+					goto cleanup;
+				}
+
+				my_pdpt_table[mem_va.pdpte_idx].flags = mapped_pdpt_table[mem_va.pdpte_idx].flags;
+
+				new_entry.used = true;
+				new_entry.remapped_va = mem_va;
+
+				new_entry.pdpt_table.large_page = true;
+				new_entry.pdpt_table.table = remapping_entry->pdpt_table.table;
+
+				add_remapping_entry(new_entry);
+
+				goto cleanup;
+			}
+			case non_valid: {
+				status = status_non_valid_usable_until_level;
+				goto cleanup;
+			}
+			}
+		}
+
+		status = map_4kb_page(mapped_pdpt_table[mem_va.pdpte_idx].page_frame_number << 12, (void*&)mapped_pde_table);
+		if (status != status_success)
+			goto cleanup;
+
+		if (mapped_pde_table[mem_va.pde_idx].large_page) {
+			switch (max_usable) {
+			case pdpt_table_valid: {
+				my_pdpt_table = (pdpte_64*)remapping_entry->pdpt_table.table;
+				if (mem_va.pdpte_idx == remapping_entry->remapped_va.pdpte_idx) {
+					status = status_address_already_remapped;
+					goto cleanup;
+				}
+
+				my_pde_table = pt_manager::get_free_pd_table(&page_tables);
+				if (!my_pde_table) {
+					status = status_invalid_my_page_table;
+					goto cleanup;
+				}
+
+				status = translate_to_physical_address(KERNEL_CR3, my_pde_table, pd_phys);
+				if (status != status_success)
+					goto cleanup;
+				
+				my_pdpt_table[mem_va.pdpte_idx].page_frame_number = pd_phys >> 12;
+
+				memcpy(my_pde_table, mapped_pde_table, sizeof(pde_2mb_64) * 512);
+
+				new_entry.used = true;
+				new_entry.remapped_va = mem_va;
+
+				new_entry.pdpt_table.large_page = false;
+				new_entry.pdpt_table.table = remapping_entry->pdpt_table.table;
+
+				new_entry.pd_table.large_page = true;
+				new_entry.pd_table.table = my_pde_table;
+
+				add_remapping_entry(new_entry);
+
+				goto cleanup;
+			}
+			case pde_table_valid:
+			case pte_table_valid: {
+				pde_2mb_64* my_2mb_pde_table = (pde_2mb_64*)remapping_entry->pd_table.table;
+				if (mem_va.pde_idx == remapping_entry->remapped_va.pde_idx) {
+					status = status_address_already_remapped;
+					goto cleanup;
+				}
+
+				my_2mb_pde_table[mem_va.pde_idx].flags = mapped_pde_table[mem_va.pde_idx].flags;
+				
+				new_entry.used = true;
+				new_entry.remapped_va = mem_va;
+
+				new_entry.pdpt_table.large_page = false;
+				new_entry.pdpt_table.table = remapping_entry->pdpt_table.table;
+
+				new_entry.pd_table.large_page = true;
+				new_entry.pd_table.table = remapping_entry->pd_table.table;
+
+				add_remapping_entry(new_entry);
+
+				goto cleanup;
+			}
+			case non_valid: {
+				status = status_non_valid_usable_until_level;
+				goto cleanup;
+			}
+			}
+		}
+
+		status = map_4kb_page(mapped_pde_table[mem_va.pde_idx].page_frame_number << 12, (void*&)mapped_pte_table);
+		if (status != status_success)
+			goto cleanup;
+
+		switch (max_usable) {
+		case pdpt_table_valid: {
+			my_pdpt_table = (pdpte_64*)remapping_entry->pdpt_table.table;
+			if (mem_va.pdpte_idx == remapping_entry->remapped_va.pdpte_idx) {
+				status = status_address_already_remapped;
+				goto cleanup;
+			}
+
+			my_pde_table = pt_manager::get_free_pd_table(&page_tables);
+			if (!my_pde_table) {
+				status = status_invalid_my_page_table;
+				goto cleanup;
+			}
+
+			status = translate_to_physical_address(KERNEL_CR3, my_pde_table, pd_phys);
+			if (status != status_success)
+				goto cleanup;
+
+			my_pdpt_table[mem_va.pdpte_idx].page_frame_number = pd_phys >> 12;
+
+			memcpy(my_pde_table, mapped_pde_table, sizeof(pde_2mb_64) * 512);
+
+			my_pte_table = pt_manager::get_free_pt_table(&page_tables);
+			if (!my_pte_table) {
+				status = status_invalid_my_page_table;
+				goto cleanup;
+			}
+
+			status = translate_to_physical_address(KERNEL_CR3, my_pte_table, pt_phys);
+			if (status != status_success)
+				goto cleanup;
+
+			my_pde_table[mem_va.pde_idx].page_frame_number = pt_phys >> 12;
+
+			memcpy(my_pte_table, mapped_pte_table, sizeof(pte_64) * 512);
+
+			new_entry.used = true;
+			new_entry.remapped_va = mem_va;
+
+			new_entry.pdpt_table.large_page = false;
+			new_entry.pdpt_table.table = remapping_entry->pdpt_table.table;
+
+			new_entry.pd_table.large_page = false;
+			new_entry.pd_table.table = my_pde_table;
+
+			new_entry.pt_table = my_pte_table;
+
+			add_remapping_entry(new_entry);
+
+			goto cleanup;
+		}
+		case pde_table_valid: {
+			my_pde_table = (pde_64*)remapping_entry->pd_table.table;
+			if (mem_va.pde_idx == remapping_entry->remapped_va.pde_idx) {
+				status = status_address_already_remapped;
+				goto cleanup;
+			}
+
+			my_pte_table = pt_manager::get_free_pt_table(&page_tables);
+			if (!my_pte_table) {
+				status = status_invalid_my_page_table;
+				goto cleanup;
+			}
+
+			status = translate_to_physical_address(KERNEL_CR3, my_pte_table, pt_phys);
+			if (status != status_success)
+				goto cleanup;
+
+			my_pde_table[mem_va.pde_idx].page_frame_number = pt_phys >> 12;
+
+			memcpy(my_pte_table, mapped_pte_table, sizeof(pte_64) * 512);
+
+			new_entry.used = true;
+			new_entry.remapped_va = mem_va;
+
+			new_entry.pdpt_table.large_page = false;
+			new_entry.pdpt_table.table = remapping_entry->pdpt_table.table;
+
+			new_entry.pd_table.large_page = false;
+			new_entry.pd_table.table = remapping_entry->pd_table.table;
+
+			new_entry.pt_table = my_pte_table;
+
+			add_remapping_entry(new_entry);
+
+			goto cleanup;
+		}
+		case pte_table_valid: {
+			my_pte_table = (pte_64*)remapping_entry->pt_table;
+			if (mem_va.pte_idx == remapping_entry->remapped_va.pte_idx) {
+				status = status_address_already_remapped;
+				goto cleanup;
+			}
+
+			my_pte_table[mem_va.pte_idx].flags = mapped_pte_table[mem_va.pte_idx].flags;
+
+			new_entry.used = true;
+			new_entry.remapped_va = mem_va;
+
+			new_entry.pdpt_table.large_page = false;
+			new_entry.pdpt_table.table = remapping_entry->pdpt_table.table;
+
+			new_entry.pd_table.large_page = false;
+			new_entry.pd_table.table = remapping_entry->pd_table.table;
+
+			new_entry.pt_table = remapping_entry->pt_table;
+
+			add_remapping_entry(new_entry);
+
+			goto cleanup;
+		}
+		case non_valid: {
+			status = status_non_valid_usable_until_level;
+			goto cleanup;
+		}
+		}
+
+	cleanup:
+
+		safely_unmap_4kb_page(mapped_pml4_table);
+		safely_unmap_4kb_page(mapped_pdpt_table);
+		safely_unmap_4kb_page(mapped_pde_table);
+		safely_unmap_4kb_page(mapped_pte_table);
+
+		if (status != status_success) {
+			pt_manager::safely_free_pdpt_table(&page_tables, my_pdpt_table);
+			pt_manager::safely_free_pd_table(&page_tables, my_pde_table);
+			pt_manager::safely_free_pt_table(&page_tables, my_pte_table);
+
+			return status;
+		}
+		else {
+			__invlpg(mem);
+		}
+
+		return status;
+	}
+
+	project_status ensure_memory_mapping(void* mem, uint64_t mem_cr3_u64) {
+		if (!initialized)
+			return status_not_initialized;
+
+		project_status status = status_success;
+		remapped_entry_t* remapping_entry = 0;
+
+		status = get_remapping_entry(mem, remapping_entry);
+
+		if (status == status_remapping_entry_found) {
+			status = ensure_memory_mapping_with_previous_mapping(mem, mem_cr3_u64, remapping_entry);
+		}
+		else {
+			status = ensure_memory_mapping_without_previous_mapping(mem, mem_cr3_u64);
 		}
 
 		return status;
@@ -759,49 +1322,264 @@ namespace physmem {
 		return status;
 	}
 
-	project_status overwrite_virtual_address_mapping(void* target_address, void* new_memory, uint64_t target_address_cr3, uint64_t new_mem_cr3) {
+	project_status overwrite_virtual_address_mapping(void* target_address, void* new_memory, uint64_t target_address_cr3_u64, uint64_t new_mem_cr3_u64) {
 		if (PAGE_ALIGN(target_address) != target_address ||
 			PAGE_ALIGN(new_memory) != new_memory)
 			return status_non_aligned;
 
-		project_status status = status_success;
-		pte_64* target_pte = 0;
-		pte_64* new_mem_pte = 0;
 		uint64_t curr_cr3 = __readcr3();
 		uint64_t old_dtb = overwrite_kproc_dtb(constructed_cr3.flags);
 
 		__writecr3(constructed_cr3.flags);
 
-		// First ensure the mapping of the target address
-		// in our cr3
-		status = ensure_memory_mapping(target_address, target_address_cr3);
+		project_status status = status_success;
 
+		cr3 new_mem_cr3 = { 0 };
+
+		va_64 target_va = { 0 };
+		va_64 new_mem_va = { 0 };
+
+		target_va.flags = (uint64_t)target_address;
+		new_mem_va.flags = (uint64_t)new_memory;
+
+		new_mem_cr3.flags = (uint64_t)new_mem_cr3_u64;
+
+		pml4e_64* my_pml4_table = 0;
+		pdpte_64* my_pdpt_table = 0;
+		pde_64* my_pde_table = 0;
+		pte_64* my_pte_table = 0;
+
+		pml4e_64* new_mem_pml4_table = 0;
+		pdpte_64* new_mem_pdpt_table = 0;
+		pde_64* new_mem_pde_table = 0;
+		pte_64* new_mem_pte_table = 0;
+
+
+		// First ensure the mapping of the my address
+		// in our cr3
+		status = ensure_memory_mapping(target_address, target_address_cr3_u64);
 		if (status != status_success)
 			goto cleanup;
 		
-		// Then get the paging structs pte entries
-		// Note: the target pte will point to the remapped one already
-		status = get_pte_entry(target_address, constructed_cr3.flags, target_pte);
+
+		status = map_4kb_page(constructed_cr3.address_of_page_directory << 12, (void*&)my_pml4_table);
+		if (status != status_success)
+			goto cleanup;
+		status = map_4kb_page(new_mem_cr3.address_of_page_directory << 12, (void*&)new_mem_pml4_table);
 		if (status != status_success)
 			goto cleanup;
 
-		status = get_pte_entry(new_memory, new_mem_cr3, new_mem_pte);
+
+		status = map_4kb_page(my_pml4_table[target_va.pml4e_idx].page_frame_number << 12, (void*&)my_pdpt_table);
+		if (status != status_success)
+			goto cleanup;
+		status = map_4kb_page(new_mem_pml4_table[new_mem_va.pml4e_idx].page_frame_number << 12, (void*&)new_mem_pdpt_table);
 		if (status != status_success)
 			goto cleanup;
 
 
-		target_pte->page_frame_number = new_mem_pte->page_frame_number;
+		if (my_pdpt_table[target_va.pdpte_idx].large_page || new_mem_pdpt_table[new_mem_va.pdpte_idx].large_page) {
+			if (!my_pdpt_table[target_va.pdpte_idx].large_page || !new_mem_pdpt_table[new_mem_va.pdpte_idx].large_page) {
+				status = status_paging_wrong_granularity;
+				goto cleanup;
+			}
 
-		__invlpg(target_address);
+			memcpy(&my_pdpt_table[target_va.pdpte_idx], &new_mem_pdpt_table[new_mem_va.pdpte_idx], sizeof(pdpte_1gb_64));
+
+			goto cleanup;
+		}
+
+		status = map_4kb_page(my_pdpt_table[target_va.pdpte_idx].page_frame_number << 12, (void*&)my_pde_table);
+		if (status != status_success)
+			goto cleanup;
+		status = map_4kb_page(new_mem_pdpt_table[new_mem_va.pdpte_idx].page_frame_number << 12, (void*&)new_mem_pde_table);
+		if (status != status_success)
+			goto cleanup;
+
+		if (my_pde_table[target_va.pde_idx].large_page || new_mem_pde_table[new_mem_va.pde_idx].large_page) {
+			if (!my_pde_table[target_va.pde_idx].large_page || !new_mem_pde_table[new_mem_va.pde_idx].large_page) {
+				status = status_paging_wrong_granularity;
+				goto cleanup;
+			}
+
+			memcpy(&my_pde_table[target_va.pde_idx], &new_mem_pde_table[new_mem_va.pde_idx], sizeof(pde_2mb_64));
+
+			goto cleanup;
+		}
+		
+		status = map_4kb_page(my_pde_table[target_va.pde_idx].page_frame_number << 12, (void*&)my_pte_table);
+		if (status != status_success)
+			goto cleanup;
+		status = map_4kb_page(new_mem_pde_table[new_mem_va.pde_idx].page_frame_number << 12, (void*&)new_mem_pte_table);
+		if (status != status_success)
+			goto cleanup;
+
+		memcpy(&my_pte_table[target_va.pte_idx], &new_mem_pte_table[new_mem_va.pte_idx], sizeof(pte_64));
 
 		goto cleanup;
-		
 	cleanup:
-		safely_unmap_4kb_page(target_pte);
-		safely_unmap_4kb_page(new_mem_pte);
+		__invlpg(target_address);
+
+		safely_unmap_4kb_page(new_mem_pml4_table);
+		safely_unmap_4kb_page(new_mem_pdpt_table);
+		safely_unmap_4kb_page(new_mem_pde_table);
+		safely_unmap_4kb_page(new_mem_pte_table);
+
+		safely_unmap_4kb_page(my_pml4_table);
+		safely_unmap_4kb_page(my_pdpt_table);
+		safely_unmap_4kb_page(my_pde_table);
+		safely_unmap_4kb_page(my_pte_table);
 
 		overwrite_kproc_dtb(old_dtb);
 		__writecr3(curr_cr3);
+
+		return status;
+	}
+
+	project_status restore_virtual_address_mapping(void* target_address, uint64_t mem_cr3_u64) {
+		project_status status = status_success;
+		remapped_entry_t* remapping_entry = 0;
+		restorable_until restorable_level;
+
+		va_64 mem_va = { 0 };
+		cr3 mem_cr3 = { 0 };
+
+		pml4e_64* my_pml4_table = 0;
+		pdpte_64* my_pdpt_table = 0;
+		pde_64* my_pde_table = 0;
+
+		pml4e_64* mapped_pml4_table = 0;
+		pdpte_64* mapped_pdpt_table = 0;
+		pde_64* mapped_pde_table = 0;
+	
+		mem_va.flags = (uint64_t)target_address;
+		mem_cr3.flags = mem_cr3_u64;
+
+		status = get_remapping_entry(target_address, remapping_entry);
+		if (status != status_remapping_entry_found)
+			goto cleanup;
+
+		status = get_max_restorable_level(remapping_entry, restorable_level);
+		if (status != status_success)
+			goto cleanup;
+
+		my_pml4_table = page_tables.pml4_table;
+
+		status = map_4kb_page(mem_cr3.address_of_page_directory << 12, (void*&)mapped_pml4_table);
+		if (status != status_success)
+			goto cleanup;
+
+		status = map_4kb_page(mapped_pml4_table[mem_va.pml4e_idx].page_frame_number << 12, (void*&)mapped_pdpt_table);
+		if (status != status_success)
+			goto cleanup;
+
+		if (remapping_entry->pdpt_table.large_page) {
+			switch (restorable_level) {
+				case pdpt_table_removeable: {
+
+					// First restore the memory mapping
+					my_pml4_table[remapping_entry->remapped_va.pml4e_idx].page_frame_number = mapped_pml4_table[mem_va.pml4e_idx].page_frame_number;
+	
+					// Then free our structures
+					pt_manager::safely_free_pdpt_table(&page_tables, (pdpte_64*)remapping_entry->pdpt_table.table);
+					remove_remapping_entry(remapping_entry);
+					goto cleanup;
+				}
+				case pde_table_removeable:
+				case pte_table_removeable:
+				case nothing_removeable: {
+					// We can't free anything unfortunately
+					remove_remapping_entry(remapping_entry);
+					goto cleanup;
+				}
+			}
+		}
+
+		status = map_4kb_page(mapped_pdpt_table[mem_va.pdpte_idx].page_frame_number << 12, (void*&)mapped_pde_table);
+		if (status != status_success)
+			goto cleanup;
+
+		if (remapping_entry->pd_table.large_page) {
+			switch (restorable_level) {
+				case pdpt_table_removeable: {
+
+					// First restore the memory mapping
+					my_pml4_table[remapping_entry->remapped_va.pml4e_idx].page_frame_number = mapped_pml4_table[mem_va.pml4e_idx].page_frame_number;
+	
+					// Then free our structures
+					pt_manager::safely_free_pdpt_table(&page_tables, (pdpte_64*)remapping_entry->pdpt_table.table);
+					pt_manager::safely_free_pd_table(&page_tables, (pde_64*)remapping_entry->pd_table.table);
+
+					remove_remapping_entry(remapping_entry);
+					goto cleanup;
+				}
+				case pde_table_removeable: {
+					my_pdpt_table = (pdpte_64*)remapping_entry->pdpt_table.table;
+
+					my_pdpt_table[remapping_entry->remapped_va.pdpte_idx].page_frame_number = mapped_pdpt_table[mem_va.pdpte_idx].page_frame_number;
+		
+					pt_manager::safely_free_pd_table(&page_tables, (pde_64*)remapping_entry->pd_table.table);
+
+					remove_remapping_entry(remapping_entry);
+					goto cleanup;
+				}
+				case pte_table_removeable:
+				case nothing_removeable: {
+					// We can't free anything unfortunately
+					remove_remapping_entry(remapping_entry);
+					goto cleanup;
+				}
+			}
+		}
+
+		switch (restorable_level) {
+			case pdpt_table_removeable: {
+
+				// First restore the memory mapping
+				my_pml4_table[remapping_entry->remapped_va.pml4e_idx].page_frame_number = mapped_pml4_table[mem_va.pml4e_idx].page_frame_number;
+	
+				// Then free our structures
+				pt_manager::safely_free_pdpt_table(&page_tables, (pdpte_64*)remapping_entry->pdpt_table.table);
+				pt_manager::safely_free_pd_table(&page_tables, (pde_64*)remapping_entry->pd_table.table);
+				pt_manager::safely_free_pt_table(&page_tables, (pte_64*)remapping_entry->pt_table);
+
+				remove_remapping_entry(remapping_entry);
+				goto cleanup;
+			}
+			case pde_table_removeable: {
+				my_pdpt_table = (pdpte_64*)remapping_entry->pdpt_table.table;
+
+				my_pdpt_table[remapping_entry->remapped_va.pdpte_idx].page_frame_number = mapped_pdpt_table[mem_va.pdpte_idx].page_frame_number;
+	
+				pt_manager::safely_free_pd_table(&page_tables, (pde_64*)remapping_entry->pd_table.table);
+				pt_manager::safely_free_pt_table(&page_tables, (pte_64*)remapping_entry->pt_table);
+
+				remove_remapping_entry(remapping_entry);
+				goto cleanup;
+			}
+			case pte_table_removeable: {
+				my_pde_table = (pde_64*)remapping_entry->pd_table.table;
+
+				my_pde_table[remapping_entry->remapped_va.pde_idx].page_frame_number = mapped_pde_table[mem_va.pde_idx].page_frame_number;
+
+				pt_manager::safely_free_pt_table(&page_tables, (pte_64*)remapping_entry->pt_table);
+
+				remove_remapping_entry(remapping_entry);
+				goto cleanup;
+			}
+			case nothing_removeable: {
+				// We can't free anything unfortunately
+				remove_remapping_entry(remapping_entry);
+				goto cleanup;
+			}
+		}
+
+	cleanup:
+		safely_unmap_4kb_page(mapped_pml4_table);
+		safely_unmap_4kb_page(mapped_pdpt_table);
+		safely_unmap_4kb_page(mapped_pde_table);
+
+		__invlpg(target_address);
 
 		return status;
 	}
@@ -822,12 +1600,6 @@ namespace physmem {
 
 		if (!pool || !contiguous_mem)
 			return status_memory_allocation_failed;
-
-		/*
-		project_log_info("Stress-test environment cr3: %p", __readcr3());
-		project_log_info("Constructed environment cr3: %p", constructed_cr3.flags);
-		project_log_info("Kernel environment cr3: %p", kernel_cr3.flags);
-		*/
 
 		for (int i = 0; i < stress_test_count; i++) {
 			memset(contiguous_mem, i, test_size);
@@ -851,7 +1623,7 @@ namespace physmem {
 		if (contiguous_mem) MmFreeContiguousMemory(contiguous_mem);
 
 		if (status == status_success) {
-			project_log_success("Stress test finished successfully");
+			project_log_success("Memory copying stress test finished successfully");
 		}
 
 		return status;
@@ -877,6 +1649,8 @@ namespace physmem {
 		memset(memb, 0xb, PAGE_SIZE);
 
 		status = overwrite_virtual_address_mapping(mema, memb, KERNEL_CR3, KERNEL_CR3);
+		if (status != status_success)
+			goto cleanup;
 
 	    curr_cr3 = __readcr3();
 		old_dtb = overwrite_kproc_dtb(constructed_cr3.flags);
@@ -884,13 +1658,25 @@ namespace physmem {
 		__writecr3(constructed_cr3.flags);
 
 		if (memcmp(mema, memb, PAGE_SIZE) == 0) {
-			project_log_info("Memory remapping test successful");
+			project_log_info("Memory remapping stress test finished successfully");
 		}
 		else {
-			project_log_info("Memory remapping test failed");
+			project_log_info("Memory remapping stress test failed");
 		}
 		
+		// Restore system mapping and read again, it should be
+		// different now
+		status = restore_virtual_address_mapping(mema, KERNEL_CR3);
+		if (status != status_success)
+			goto cleanup;
 
+		if (memcmp(mema, memb, PAGE_SIZE) != 0) {
+			project_log_info("Memory remapping restoring stress test finished successfully");
+		}
+		else {
+			project_log_info("Memory remapping restoring stress test failed");
+		}
+		
 	cleanup:
 		if (old_dtb) {
 			overwrite_kproc_dtb(old_dtb);

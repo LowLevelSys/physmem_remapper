@@ -2,6 +2,7 @@
 #include "../project_includes.hpp"
 
 constexpr uint64_t TABLE_COUNT = 50;
+constexpr uint64_t REMAPPING_COUNT = 50;
 
 typedef union {
     struct {
@@ -185,6 +186,36 @@ typedef union {
     uint64_t flags;
 } va_64;
 
+struct slot_t {
+    void* table;
+    bool large_page;
+};
+
+struct remapped_entry_t {
+    va_64 remapped_va;
+
+    // Pml4 slot not needed as we only have 1 anyways
+    slot_t pdpt_table;
+    slot_t pd_table;
+    void* pt_table;
+
+    bool used;
+};
+
+enum usable_until {
+    pdpt_table_valid, // Means that the pml4 at the correct index already points to a remapped pdpt table
+    pde_table_valid,  // Means that the pdpt at the correct index already points to a remapped pde table
+    pte_table_valid,  // Means that the pde at the correct index already points to a remapped pte table
+    non_valid,        // Means that the pml4 indexes didn't match
+};
+
+enum restorable_until {
+    pdpt_table_removeable, // You can free everything up to the pdpt table
+    pde_table_removeable, // You can free everything up to the pde level
+    pte_table_removeable, // You can free everything up to the pte level
+    nothing_removeable,    // You can free nothing as there is another mapping in the remapped pte table
+};
+
 struct constructed_page_tables {
     // We copy the top layer of pml4's and insert a new entry for memory copying util
     pml4e_64* pml4_table;
@@ -216,4 +247,6 @@ struct constructed_page_tables {
     bool is_pdpt_table_occupied[TABLE_COUNT];
     bool is_pd_table_occupied[TABLE_COUNT];
     bool is_pt_table_occupied[TABLE_COUNT];
+
+    remapped_entry_t remapping_list[REMAPPING_COUNT];
 };

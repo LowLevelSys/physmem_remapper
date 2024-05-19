@@ -38,7 +38,14 @@ enum project_status {
 	status_paging_wrong_granularity,
 	status_paging_hierchy_mismatch,
 	status_invalid_my_page_table,
-	status_invalid_return_value
+	status_invalid_return_value,
+	status_no_valid_remapping_entry,
+	status_remapping_entry_found,
+	status_remapping_list_full,
+	status_remapping_entry_not_found,
+	status_address_already_remapped,
+	status_non_valid_usable_until_level,
+	status_non_implemented
 };
 
 /*

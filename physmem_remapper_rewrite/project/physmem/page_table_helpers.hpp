@@ -61,33 +61,11 @@ namespace pt_manager {
         return 0;
     }
 
-    inline pdpte_1gb_64* get_free_pdpt_1gb_table(constructed_page_tables* table) {
-        for (uint32_t i = 0; i < TABLE_COUNT; i++) {
-            if (!table->is_pdpt_table_occupied[i]) {
-                table->is_pdpt_table_occupied[i] = true;
-                return table->pdpt_1gb_table[i];
-            }
-        }
-
-        return 0;
-    }
-
     inline pde_64* get_free_pd_table(constructed_page_tables* table) {
         for (uint32_t i = 0; i < TABLE_COUNT; i++) {
             if (!table->is_pd_table_occupied[i]) {
                 table->is_pd_table_occupied[i] = true;
                 return table->pd_table[i];
-            }
-        }
-
-        return 0;
-    }
-
-    inline pde_2mb_64* get_free_pd_2mb_table(constructed_page_tables* table) {
-        for (uint32_t i = 0; i < TABLE_COUNT; i++) {
-            if (!table->is_pd_table_occupied[i]) {
-                table->is_pd_table_occupied[i] = true;
-                return table->pd_2mb_table[i];
             }
         }
 
