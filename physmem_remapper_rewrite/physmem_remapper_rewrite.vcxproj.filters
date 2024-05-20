@@ -51,5 +51,13 @@
     <ClInclude Include="project\windows_structs.hpp">
       <Filter>project</Filter>
     </ClInclude>
+    <ClInclude Include="project\interrupts\interrupt_structs.hpp">
+      <Filter>project\interrupts</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="project\interrupts\interrupts_asm.asm">
+      <Filter>project\interrupts</Filter>
+    </MASM>
   </ItemGroup>
 </Project>

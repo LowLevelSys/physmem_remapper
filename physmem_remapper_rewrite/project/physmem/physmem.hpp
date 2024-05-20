@@ -8,7 +8,6 @@ namespace physmem {
 	// Initialization functions
 	project_status init_physmem(void);
 
-
 	// Exposed API's
 	project_status translate_to_physical_address(uint64_t outside_target_cr3, void* virtual_address, uint64_t& physical_address);
 

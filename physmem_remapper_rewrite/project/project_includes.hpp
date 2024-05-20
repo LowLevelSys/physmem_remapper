@@ -23,29 +23,48 @@ using uint64_t = unsigned long long;
 // A return type to use instead of bool
 // to get more information from the return
 enum project_status {
+	/*
+		General
+	*/
 	status_success,
 	status_failure,
+	status_not_initialized,
+	status_non_implemented,
+	status_invalid_parameter,
+	status_invalid_return_value,
 	status_memory_allocation_failed,
+
+	/*
+		Physmem
+	*/
+	status_address_already_remapped,
 	status_address_translation_failed,
+	status_data_mismatch,
+	status_invalid_my_page_table,
 	status_invalid_page_table_index,
 	status_no_available_page_tables,
-	status_invalid_parameter,
-	status_not_initialized,
-	status_data_mismatch,
-	status_wrong_context,
-	status_non_matching_page_offsets,
-	status_non_aligned,
-	status_paging_wrong_granularity,
-	status_paging_hierchy_mismatch,
-	status_invalid_my_page_table,
-	status_invalid_return_value,
 	status_no_valid_remapping_entry,
+	status_non_aligned,
+	status_non_matching_page_offsets,
+	status_paging_hierchy_mismatch,
+	status_paging_wrong_granularity,
 	status_remapping_entry_found,
-	status_remapping_list_full,
 	status_remapping_entry_not_found,
-	status_address_already_remapped,
+	status_remapping_list_full,
+	status_wrong_context,
 	status_non_valid_usable_until_level,
-	status_non_implemented
+
+	/*
+		Interrupts
+	*/
+	status_gp_failed,
+	status_pf_read_failed,
+	status_pf_write_failed,
+	status_de_failed,
+	status_ud_failed,
+	status_nested_failed,
+	status_rva_outside_driver,
+	status_no_runtime_function_found
 };
 
 /*

@@ -1661,7 +1661,8 @@ namespace physmem {
 			project_log_info("Memory remapping stress test finished successfully");
 		}
 		else {
-			project_log_info("Memory remapping stress test failed");
+			status = status_data_mismatch;
+			goto cleanup;
 		}
 		
 		// Restore system mapping and read again, it should be
@@ -1674,7 +1675,8 @@ namespace physmem {
 			project_log_info("Memory remapping restoring stress test finished successfully");
 		}
 		else {
-			project_log_info("Memory remapping restoring stress test failed");
+			status = status_data_mismatch;
+			goto cleanup;
 		}
 		
 	cleanup:

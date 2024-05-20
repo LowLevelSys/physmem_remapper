@@ -30,6 +30,12 @@ NTSTATUS driver_entry(uint64_t driver_base, uint64_t driver_size) {
 		return STATUS_UNSUCCESSFUL;
 	}
 
+	status = interrupts::stress_test_seh();
+	if (status != status_success) {
+		project_log_error("Failed to stress test seh with status %d", status);
+		return STATUS_UNSUCCESSFUL;
+	}
+
 	project_log_success("Loading process finished");
 
 	return STATUS_SUCCESS;
