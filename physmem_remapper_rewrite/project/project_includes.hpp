@@ -39,6 +39,7 @@ enum project_status {
 	*/
 	status_address_already_remapped,
 	status_address_translation_failed,
+	status_cr3_not_found,
 	status_data_mismatch,
 	status_invalid_my_page_table,
 	status_invalid_page_table_index,

@@ -5,12 +5,12 @@ namespace physmem {
 		Definitions
 	*/
 	constexpr int stress_test_count = 10'000;
-	constexpr uint64_t KERNEL_CR3 = 0x1ad000;
 
 	/*
 		Declarations
 	*/
 	void log_remaining_pte_entries(pte_64* pte_table);
+	uint64_t get_cr3(uint64_t target_pid);
 
 	/*
 		Global variables
@@ -22,6 +22,8 @@ namespace physmem {
 
 	constructed_page_tables page_tables = { 0 };
 	bool initialized = false;
+
+
 
 	/*
 		Initialization functions
@@ -59,7 +61,10 @@ namespace physmem {
 	project_status copy_kernel_page_tables(void) {
 		pml4e_64* kernel_pml4_page_table = 0;
 
-		kernel_cr3.flags = KERNEL_CR3;
+		kernel_cr3.flags = get_cr3(4);
+		if (!kernel_cr3.flags)
+			return status_cr3_not_found;
+
 		kernel_pml4_page_table = (pml4e_64*)win_get_virtual_address(kernel_cr3.address_of_page_directory << 12);
 
 		if (!kernel_pml4_page_table)
@@ -200,6 +205,32 @@ namespace physmem {
 		for (uint32_t i = 0; i < 512; i++) {
 			project_log_info("%d present flag: %d", i, pte_table[i].present);
 		}
+	}
+
+	uint64_t get_cr3(uint64_t target_pid) {
+		PEPROCESS sys_process = PsInitialSystemProcess;
+		PEPROCESS curr_entry = sys_process;
+
+		do {
+			uint64_t curr_pid;
+
+			memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + 0x440), sizeof(curr_pid));
+
+			// Check whether we found our process
+			if (target_pid == curr_pid) {
+
+				uint64_t cr3;
+
+				memcpy(&cr3, (void*)((uintptr_t)curr_entry + 0x28), sizeof(cr3));
+
+				return cr3;
+			}
+			PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+0x448);
+			curr_entry = (PEPROCESS)((uintptr_t)list->Flink - 0x448);
+
+		} while (curr_entry != sys_process);
+
+		return 0;
 	}
 
 	// This utility should be replaced asap with proper idt handlers
@@ -732,7 +763,7 @@ namespace physmem {
 
 			pdpte_1gb_64* my_1gb_pdpt_table = (pdpte_1gb_64*)my_pdpt_table;
 
-			if (translate_to_physical_address(KERNEL_CR3, my_1gb_pdpt_table, pdpt_phys) != status_success)
+			if (translate_to_physical_address(kernel_cr3.flags, my_1gb_pdpt_table, pdpt_phys) != status_success)
 				goto cleanup;
 
 			memcpy(my_1gb_pdpt_table, mapped_pdpt_table, sizeof(pdpte_1gb_64) * 512);
@@ -771,10 +802,10 @@ namespace physmem {
 
 			pde_2mb_64* my_2mb_pd_table = (pde_2mb_64*)my_pde_table;
 
-			if (translate_to_physical_address(KERNEL_CR3, my_pdpt_table, pdpt_phys) != status_success)
+			if (translate_to_physical_address(kernel_cr3.flags, my_pdpt_table, pdpt_phys) != status_success)
 				goto cleanup;
 
-			if (translate_to_physical_address(KERNEL_CR3, my_pde_table, pd_phys) != status_success)
+			if (translate_to_physical_address(kernel_cr3.flags, my_pde_table, pd_phys) != status_success)
 				goto cleanup;
 
 
@@ -822,15 +853,15 @@ namespace physmem {
 			goto cleanup;
 		}
 
-		status = translate_to_physical_address(KERNEL_CR3, my_pdpt_table, pdpt_phys);
+		status = translate_to_physical_address(kernel_cr3.flags, my_pdpt_table, pdpt_phys);
 		if (status != status_success)
 			goto cleanup;
 
-		status = translate_to_physical_address(KERNEL_CR3, my_pde_table, pd_phys);
+		status = translate_to_physical_address(kernel_cr3.flags, my_pde_table, pd_phys);
 		if (status != status_success)
 			goto cleanup;
 
-		status = translate_to_physical_address(KERNEL_CR3, my_pte_table, pt_phys);
+		status = translate_to_physical_address(kernel_cr3.flags, my_pte_table, pt_phys);
 		if (status != status_success)
 			goto cleanup;
 
@@ -977,7 +1008,7 @@ namespace physmem {
 					goto cleanup;
 				}
 
-				status = translate_to_physical_address(KERNEL_CR3, my_pde_table, pd_phys);
+				status = translate_to_physical_address(kernel_cr3.flags, my_pde_table, pd_phys);
 				if (status != status_success)
 					goto cleanup;
 				
@@ -1046,7 +1077,7 @@ namespace physmem {
 				goto cleanup;
 			}
 
-			status = translate_to_physical_address(KERNEL_CR3, my_pde_table, pd_phys);
+			status = translate_to_physical_address(kernel_cr3.flags, my_pde_table, pd_phys);
 			if (status != status_success)
 				goto cleanup;
 
@@ -1060,7 +1091,7 @@ namespace physmem {
 				goto cleanup;
 			}
 
-			status = translate_to_physical_address(KERNEL_CR3, my_pte_table, pt_phys);
+			status = translate_to_physical_address(kernel_cr3.flags, my_pte_table, pt_phys);
 			if (status != status_success)
 				goto cleanup;
 
@@ -1096,7 +1127,7 @@ namespace physmem {
 				goto cleanup;
 			}
 
-			status = translate_to_physical_address(KERNEL_CR3, my_pte_table, pt_phys);
+			status = translate_to_physical_address(kernel_cr3.flags, my_pte_table, pt_phys);
 			if (status != status_success)
 				goto cleanup;
 
@@ -1648,7 +1679,7 @@ namespace physmem {
 		memset(mema, 0xa, PAGE_SIZE);
 		memset(memb, 0xb, PAGE_SIZE);
 
-		status = overwrite_virtual_address_mapping(mema, memb, KERNEL_CR3, KERNEL_CR3);
+		status = overwrite_virtual_address_mapping(mema, memb, kernel_cr3.flags, kernel_cr3.flags);
 		if (status != status_success)
 			goto cleanup;
 
@@ -1667,7 +1698,7 @@ namespace physmem {
 		
 		// Restore system mapping and read again, it should be
 		// different now
-		status = restore_virtual_address_mapping(mema, KERNEL_CR3);
+		status = restore_virtual_address_mapping(mema, kernel_cr3.flags);
 		if (status != status_success)
 			goto cleanup;
 
