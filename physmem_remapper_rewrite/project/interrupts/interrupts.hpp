@@ -7,6 +7,9 @@ namespace interrupts {
 	// Initialization functions
 	project_status init_interrupts(uint64_t driver_base, uint64_t driver_size);
 
+	// Exposed API's
+	bool is_initialized(void);
+
 	// Exposed tests
 	project_status stress_test_seh(void);
-}
+};

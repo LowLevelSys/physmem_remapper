@@ -14,6 +14,12 @@
     <Filter Include="project\interrupts">
       <UniqueIdentifier>{329363f3-aea4-4e88-aa7f-8810da83ab50}</UniqueIdentifier>
     </Filter>
+    <Filter Include="project\stack_manager">
+      <UniqueIdentifier>{34be92b0-b1db-4efa-ac41-d9615bbccf6f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="project\communication">
+      <UniqueIdentifier>{57daedc6-f132-4146-be4b-6acd50789b4b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -24,6 +30,15 @@
     </ClCompile>
     <ClCompile Include="project\interrupts\interrupts.cpp">
       <Filter>project\interrupts</Filter>
+    </ClCompile>
+    <ClCompile Include="project\stack\stack_manager.cpp">
+      <Filter>project\stack_manager</Filter>
+    </ClCompile>
+    <ClCompile Include="project\communication\communication.cpp">
+      <Filter>project\communication</Filter>
+    </ClCompile>
+    <ClCompile Include="project\project_utility.cpp">
+      <Filter>project</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -54,10 +69,25 @@
     <ClInclude Include="project\interrupts\interrupt_structs.hpp">
       <Filter>project\interrupts</Filter>
     </ClInclude>
+    <ClInclude Include="project\stack\stack_manager.hpp">
+      <Filter>project\stack_manager</Filter>
+    </ClInclude>
+    <ClInclude Include="project\communication\communication.hpp">
+      <Filter>project\communication</Filter>
+    </ClInclude>
+    <ClInclude Include="project\project_utility.hpp">
+      <Filter>project</Filter>
+    </ClInclude>
+    <ClInclude Include="project\communication\shellcode.hpp">
+      <Filter>project\communication</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="project\interrupts\interrupts_asm.asm">
       <Filter>project\interrupts</Filter>
+    </MASM>
+    <MASM Include="project\communication\comm_assembly.asm">
+      <Filter>project\communication</Filter>
     </MASM>
   </ItemGroup>
 </Project>

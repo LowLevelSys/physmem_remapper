@@ -9,6 +9,9 @@ namespace physmem {
 	project_status init_physmem(void);
 
 	// Exposed API's
+	bool is_initialized(void);
+	cr3 get_constructed_cr3(void);
+
 	project_status translate_to_physical_address(uint64_t outside_target_cr3, void* virtual_address, uint64_t& physical_address);
 
 	project_status copy_physical_memory(uint64_t source_physical, uint64_t destination_physical, uint64_t size);
@@ -20,4 +23,4 @@ namespace physmem {
 	// Exposed tests
 	project_status stress_test_memory_copy(void);
 	project_status stress_test_memory_remapping(void);
-}
+};

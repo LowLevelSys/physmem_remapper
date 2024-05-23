@@ -46,7 +46,7 @@ namespace pt_helpers {
 
         return MAXULONG32;
     }
-}
+};
 
 namespace pt_manager {
     // Allocation helpers
@@ -122,4 +122,4 @@ namespace pt_manager {
             }
         }
     }
-}
+};

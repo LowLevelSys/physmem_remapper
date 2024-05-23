@@ -1,3 +1,6 @@
 C:\Users\cool_guy\source\repos\physmem_remapper\physmem_remapper_rewrite\main.cpp;C:\Users\cool_guy\source\repos\physmem_remapper\physmem_remapper_rewrite\intermediate directory\main.obj
+C:\Users\cool_guy\source\repos\physmem_remapper\physmem_remapper_rewrite\project\communication\communication.cpp;C:\Users\cool_guy\source\repos\physmem_remapper\physmem_remapper_rewrite\intermediate directory\communication.obj
 C:\Users\cool_guy\source\repos\physmem_remapper\physmem_remapper_rewrite\project\interrupts\interrupts.cpp;C:\Users\cool_guy\source\repos\physmem_remapper\physmem_remapper_rewrite\intermediate directory\interrupts.obj
 C:\Users\cool_guy\source\repos\physmem_remapper\physmem_remapper_rewrite\project\physmem\physmem.cpp;C:\Users\cool_guy\source\repos\physmem_remapper\physmem_remapper_rewrite\intermediate directory\physmem.obj
+C:\Users\cool_guy\source\repos\physmem_remapper\physmem_remapper_rewrite\project\project_utility.cpp;C:\Users\cool_guy\source\repos\physmem_remapper\physmem_remapper_rewrite\intermediate directory\project_utility.obj
+C:\Users\cool_guy\source\repos\physmem_remapper\physmem_remapper_rewrite\project\stack\stack_manager.cpp;C:\Users\cool_guy\source\repos\physmem_remapper\physmem_remapper_rewrite\intermediate directory\stack_manager.obj

@@ -65,7 +65,12 @@ enum project_status {
 	status_ud_failed,
 	status_nested_failed,
 	status_rva_outside_driver,
-	status_no_runtime_function_found
+	status_no_runtime_function_found,
+
+	/*
+		Communication
+	*/
+	status_data_ptr_invalid,
 };
 
 /*

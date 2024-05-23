@@ -19,11 +19,8 @@ namespace physmem {
 	cr3 constructed_cr3 = { 0 };
 	cr3 kernel_cr3 = { 0 };
 
-
 	constructed_page_tables page_tables = { 0 };
 	bool initialized = false;
-
-
 
 	/*
 		Initialization functions
@@ -233,7 +230,7 @@ namespace physmem {
 		return 0;
 	}
 
-	// This utility should be replaced asap with proper idt handlers
+	// This utility should be replaced asap with proper idt handlers that handle ipi's
 	uint64_t overwrite_kproc_dtb(uint64_t new_dtb) {
 		PKPROCESS kproc = (PKPROCESS)PsGetCurrentProcess();
 
@@ -1224,6 +1221,14 @@ namespace physmem {
 		Exposed API's
 	*/
 
+	bool is_initialized(void) {
+		return initialized;
+	}
+
+	cr3 get_constructed_cr3(void) {
+		return constructed_cr3;
+	}
+
 	project_status copy_physical_memory(uint64_t destination_physical, uint64_t source_physical, uint64_t size) {
 		if (!initialized)
 			return status_not_initialized;
@@ -1723,4 +1728,4 @@ namespace physmem {
 
 		return status;
 	}
-}
+};

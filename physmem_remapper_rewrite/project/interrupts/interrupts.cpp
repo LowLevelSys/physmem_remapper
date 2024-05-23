@@ -71,7 +71,6 @@ namespace interrupts {
         }
     }
 
-
 	/*
 		Core functions
 	*/
@@ -180,7 +179,7 @@ namespace interrupts {
 
             return status_failure;
 		}
-	}
+    };
 
 	extern "C" void handle_ecode_interrupt(trap_frame_ecode_t* trap_frame) {
 		project_status status = status_success;
@@ -220,6 +219,13 @@ namespace interrupts {
 
 		return status_success;
 	}
+
+    /*
+        Exposed API's
+    */
+    bool is_initialized(void) {
+        return initialized;
+    }
 
     /*
         Exposed tests
@@ -300,4 +306,4 @@ namespace interrupts {
 
         return status;
     }
-}
+};
