@@ -40,6 +40,9 @@
     <ClCompile Include="project\project_utility.cpp">
       <Filter>project</Filter>
     </ClCompile>
+    <ClCompile Include="project\communication\handler.cpp">
+      <Filter>project\communication</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="includes.hpp">

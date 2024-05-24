@@ -133,14 +133,21 @@ namespace communication {
             return status_not_initialized;
 
         project_status status = status_success;
+        void* my_stack_base = 0;
 
         status = init_data_ptr_data();
         if (status != status_success)
             goto cleanup;
 
-        status = shellcode::construct_shellcodes(enter_constructed_space, exit_constructed_space, orig_data_ptr_value, asm_handler);
+        status = stack_manager::get_stack_base(my_stack_base);
         if (status != status_success)
             goto cleanup;
+
+        status = shellcode::construct_shellcodes(enter_constructed_space, exit_constructed_space, orig_data_ptr_value, asm_handler, my_stack_base);
+        if (status != status_success)
+            goto cleanup;
+
+        shellcode::log_shellcode_addresses();
 
         status = init_data_ptr_hook();
         if (status != status_success)

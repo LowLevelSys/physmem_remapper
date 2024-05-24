@@ -1,9 +1,11 @@
 .code
 extern exit_constructed_space:qword
+extern handler: proc
 
 asm_handler proc
 
-	; Return normal execution
+	call handler
+
 	jmp qword ptr [exit_constructed_space]
 asm_handler endp
 
