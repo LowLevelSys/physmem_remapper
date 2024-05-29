@@ -19,8 +19,8 @@ project_status call_stress_tests(void) {
 	return status;
 }
 
-NTSTATUS driver_entry(uint64_t driver_base, uint64_t driver_size) {
-	project_log_success("Driver loaded at %p with size %p", driver_base, driver_size);
+NTSTATUS driver_entry() {
+	project_log_success("Driver loaded!");
 
 	project_status status = status_success;
 
