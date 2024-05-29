@@ -1,5 +1,8 @@
 #include "physmem.hpp"
 
+#include "../interrupts/interrupts.hpp"
+#include "../project_utility.hpp"
+
 namespace physmem {
 	/*
 		Definitions
@@ -10,7 +13,6 @@ namespace physmem {
 		Declarations
 	*/
 	void log_remaining_pte_entries(pte_64* pte_table);
-	uint64_t get_cr3(uint64_t target_pid);
 
 	/*
 		Global variables
@@ -58,7 +60,7 @@ namespace physmem {
 	project_status copy_kernel_page_tables(void) {
 		pml4e_64* kernel_pml4_page_table = 0;
 
-		kernel_cr3.flags = get_cr3(4);
+		kernel_cr3.flags = utility::get_cr3(4);
 		if (!kernel_cr3.flags)
 			return status_cr3_not_found;
 
@@ -199,46 +201,13 @@ namespace physmem {
 	*/
 
 	void log_remaining_pte_entries(pte_64* pte_table) {
+		_sti();
+
 		for (uint32_t i = 0; i < 512; i++) {
 			project_log_info("%d present flag: %d", i, pte_table[i].present);
 		}
-	}
-
-	uint64_t get_cr3(uint64_t target_pid) {
-		PEPROCESS sys_process = PsInitialSystemProcess;
-		PEPROCESS curr_entry = sys_process;
-
-		do {
-			uint64_t curr_pid;
-
-			memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + 0x440), sizeof(curr_pid));
-
-			// Check whether we found our process
-			if (target_pid == curr_pid) {
-
-				uint64_t cr3;
-
-				memcpy(&cr3, (void*)((uintptr_t)curr_entry + 0x28), sizeof(cr3));
-
-				return cr3;
-			}
-			PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+0x448);
-			curr_entry = (PEPROCESS)((uintptr_t)list->Flink - 0x448);
-
-		} while (curr_entry != sys_process);
-
-		return 0;
-	}
-
-	// This utility should be replaced asap with proper idt handlers that handle ipi's
-	uint64_t overwrite_kproc_dtb(uint64_t new_dtb) {
-		PKPROCESS kproc = (PKPROCESS)PsGetCurrentProcess();
-
-		uint64_t old_val = kproc->DirectoryTableBase;
-
-		kproc->DirectoryTableBase = new_dtb;
-
-		return old_val;
+		
+		_cli();
 	}
 
 	project_status get_remapping_entry(void* mem, remapped_entry_t*& remapping_entry) {
@@ -454,7 +423,7 @@ namespace physmem {
 		Core functions
 	*/
 
-	project_status map_4kb_page(uint64_t physical_address, void*& generated_va) {
+	project_status map_4kb_page(uint64_t physical_address, void*& generated_va, uint64_t* remaining_mapped_bytes) {
 		if (!initialized)
 			return status_not_initialized;
 
@@ -462,7 +431,6 @@ namespace physmem {
 			return status_invalid_parameter;
 
 		if (__readcr3() != constructed_cr3.flags) {
-			project_log_error("Wrong ctx");
 			return status_wrong_context;
 		}
 
@@ -483,6 +451,15 @@ namespace physmem {
 		generated_address.pdpte_idx = page_tables.memcpy_pdpt_idx;
 		generated_address.pde_idx = page_tables.memcpy_pd_idx;
 		generated_address.pte_idx = pt_idx;
+		
+		// Then we always page align the physical address to the nearest 4kb boundary and calculate a page offset
+		uint64_t aligned_page = (physical_address >> 12) << 12;
+		uint64_t offset = physical_address - aligned_page;
+		generated_address.offset_4kb = offset;
+
+		// Tell the user how many bytes he has remaining
+		if(remaining_mapped_bytes)
+			*remaining_mapped_bytes = 0x1000 - generated_address.offset_4kb;
 
 		generated_va = (void*)generated_address.flags;
 
@@ -514,7 +491,6 @@ namespace physmem {
 
 	project_status get_pte_entry(void* virtual_address, uint64_t mem_cr3_u64, pte_64*& mem_pte) {
 		if (__readcr3() != constructed_cr3.flags) {
-			project_log_error("Wrong ctx: %p", __readcr3());
 			return status_wrong_context;
 		}
 
@@ -538,14 +514,14 @@ namespace physmem {
 		pte_64* mapped_pte_table = 0;
 		pte_64* mapped_pte_entry = 0;
 
-		status = map_4kb_page(target_cr3.address_of_page_directory << 12, (void*&)mapped_pml4_table);
+		status = map_4kb_page(target_cr3.address_of_page_directory << 12, (void*&)mapped_pml4_table, 0);
 
 		if (status != status_success)
 			goto cleanup;
 
 		mapped_pml4_entry = &mapped_pml4_table[va.pml4e_idx];
 
-		status = map_4kb_page(mapped_pml4_entry->page_frame_number << 12, (void*&)mapped_pdpt_table);
+		status = map_4kb_page(mapped_pml4_entry->page_frame_number << 12, (void*&)mapped_pdpt_table, 0);
 
 		if (status != status_success)
 			goto cleanup;
@@ -557,7 +533,7 @@ namespace physmem {
 			goto cleanup;
 		}
 
-		status = map_4kb_page(mapped_pdpt_entry->page_frame_number << 12, (void*&)mapped_pde_table);
+		status = map_4kb_page(mapped_pdpt_entry->page_frame_number << 12, (void*&)mapped_pde_table, 0);
 
 		if (status != status_success)
 			goto cleanup;
@@ -569,7 +545,7 @@ namespace physmem {
 			goto cleanup;
 		}
 
-		status = map_4kb_page(mapped_pde_entry->page_frame_number << 12, (void*&)mapped_pte_table);
+		status = map_4kb_page(mapped_pde_entry->page_frame_number << 12, (void*&)mapped_pte_table, 0);
 
 		if (status != status_success)
 			goto cleanup;
@@ -595,13 +571,16 @@ namespace physmem {
 		pte_64* pte = 0;
 		status = get_pte_entry(mem, mem_cr3_u64, pte);
 
+
+		_sti();
 		if (pte && status == status_success) {
 			project_log_info("Va %p points to pa %p", mem, pte->page_frame_number << 12);
 		}
 		else {
 			project_log_error("Failed to get pte");
 		}
-
+		_cli();
+		
 		safely_unmap_4kb_page(pte);
 	}
 
@@ -610,7 +589,6 @@ namespace physmem {
 			return status_not_initialized;
 
 		if (__readcr3() != constructed_cr3.flags) {
-			project_log_error("Wrong ctx: %p", __readcr3());
 			return status_wrong_context;
 		}
 
@@ -634,19 +612,27 @@ namespace physmem {
 		pte_64* mapped_pte_table = 0;
 		pte_64* mapped_pte_entry = 0;
 
-		status = map_4kb_page(target_cr3.address_of_page_directory << 12, (void*&)mapped_pml4_table);
+		status = map_4kb_page(target_cr3.address_of_page_directory << 12, (void*&)mapped_pml4_table, 0);
 
 		if (status != status_success)
 			goto cleanup;
 
 		mapped_pml4_entry = &mapped_pml4_table[va.pml4e_idx];
+		if (!mapped_pml4_entry->present) {
+			status = status_not_present;
+			goto cleanup;
+		}
 
-		status = map_4kb_page(mapped_pml4_entry->page_frame_number << 12, (void*&)mapped_pdpt_table);
+		status = map_4kb_page(mapped_pml4_entry->page_frame_number << 12, (void*&)mapped_pdpt_table, 0);
 
 		if (status != status_success)
 			goto cleanup;
 
 		mapped_pdpt_entry = &mapped_pdpt_table[va.pdpte_idx];
+		if (!mapped_pdpt_entry->present) {
+			status = status_not_present;
+			goto cleanup;
+		}
 
 		if (mapped_pdpt_entry->large_page) {
 			pdpte_1gb_64 mapped_pdpte_1gb_entry;
@@ -660,12 +646,16 @@ namespace physmem {
 			goto cleanup;
 		}
 
-		status = map_4kb_page(mapped_pdpt_entry->page_frame_number << 12, (void*&)mapped_pde_table);
+		status = map_4kb_page(mapped_pdpt_entry->page_frame_number << 12, (void*&)mapped_pde_table, 0);
 
 		if (status != status_success)
 			goto cleanup;
 
 		mapped_pde_entry = &mapped_pde_table[va.pde_idx];
+		if (!mapped_pde_entry->present) {
+			status = status_not_present;
+			goto cleanup;
+		}
 
 		if (mapped_pde_entry->large_page) {
 			pde_2mb_64 mapped_pde_2mb_entry;
@@ -679,13 +669,18 @@ namespace physmem {
 			goto cleanup;
 		}
 
-		status = map_4kb_page(mapped_pde_entry->page_frame_number << 12, (void*&)mapped_pte_table);
+		status = map_4kb_page(mapped_pde_entry->page_frame_number << 12, (void*&)mapped_pte_table, 0);
 
 		if (status != status_success)
 			goto cleanup;
 
 		mapped_pte_entry = &mapped_pte_table[va.pte_idx];
-		physical_address = mapped_pte_entry->page_frame_number << 12;
+		if (!mapped_pte_entry->present) {
+			status = status_not_present;
+			goto cleanup;
+		}
+
+		physical_address = (mapped_pte_entry->page_frame_number << 12) + va.offset_4kb;
 		if (!physical_address) {
 			status = status_invalid_return_value;
 		}
@@ -710,7 +705,6 @@ namespace physmem {
 			return status_not_initialized;
 
 		if (__readcr3() != constructed_cr3.flags) {
-			project_log_error("Wrong ctx: %p", __readcr3());
 			return status_wrong_context;
 		}
 
@@ -743,11 +737,11 @@ namespace physmem {
 
 		my_pml4_table = page_tables.pml4_table;
 
-		status = map_4kb_page(mem_cr3.address_of_page_directory << 12, (void*&)mapped_pml4_table);
+		status = map_4kb_page(mem_cr3.address_of_page_directory << 12, (void*&)mapped_pml4_table, 0);
 		if (status != status_success)
 			goto cleanup;
 
-		status = map_4kb_page(mapped_pml4_table[mem_va.pml4e_idx].page_frame_number << 12, (void*&)mapped_pdpt_table);
+		status = map_4kb_page(mapped_pml4_table[mem_va.pml4e_idx].page_frame_number << 12, (void*&)mapped_pdpt_table, 0);
 		if (status != status_success)
 			goto cleanup;
 
@@ -780,7 +774,7 @@ namespace physmem {
 			goto cleanup;
 		}
 
-		status = map_4kb_page(mapped_pdpt_table[mem_va.pdpte_idx].page_frame_number << 12, (void*&)mapped_pde_table);
+		status = map_4kb_page(mapped_pdpt_table[mem_va.pdpte_idx].page_frame_number << 12, (void*&)mapped_pde_table, 0);
 		if (status != status_success)
 			goto cleanup;
 
@@ -828,7 +822,7 @@ namespace physmem {
 			goto cleanup;
 		}
 
-		status = map_4kb_page(mapped_pde_table[mem_va.pde_idx].page_frame_number << 12, (void*&)mapped_pte_table);
+		status = map_4kb_page(mapped_pde_table[mem_va.pde_idx].page_frame_number << 12, (void*&)mapped_pte_table, 0);
 		if (status != status_success)
 			goto cleanup;
 
@@ -911,7 +905,6 @@ namespace physmem {
 			return status_not_initialized;
 
 		if (__readcr3() != constructed_cr3.flags) {
-			project_log_error("Wrong ctx: %p", __readcr3());
 			return status_wrong_context;
 		}
 
@@ -948,11 +941,11 @@ namespace physmem {
 
 		my_pml4_table = page_tables.pml4_table;
 
-		status = map_4kb_page(mem_cr3.address_of_page_directory << 12, (void*&)mapped_pml4_table);
+		status = map_4kb_page(mem_cr3.address_of_page_directory << 12, (void*&)mapped_pml4_table, 0);
 		if (status != status_success)
 			goto cleanup;
 
-		status = map_4kb_page(mapped_pml4_table[mem_va.pml4e_idx].page_frame_number << 12, (void*&)mapped_pdpt_table);
+		status = map_4kb_page(mapped_pml4_table[mem_va.pml4e_idx].page_frame_number << 12, (void*&)mapped_pdpt_table, 0);
 		if (status != status_success)
 			goto cleanup;
 
@@ -986,7 +979,7 @@ namespace physmem {
 			}
 		}
 
-		status = map_4kb_page(mapped_pdpt_table[mem_va.pdpte_idx].page_frame_number << 12, (void*&)mapped_pde_table);
+		status = map_4kb_page(mapped_pdpt_table[mem_va.pdpte_idx].page_frame_number << 12, (void*&)mapped_pde_table, 0);
 		if (status != status_success)
 			goto cleanup;
 
@@ -1056,7 +1049,7 @@ namespace physmem {
 			}
 		}
 
-		status = map_4kb_page(mapped_pde_table[mem_va.pde_idx].page_frame_number << 12, (void*&)mapped_pte_table);
+		status = map_4kb_page(mapped_pde_table[mem_va.pde_idx].page_frame_number << 12, (void*&)mapped_pte_table, 0);
 		if (status != status_success)
 			goto cleanup;
 
@@ -1229,6 +1222,10 @@ namespace physmem {
 		return constructed_cr3;
 	}
 
+	cr3 get_system_cr3(void) {
+		return kernel_cr3;
+	}
+
 	project_status copy_physical_memory(uint64_t destination_physical, uint64_t source_physical, uint64_t size) {
 		if (!initialized)
 			return status_not_initialized;
@@ -1236,24 +1233,26 @@ namespace physmem {
 		project_status status = status_success;
 		uint64_t copied_bytes = 0;
 		uint64_t curr_cr3 = __readcr3();
-		uint64_t old_dtb = overwrite_kproc_dtb(constructed_cr3.flags);
-
 		__writecr3(constructed_cr3.flags);
 
 		while (copied_bytes < size) {
 			void* current_virtual_mapped_source = 0;
 			void* current_virtual_mapped_destination = 0;
+
+			uint64_t src_remaining = 0;
+			uint64_t dst_remaining = 0;
+
 			uint64_t copyable_size = 0;
 
 			// Map the pa's
 
-			status = map_4kb_page(source_physical + copied_bytes, current_virtual_mapped_source);
+			status = map_4kb_page(source_physical + copied_bytes, current_virtual_mapped_source, &src_remaining);
 			if (status != status_success) {
 				safely_unmap_4kb_page(current_virtual_mapped_source);
 				break;
 			}
 
-			status = map_4kb_page(destination_physical + copied_bytes, current_virtual_mapped_destination);
+			status = map_4kb_page(destination_physical + copied_bytes, current_virtual_mapped_destination, &dst_remaining);
 			if (status != status_success) {
 				safely_unmap_4kb_page(current_virtual_mapped_source);
 				safely_unmap_4kb_page(current_virtual_mapped_destination);
@@ -1261,6 +1260,8 @@ namespace physmem {
 			}
 
 			copyable_size = min(PAGE_SIZE, size - copied_bytes);
+			copyable_size = min(copyable_size, src_remaining);
+			copyable_size = min(copyable_size, dst_remaining);
 
 			// Then copy the mem
 
@@ -1276,7 +1277,6 @@ namespace physmem {
 			safely_unmap_4kb_page(current_virtual_mapped_destination);
 		}
 
-		overwrite_kproc_dtb(old_dtb);
 		__writecr3(curr_cr3);
 
 		return status;
@@ -1286,20 +1286,10 @@ namespace physmem {
 		if (!initialized)
 			return status_not_initialized;
 
-
-		cr3 target_source_cr3 = { 0 };
-		cr3 target_destination_cr3 = { 0 };
-
-		target_source_cr3.flags = source_cr3;
-		target_destination_cr3.flags = destination_cr3;
-
 		project_status status = status_success;
 		uint64_t copied_bytes = 0;
 		uint64_t curr_cr3 = __readcr3();
-		uint64_t old_dtb = overwrite_kproc_dtb(constructed_cr3.flags);
-
 		__writecr3(constructed_cr3.flags);
-
 
 		while (copied_bytes < size) {
 			void* current_virtual_mapped_source = 0;
@@ -1308,7 +1298,10 @@ namespace physmem {
 			uint64_t current_physical_source = 0;
 			uint64_t current_physical_destination = 0;
 
-			uint64_t copyable_size = PAGE_SIZE;
+			uint64_t src_remaining = 0;
+			uint64_t dst_remaining = 0;
+
+			uint64_t copyable_size = 0;
 
 			// First translate the va's to pa's 
 
@@ -1316,19 +1309,19 @@ namespace physmem {
 			if (status != status_success)
 				break;
 
-			status = translate_to_physical_address(source_cr3, (void*)((uint64_t)destination + copied_bytes), current_physical_destination);
+			status = translate_to_physical_address(destination_cr3, (void*)((uint64_t)destination + copied_bytes), current_physical_destination);
 			if (status != status_success)
 				break;
 
 			// Then map the pa's
 
-			status = map_4kb_page(current_physical_source, current_virtual_mapped_source);
+			status = map_4kb_page(current_physical_source, current_virtual_mapped_source, &src_remaining);
 			if (status != status_success) {
 				safely_unmap_4kb_page(current_virtual_mapped_source);
 				break;
 			}
 
-			status = map_4kb_page(current_physical_destination, current_virtual_mapped_destination);
+			status = map_4kb_page(current_physical_destination, current_virtual_mapped_destination, &dst_remaining);
 			if (status != status_success) {
 				safely_unmap_4kb_page(current_virtual_mapped_source);
 				safely_unmap_4kb_page(current_virtual_mapped_destination);
@@ -1336,6 +1329,8 @@ namespace physmem {
 			}
 
 			copyable_size = min(PAGE_SIZE, size - copied_bytes);
+			copyable_size = min(copyable_size, src_remaining);
+			copyable_size = min(copyable_size, dst_remaining);
 
 			// Then copy the mem
 
@@ -1348,11 +1343,112 @@ namespace physmem {
 
 			safely_unmap_4kb_page(current_virtual_mapped_source);
 			safely_unmap_4kb_page(current_virtual_mapped_destination);
+			_mm_lfence();
+			__invlpg(current_virtual_mapped_source);
+			__invlpg(current_virtual_mapped_destination);
 
 			copied_bytes += copyable_size;
 		}
 
-		overwrite_kproc_dtb(old_dtb);
+		__writecr3(curr_cr3);
+
+		return status;
+	}
+
+	project_status copy_memory_to_constructed_cr3(void* destination, void* source, uint64_t size, uint64_t source_cr3) {
+		if (!initialized)
+			return status_not_initialized;
+
+		project_status status = status_success;
+		uint64_t copied_bytes = 0;
+		uint64_t curr_cr3 = __readcr3();
+		__writecr3(constructed_cr3.flags);
+
+		while (copied_bytes < size) {
+			void* current_src = 0;
+			void* current_dst = (void*)((uint64_t)destination + copied_bytes);
+			uint64_t current_physical_source = 0;
+			uint64_t src_remaining = 0;
+
+			// Translate the virtual address to physical address
+			status = translate_to_physical_address(source_cr3, (void*)((uint64_t)source + copied_bytes), current_physical_source);
+			if (status != status_success) {
+				break;
+			}
+
+			// Map the physical address to a virtual address
+			status = map_4kb_page(current_physical_source, current_src, &src_remaining);
+			if (status != status_success) {
+				safely_unmap_4kb_page(current_src);
+				break;
+			}
+
+			uint64_t copyable_size = PAGE_SIZE;
+			copyable_size = min(PAGE_SIZE, size - copied_bytes);
+			copyable_size = min(copyable_size, src_remaining);
+
+			// Copy the memory
+			__invlpg(current_src);
+			_mm_lfence();
+
+			memcpy(current_dst, current_src, copyable_size);
+
+			safely_unmap_4kb_page(current_src);
+			__invlpg(current_src);
+
+			copied_bytes += copyable_size;
+		}
+
+		__writecr3(curr_cr3);
+
+		return status;
+	}
+
+	project_status copy_memory_from_constructed_cr3(void* destination, void* source, uint64_t size, uint64_t destination_cr3) {
+		if (!initialized)
+			return status_not_initialized;
+
+		project_status status = status_success;
+		uint64_t copied_bytes = 0;
+		uint64_t curr_cr3 = __readcr3();
+		__writecr3(constructed_cr3.flags);
+
+		while (copied_bytes < size) {
+			void* current_virtual_mapped_destination = 0;
+			uint64_t current_physical_destination = 0;
+			uint64_t dst_remaining = 0;
+			uint64_t copyable_size = 0;
+
+			// First translate the va's to pa's 
+
+			status = translate_to_physical_address(destination_cr3, (void*)((uint64_t)destination + copied_bytes), current_physical_destination);
+			if (status != status_success)
+				break;
+
+			// Then map the pa's
+
+			status = map_4kb_page(current_physical_destination, current_virtual_mapped_destination, &dst_remaining);
+			if (status != status_success) {
+				safely_unmap_4kb_page(current_virtual_mapped_destination);
+				break;
+			}
+
+			copyable_size = min(PAGE_SIZE, size - copied_bytes);
+			copyable_size = min(copyable_size, dst_remaining);
+
+			// Then copy the mem
+
+			__invlpg(current_virtual_mapped_destination);
+			_mm_lfence();
+
+			memcpy(current_virtual_mapped_destination, (void*)((uint64_t)source + copied_bytes), copyable_size);
+
+			safely_unmap_4kb_page(current_virtual_mapped_destination);
+			__invlpg(current_virtual_mapped_destination);
+
+			copied_bytes += copyable_size;
+		}
+
 		__writecr3(curr_cr3);
 
 		return status;
@@ -1364,8 +1460,6 @@ namespace physmem {
 			return status_non_aligned;
 
 		uint64_t curr_cr3 = __readcr3();
-		uint64_t old_dtb = overwrite_kproc_dtb(constructed_cr3.flags);
-
 		__writecr3(constructed_cr3.flags);
 
 		project_status status = status_success;
@@ -1398,18 +1492,18 @@ namespace physmem {
 			goto cleanup;
 		
 
-		status = map_4kb_page(constructed_cr3.address_of_page_directory << 12, (void*&)my_pml4_table);
+		status = map_4kb_page(constructed_cr3.address_of_page_directory << 12, (void*&)my_pml4_table, 0);
 		if (status != status_success)
 			goto cleanup;
-		status = map_4kb_page(new_mem_cr3.address_of_page_directory << 12, (void*&)new_mem_pml4_table);
+		status = map_4kb_page(new_mem_cr3.address_of_page_directory << 12, (void*&)new_mem_pml4_table, 0);
 		if (status != status_success)
 			goto cleanup;
 
 
-		status = map_4kb_page(my_pml4_table[target_va.pml4e_idx].page_frame_number << 12, (void*&)my_pdpt_table);
+		status = map_4kb_page(my_pml4_table[target_va.pml4e_idx].page_frame_number << 12, (void*&)my_pdpt_table, 0);
 		if (status != status_success)
 			goto cleanup;
-		status = map_4kb_page(new_mem_pml4_table[new_mem_va.pml4e_idx].page_frame_number << 12, (void*&)new_mem_pdpt_table);
+		status = map_4kb_page(new_mem_pml4_table[new_mem_va.pml4e_idx].page_frame_number << 12, (void*&)new_mem_pdpt_table, 0);
 		if (status != status_success)
 			goto cleanup;
 
@@ -1425,10 +1519,10 @@ namespace physmem {
 			goto cleanup;
 		}
 
-		status = map_4kb_page(my_pdpt_table[target_va.pdpte_idx].page_frame_number << 12, (void*&)my_pde_table);
+		status = map_4kb_page(my_pdpt_table[target_va.pdpte_idx].page_frame_number << 12, (void*&)my_pde_table, 0);
 		if (status != status_success)
 			goto cleanup;
-		status = map_4kb_page(new_mem_pdpt_table[new_mem_va.pdpte_idx].page_frame_number << 12, (void*&)new_mem_pde_table);
+		status = map_4kb_page(new_mem_pdpt_table[new_mem_va.pdpte_idx].page_frame_number << 12, (void*&)new_mem_pde_table, 0);
 		if (status != status_success)
 			goto cleanup;
 
@@ -1443,10 +1537,10 @@ namespace physmem {
 			goto cleanup;
 		}
 		
-		status = map_4kb_page(my_pde_table[target_va.pde_idx].page_frame_number << 12, (void*&)my_pte_table);
+		status = map_4kb_page(my_pde_table[target_va.pde_idx].page_frame_number << 12, (void*&)my_pte_table, 0);
 		if (status != status_success)
 			goto cleanup;
-		status = map_4kb_page(new_mem_pde_table[new_mem_va.pde_idx].page_frame_number << 12, (void*&)new_mem_pte_table);
+		status = map_4kb_page(new_mem_pde_table[new_mem_va.pde_idx].page_frame_number << 12, (void*&)new_mem_pte_table, 0);
 		if (status != status_success)
 			goto cleanup;
 
@@ -1466,7 +1560,6 @@ namespace physmem {
 		safely_unmap_4kb_page(my_pde_table);
 		safely_unmap_4kb_page(my_pte_table);
 
-		overwrite_kproc_dtb(old_dtb);
 		__writecr3(curr_cr3);
 
 		return status;
@@ -1501,11 +1594,11 @@ namespace physmem {
 
 		my_pml4_table = page_tables.pml4_table;
 
-		status = map_4kb_page(mem_cr3.address_of_page_directory << 12, (void*&)mapped_pml4_table);
+		status = map_4kb_page(mem_cr3.address_of_page_directory << 12, (void*&)mapped_pml4_table, 0);
 		if (status != status_success)
 			goto cleanup;
 
-		status = map_4kb_page(mapped_pml4_table[mem_va.pml4e_idx].page_frame_number << 12, (void*&)mapped_pdpt_table);
+		status = map_4kb_page(mapped_pml4_table[mem_va.pml4e_idx].page_frame_number << 12, (void*&)mapped_pdpt_table, 0);
 		if (status != status_success)
 			goto cleanup;
 
@@ -1531,7 +1624,7 @@ namespace physmem {
 			}
 		}
 
-		status = map_4kb_page(mapped_pdpt_table[mem_va.pdpte_idx].page_frame_number << 12, (void*&)mapped_pde_table);
+		status = map_4kb_page(mapped_pdpt_table[mem_va.pdpte_idx].page_frame_number << 12, (void*&)mapped_pde_table, 0);
 		if (status != status_success)
 			goto cleanup;
 
@@ -1637,6 +1730,7 @@ namespace physmem {
 		if (!pool || !contiguous_mem)
 			return status_memory_allocation_failed;
 
+		_cli();
 		for (int i = 0; i < stress_test_count; i++) {
 			memset(contiguous_mem, i, test_size);
 			memcpy(pool, contiguous_mem, test_size);
@@ -1654,12 +1748,13 @@ namespace physmem {
 		status = status_success;
 
 	cleanup:
+		_sti();
 
 		if (pool) ExFreePool(pool);
 		if (contiguous_mem) MmFreeContiguousMemory(contiguous_mem);
 
 		if (status == status_success) {
-			project_log_success("Memory copying stress test finished successfully");
+			project_log_info("Memory copying stress test finished successfully");
 		}
 
 		return status;
@@ -1672,8 +1767,7 @@ namespace physmem {
 		void* mema = 0;
 		void* memb = 0;
 		uint64_t curr_cr3 = 0;
-		uint64_t old_dtb = 0;
-
+	
 		mema = MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
 		memb = MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
 		if (!mema || !memb) {
@@ -1684,17 +1778,18 @@ namespace physmem {
 		memset(mema, 0xa, PAGE_SIZE);
 		memset(memb, 0xb, PAGE_SIZE);
 
+		_cli();
 		status = overwrite_virtual_address_mapping(mema, memb, kernel_cr3.flags, kernel_cr3.flags);
 		if (status != status_success)
 			goto cleanup;
 
 	    curr_cr3 = __readcr3();
-		old_dtb = overwrite_kproc_dtb(constructed_cr3.flags);
-
 		__writecr3(constructed_cr3.flags);
 
 		if (memcmp(mema, memb, PAGE_SIZE) == 0) {
+			_sti();
 			project_log_info("Memory remapping stress test finished successfully");
+			_cli();
 		}
 		else {
 			status = status_data_mismatch;
@@ -1708,7 +1803,9 @@ namespace physmem {
 			goto cleanup;
 
 		if (memcmp(mema, memb, PAGE_SIZE) != 0) {
+			_sti();
 			project_log_info("Memory remapping restoring stress test finished successfully");
+			_cli();
 		}
 		else {
 			status = status_data_mismatch;
@@ -1716,9 +1813,7 @@ namespace physmem {
 		}
 		
 	cleanup:
-		if (old_dtb) {
-			overwrite_kproc_dtb(old_dtb);
-		}
+		_sti();
 		if (curr_cr3) {
 			__writecr3(curr_cr3);
 		}

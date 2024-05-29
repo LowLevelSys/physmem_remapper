@@ -3,13 +3,18 @@
 #include "interrupt_structs.hpp"
 #include <ntimage.h>
 
+extern "C" uint16_t __readcs(void);
+extern "C" void _cli(void);
+extern "C" void _sti(void);
+
+extern "C" void asm_nmi_handler(void);
+
 namespace interrupts {
 	// Initialization functions
-	project_status init_interrupts(uint64_t driver_base, uint64_t driver_size);
+	project_status init_interrupts();
 
 	// Exposed API's
 	bool is_initialized(void);
-
-	// Exposed tests
-	project_status stress_test_seh(void);
+	segment_descriptor_register_64 get_constructed_idt_ptr(void);
+	void* get_windows_nmi_handler(void);
 };

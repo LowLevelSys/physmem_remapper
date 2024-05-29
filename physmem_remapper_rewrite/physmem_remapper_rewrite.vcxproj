@@ -57,7 +57,7 @@
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <DisableSpecificWarnings>4201;4996;%(DisableSpecificWarnings)</DisableSpecificWarnings>
       <FloatingPointExceptions>false</FloatingPointExceptions>
-      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <InlineFunctionExpansion>Default</InlineFunctionExpansion>
       <ExceptionHandling>Sync</ExceptionHandling>
     </ClCompile>
   </ItemDefinitionGroup>
@@ -68,6 +68,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="project\communication\communication.cpp" />
     <ClCompile Include="project\communication\handler.cpp" />
+    <ClCompile Include="project\communication\handler_utility.cpp" />
     <ClCompile Include="project\interrupts\interrupts.cpp" />
     <ClCompile Include="project\physmem\physmem.cpp" />
     <ClCompile Include="project\project_utility.cpp" />
@@ -76,6 +77,7 @@
   <ItemGroup>
     <ClInclude Include="includes.hpp" />
     <ClInclude Include="project\communication\communication.hpp" />
+    <ClInclude Include="project\communication\shared_structs.hpp" />
     <ClInclude Include="project\communication\shellcode.hpp" />
     <ClInclude Include="project\interrupts\interrupts.hpp" />
     <ClInclude Include="project\interrupts\interrupt_structs.hpp" />

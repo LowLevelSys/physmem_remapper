@@ -54,18 +54,11 @@ enum project_status {
 	status_remapping_list_full,
 	status_wrong_context,
 	status_non_valid_usable_until_level,
+	status_not_present,
 
 	/*
 		Interrupts
 	*/
-	status_gp_failed,
-	status_pf_read_failed,
-	status_pf_write_failed,
-	status_de_failed,
-	status_ud_failed,
-	status_nested_failed,
-	status_rva_outside_driver,
-	status_no_runtime_function_found,
 
 	/*
 		Communication

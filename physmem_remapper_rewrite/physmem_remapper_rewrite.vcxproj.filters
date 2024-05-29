@@ -43,6 +43,9 @@
     <ClCompile Include="project\communication\handler.cpp">
       <Filter>project\communication</Filter>
     </ClCompile>
+    <ClCompile Include="project\communication\handler_utility.cpp">
+      <Filter>project\communication</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="includes.hpp">
@@ -82,6 +85,9 @@
       <Filter>project</Filter>
     </ClInclude>
     <ClInclude Include="project\communication\shellcode.hpp">
+      <Filter>project\communication</Filter>
+    </ClInclude>
+    <ClInclude Include="project\communication\shared_structs.hpp">
       <Filter>project\communication</Filter>
     </ClInclude>
   </ItemGroup>

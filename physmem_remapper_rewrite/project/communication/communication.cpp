@@ -20,12 +20,12 @@ namespace communication {
     // Shellcode ptrs
     extern "C" void* enter_constructed_space = 0;
     extern "C" void* exit_constructed_space = 0;
-
+    extern "C" void* nmi_shellcode = 0;
 
     /*
         Util
     */
-    inline void log_data_ptr_info(void) {
+    void log_data_ptr_info(void) {
         project_log_info("Data ptr value stored at: %p", data_ptr_address);
         project_log_info("Orig data ptr value: %p", orig_data_ptr_value);
         project_log_info("Exchanged data ptr value: %p", asm_handler);
@@ -46,13 +46,13 @@ namespace communication {
         uint64_t target_address = 0;
         uint64_t orig_data_ptr = 0;
 
-        status = get_driver_module_base(L"win32k.sys", win32k_base);
+        status = utility::get_driver_module_base(L"win32k.sys", win32k_base);
         if (status != status_success) {
             project_log_error("Failed to get win32k.sys base address");
             goto cleanup;
         }
 
-        status = get_eprocess("winlogon.exe", winlogon_eproc);
+        status = utility::get_eprocess("winlogon.exe", winlogon_eproc);
         if (status != status_success) {
             project_log_error("Failed to get winlogon.exe eproc");
             goto cleanup;
@@ -62,10 +62,10 @@ namespace communication {
 
         // NtUserGetCPD
         // 48 83 EC 28 48 8B 05 99/59 02
-        pattern = search_pattern_in_section(win32k_base, ".text", "\x48\x83\xEC\x28\x48\x8B\x05\x99\x02", 9, 0x0);
+        pattern = utility::search_pattern_in_section(win32k_base, ".text", "\x48\x83\xEC\x28\x48\x8B\x05\x99\x02", 9, 0x0);
 
         if (!pattern) {
-            pattern = search_pattern_in_section(win32k_base, ".text", "\x48\x83\xEC\x28\x48\x8B\x05\x59\x02", 9, 0x0);
+            pattern = utility::search_pattern_in_section(win32k_base, ".text", "\x48\x83\xEC\x28\x48\x8B\x05\x59\x02", 9, 0x0);
 
             if (!pattern) {
                 status = status_failure;
@@ -100,13 +100,13 @@ namespace communication {
         PEPROCESS winlogon_eproc = 0;
         KAPC_STATE apc = { 0 };
 
-        status = is_data_ptr_valid((uint64_t)orig_data_ptr_value);
+        status = utility::is_data_ptr_valid((uint64_t)orig_data_ptr_value);
         if (status != status_success) {
             project_log_error("Data ptr at: %p already hooked", data_ptr_address);
             return status;
         }
 
-        status = get_eprocess("winlogon.exe", winlogon_eproc);
+        status = utility::get_eprocess("winlogon.exe", winlogon_eproc);
         if (status != status_success) {
             project_log_error("Failed to get winlogon.exe EPROCESS");
             goto cleanup;
@@ -143,11 +143,11 @@ namespace communication {
         if (status != status_success)
             goto cleanup;
 
-        status = shellcode::construct_shellcodes(enter_constructed_space, exit_constructed_space, orig_data_ptr_value, asm_handler, my_stack_base);
+        status = shellcode::construct_shellcodes(enter_constructed_space, exit_constructed_space, nmi_shellcode, 
+                                                 interrupts::get_windows_nmi_handler(), interrupts::get_constructed_idt_ptr(),
+                                                 orig_data_ptr_value, asm_handler, my_stack_base, physmem::get_constructed_cr3().flags);
         if (status != status_success)
             goto cleanup;
-
-        shellcode::log_shellcode_addresses();
 
         status = init_data_ptr_hook();
         if (status != status_success)

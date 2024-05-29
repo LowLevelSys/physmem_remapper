@@ -2,6 +2,20 @@
 #include <ntddk.h>
 #include <intrin.h>
 
+/*
+    Constants in windows; To do: Make them dynamic to windows version etc
+*/
+#define IMAGE_NAME_OFFSET 0x5a8
+#define PID_OFFSET 0x440
+#define FLINK_OFFSET 0x448
+#define SYSTEM_PID 4
+#define IMAGE_NAME_LENGTH 15
+#define LIST_ENTRY_OFFSET 0x448
+#define DIRECTORY_TABLE_BASE_OFFSET 0x28
+#define PEB_OFFSET 0x550
+
+#define LDR_DATA_OFFSET 0x18
+
 union _KEXECUTE_OPTIONS {
     UCHAR ExecuteDisable : 1;                                                 //0x0
     UCHAR ExecuteEnable : 1;                                                  //0x0
@@ -184,3 +198,15 @@ typedef struct _KAPC_STATE {
         };
     };
 } KAPC_STATE, * PKAPC_STATE, * PRKAPC_STATE;
+
+typedef struct {
+    ULONG Length;                                                           //0x0
+    UCHAR Initialized;                                                      //0x4
+    VOID* SsHandle;                                                         //0x8
+    struct _LIST_ENTRY InLoadOrderModuleList;                               //0x10
+    struct _LIST_ENTRY InMemoryOrderModuleList;                             //0x20
+    struct _LIST_ENTRY InInitializationOrderModuleList;                     //0x30
+    VOID* EntryInProgress;                                                  //0x40
+    UCHAR ShutdownInProgress;                                               //0x48
+    VOID* ShutdownThreadId;                                                 //0x50
+}PEB_LDR_DATA;

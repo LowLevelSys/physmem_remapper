@@ -1,6 +1,7 @@
 .code
 
-extern handle_ecode_interrupt:proc
+extern handle_nmi:proc
+extern nmi_shellcode:proc
 
 save_general_regs macro
     push rax
@@ -38,48 +39,34 @@ restore_general_regs macro
 	pop rax
 endm
 
+asm_nmi_handler proc
+	save_general_regs
+
+	; Pass a ptr to the struct as the first arg
+    mov rcx, rsp
+
+	sub rsp, 20h
+    call handle_nmi
+	add rsp, 20h
+
+	restore_general_regs
+
+	jmp qword ptr [nmi_shellcode]
+asm_nmi_handler endp
+
 __readcs proc
 	mov rax, cs
 	ret
 __readcs endp
 
-asm_ecode_interrupt_handler proc
+_sti proc
+	sti	
+	ret
+_sti endp
 
-	save_general_regs
-
-    ; Pass a ptr to the struct as the first arg
-    mov rcx, rsp
-
-	sub rsp, 20h
-    call handle_ecode_interrupt
-	add rsp, 20h
-
-	restore_general_regs
-
-	; Remember to remove the error code from the stack
-	add rsp, 8
-
-    iretq
-asm_ecode_interrupt_handler endp
-
-asm_no_ecode_interrupt_handler proc
-	push 0 ; Push a dummy error code
-
-	save_general_regs
-
-    ; Pass a ptr to the struct as the first arg
-    mov rcx, rsp
-
-	sub rsp, 20h
-    call handle_ecode_interrupt
-	add rsp, 20h
-
-	restore_general_regs
-
-	; Remember to remove the error code from the stack
-	add rsp, 8
-
-    iretq
-asm_no_ecode_interrupt_handler endp
+_cli proc
+	cli
+	ret
+_cli endp	
 
 end
