@@ -7,8 +7,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "physmem_remapper_rewrite", 
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "vext", "vext\vext.vcxproj", "{3115ECC5-0DA7-4743-B2D0-234F3F46A97F}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "nmi-base", "nmiPoc\nmi-base\nmi-base.vcxproj", "{7EA1D743-D879-492F-9751-2F9E9AA6F5E2}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "my_mapper", "mapper\my_mapper\my_mapper.vcxproj", "{278B99AC-C438-472A-8272-79F83DEF7F7D}"
 EndProject
 Global
@@ -39,18 +37,6 @@ Global
 		{3115ECC5-0DA7-4743-B2D0-234F3F46A97F}.Release|x64.Build.0 = Release|x64
 		{3115ECC5-0DA7-4743-B2D0-234F3F46A97F}.Release|x86.ActiveCfg = Release|Win32
 		{3115ECC5-0DA7-4743-B2D0-234F3F46A97F}.Release|x86.Build.0 = Release|Win32
-		{7EA1D743-D879-492F-9751-2F9E9AA6F5E2}.Debug|x64.ActiveCfg = Release|x64
-		{7EA1D743-D879-492F-9751-2F9E9AA6F5E2}.Debug|x64.Build.0 = Release|x64
-		{7EA1D743-D879-492F-9751-2F9E9AA6F5E2}.Debug|x64.Deploy.0 = Release|x64
-		{7EA1D743-D879-492F-9751-2F9E9AA6F5E2}.Debug|x86.ActiveCfg = Release|x64
-		{7EA1D743-D879-492F-9751-2F9E9AA6F5E2}.Debug|x86.Build.0 = Release|x64
-		{7EA1D743-D879-492F-9751-2F9E9AA6F5E2}.Debug|x86.Deploy.0 = Release|x64
-		{7EA1D743-D879-492F-9751-2F9E9AA6F5E2}.Release|x64.ActiveCfg = Release|x64
-		{7EA1D743-D879-492F-9751-2F9E9AA6F5E2}.Release|x64.Build.0 = Release|x64
-		{7EA1D743-D879-492F-9751-2F9E9AA6F5E2}.Release|x64.Deploy.0 = Release|x64
-		{7EA1D743-D879-492F-9751-2F9E9AA6F5E2}.Release|x86.ActiveCfg = Release|x64
-		{7EA1D743-D879-492F-9751-2F9E9AA6F5E2}.Release|x86.Build.0 = Release|x64
-		{7EA1D743-D879-492F-9751-2F9E9AA6F5E2}.Release|x86.Deploy.0 = Release|x64
 		{278B99AC-C438-472A-8272-79F83DEF7F7D}.Debug|x64.ActiveCfg = Debug|x64
 		{278B99AC-C438-472A-8272-79F83DEF7F7D}.Debug|x64.Build.0 = Debug|x64
 		{278B99AC-C438-472A-8272-79F83DEF7F7D}.Debug|x86.ActiveCfg = Debug|Win32
