@@ -95,6 +95,19 @@ namespace communication {
         return status;
     }
 
+    project_status ensure_driver_mapping(void* driver_base, uint64_t driver_size) {
+        project_status status = status_success;
+
+        status = physmem::ensure_memory_mapping_for_range(driver_base, driver_size, physmem::get_system_cr3().flags);
+        if (status != status_success) {
+            project_log_error("Failed to ensure driver mapping");
+            project_log_error("If you remove it from physical memory now and call it, you WILL bsod");
+            return status;
+        }
+
+        return status;
+    }
+
     project_status init_data_ptr_hook(void) {
         project_status status = status_success;
         PEPROCESS winlogon_eproc = 0;
@@ -128,7 +141,7 @@ namespace communication {
         return status;
     }
 
-    project_status init_communication(void) {
+    project_status init_communication(void* driver_base, uint64_t driver_size) {
         if (!interrupts::is_initialized() || !stack_manager::is_initialized() || !physmem::is_initialized())
             return status_not_initialized;
 
@@ -146,6 +159,10 @@ namespace communication {
         status = shellcode::construct_shellcodes(enter_constructed_space, exit_constructed_space, nmi_shellcode, 
                                                  interrupts::get_windows_nmi_handler(), interrupts::get_constructed_idt_ptr(),
                                                  orig_data_ptr_value, asm_handler, my_stack_base, physmem::get_constructed_cr3().flags);
+        if (status != status_success)
+            goto cleanup;
+
+        status = ensure_driver_mapping(driver_base, driver_size);
         if (status != status_success)
             goto cleanup;
 

@@ -21,9 +21,10 @@ namespace physmem {
 	project_status copy_memory_to_constructed_cr3(void* destination, void* source, uint64_t size, uint64_t source_cr3);
 	project_status copy_memory_from_constructed_cr3(void* destination, void* source, uint64_t size, uint64_t destination_cr3);
 
-
-	project_status overwrite_virtual_address_mapping(void* target_address, void* new_memory, uint64_t target_address_cr3, uint64_t new_mem_cr3);
+	project_status overwrite_virtual_address_mapping(void* target_address, void* new_memory, uint64_t target_address_cr3_u64, uint64_t new_mem_cr3_u64);
 	project_status restore_virtual_address_mapping(void* target_address, uint64_t mem_cr3_u64);
+
+	project_status ensure_memory_mapping_for_range(void* target_address, uint64_t size, uint64_t mem_cr3);
 
 	// Exposed tests
 	project_status stress_test_memory_copy(void);

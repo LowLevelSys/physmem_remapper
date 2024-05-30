@@ -700,9 +700,12 @@ namespace physmem {
 		return status;
 	}
 
-	project_status ensure_memory_mapping_without_previous_mapping(void* mem, uint64_t mem_cr3_u64) {
+	project_status ensure_memory_mapping_without_previous_mapping(void* mem, uint64_t mem_cr3_u64, uint64_t* ensured_size) {
 		if (!initialized)
 			return status_not_initialized;
+
+		if (!ensured_size)
+			return status_invalid_parameter;
 
 		if (__readcr3() != constructed_cr3.flags) {
 			return status_wrong_context;
@@ -771,6 +774,8 @@ namespace physmem {
 
 			add_remapping_entry(new_entry);
 
+			*ensured_size = 0x40000000 - mem_va.offset_1gb;
+
 			goto cleanup;
 		}
 
@@ -818,6 +823,8 @@ namespace physmem {
 			new_entry.pd_table.table = my_pde_table;
 
 			add_remapping_entry(new_entry);
+
+			*ensured_size = 0x200000 - mem_va.offset_2mb;
 
 			goto cleanup;
 		}
@@ -879,6 +886,8 @@ namespace physmem {
 
 		add_remapping_entry(new_entry);
 
+		*ensured_size = 0x1000 - mem_va.offset_4kb;
+
 	cleanup:
 
 		safely_unmap_4kb_page(mapped_pml4_table);
@@ -900,9 +909,12 @@ namespace physmem {
 		return status;
 	}
 
-	project_status ensure_memory_mapping_with_previous_mapping(void* mem, uint64_t mem_cr3_u64, remapped_entry_t* remapping_entry) {
+	project_status ensure_memory_mapping_with_previous_mapping(void* mem, uint64_t mem_cr3_u64, remapped_entry_t* remapping_entry, uint64_t* ensured_size) {
 		if (!initialized)
 			return status_not_initialized;
+
+		if (!ensured_size)
+			return status_invalid_parameter;
 
 		if (__readcr3() != constructed_cr3.flags) {
 			return status_wrong_context;
@@ -970,6 +982,8 @@ namespace physmem {
 
 				add_remapping_entry(new_entry);
 
+				*ensured_size = 0x40000000 - mem_va.offset_1gb;
+
 				goto cleanup;
 			}
 			case non_valid: {
@@ -1017,6 +1031,8 @@ namespace physmem {
 
 				add_remapping_entry(new_entry);
 
+				*ensured_size = 0x200000 - mem_va.offset_2mb;
+
 				goto cleanup;
 			}
 			case pde_table_valid:
@@ -1039,6 +1055,8 @@ namespace physmem {
 				new_entry.pd_table.table = remapping_entry->pd_table.table;
 
 				add_remapping_entry(new_entry);
+
+				*ensured_size = 0x200000 - mem_va.offset_2mb;
 
 				goto cleanup;
 			}
@@ -1102,6 +1120,8 @@ namespace physmem {
 
 			add_remapping_entry(new_entry);
 
+			*ensured_size = 0x1000 - mem_va.offset_4kb;
+
 			goto cleanup;
 		}
 		case pde_table_valid: {
@@ -1138,6 +1158,8 @@ namespace physmem {
 
 			add_remapping_entry(new_entry);
 
+			*ensured_size = 0x1000 - mem_va.offset_4kb;
+
 			goto cleanup;
 		}
 		case pte_table_valid: {
@@ -1161,6 +1183,8 @@ namespace physmem {
 			new_entry.pt_table = remapping_entry->pt_table;
 
 			add_remapping_entry(new_entry);
+
+			*ensured_size = 0x1000 - mem_va.offset_4kb;
 
 			goto cleanup;
 		}
@@ -1191,20 +1215,24 @@ namespace physmem {
 		return status;
 	}
 
-	project_status ensure_memory_mapping(void* mem, uint64_t mem_cr3_u64) {
+	project_status ensure_memory_mapping(void* mem, uint64_t mem_cr3_u64, uint64_t* ensured_size = 0) {
 		if (!initialized)
 			return status_not_initialized;
 
 		project_status status = status_success;
 		remapped_entry_t* remapping_entry = 0;
+		uint64_t dummy_size = 0;
 
 		status = get_remapping_entry(mem, remapping_entry);
 
+		if (!ensured_size)
+			ensured_size = &dummy_size;
+
 		if (status == status_remapping_entry_found) {
-			status = ensure_memory_mapping_with_previous_mapping(mem, mem_cr3_u64, remapping_entry);
+			status = ensure_memory_mapping_with_previous_mapping(mem, mem_cr3_u64, remapping_entry, ensured_size);
 		}
 		else {
-			status = ensure_memory_mapping_without_previous_mapping(mem, mem_cr3_u64);
+			status = ensure_memory_mapping_without_previous_mapping(mem, mem_cr3_u64, ensured_size);
 		}
 
 		return status;
@@ -1710,6 +1738,33 @@ namespace physmem {
 
 		__invlpg(target_address);
 
+		return status;
+	}
+
+	project_status ensure_memory_mapping_for_range(void* target_address, uint64_t size, uint64_t mem_cr3) {
+		project_status status = status_success;
+		uint64_t copied_bytes = 0;
+
+		_cli();
+		uint64_t old_cr3 = __readcr3();
+		__writecr3(constructed_cr3.flags);
+
+		while (copied_bytes < size) {
+			void* current_target = (void*)((uint64_t)target_address + copied_bytes);
+			uint64_t ensured_size = 0;
+
+			status = ensure_memory_mapping(current_target, mem_cr3, &ensured_size);
+			if (status != status_success) {
+				__writecr3(old_cr3);
+				_sti();
+				return status;
+			}
+
+			copied_bytes += ensured_size;
+		}
+
+		__writecr3(old_cr3);
+		_sti();
 		return status;
 	}
 

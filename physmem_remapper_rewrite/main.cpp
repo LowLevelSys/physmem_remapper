@@ -19,8 +19,13 @@ project_status call_stress_tests(void) {
 	return status;
 }
 
-NTSTATUS driver_entry() {
-	project_log_success("Driver loaded!");
+NTSTATUS driver_entry(void* driver_base, uint64_t driver_size) {
+	project_log_success("Driver loaded at %p with size %p", driver_base, driver_size);
+
+	if (!driver_base || !driver_size) {
+		project_log_success("Wrong usage: You have to pass the allocation base and the allocation size of the driver pool to the driver_entry!");
+		return STATUS_UNSUCCESSFUL;
+	}
 
 	project_status status = status_success;
 
@@ -42,7 +47,7 @@ NTSTATUS driver_entry() {
 		return STATUS_UNSUCCESSFUL;
 	}
 
-	status = communication::init_communication();
+	status = communication::init_communication(driver_base, driver_size);
 	if (status != status_success) {
 		project_log_error("Failed to init communication with status %d", status);
 		return STATUS_UNSUCCESSFUL;
