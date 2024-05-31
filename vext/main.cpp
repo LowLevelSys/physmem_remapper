@@ -33,7 +33,7 @@ int main(void) {
 
 		log("[%p] Current fov %.2f", iteration, current_fov);
 
-		//std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		//std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 		iteration++;
 	}
 

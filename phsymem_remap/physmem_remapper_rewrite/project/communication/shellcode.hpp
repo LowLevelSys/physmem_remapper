@@ -8,6 +8,9 @@ namespace shellcode {
 	inline void* g_nmi_shellcode = 0;
 
 	inline void* g_info_page = 0;
+
+	inline uint64_t* cr3_storing_region;
+
 	inline bool initialized = false;
 
 	inline void construct_enter_shellcode(void* enter_constructed_space, void* info_page, segment_descriptor_register_64 my_idt_ptr,

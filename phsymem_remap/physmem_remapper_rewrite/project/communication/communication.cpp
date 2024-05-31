@@ -10,6 +10,8 @@ extern "C" NTKERNELAPI VOID KeUnstackDetachProcess(PKAPC_STATE ApcState);
 
 extern "C" void asm_handler(void);
 
+extern "C" void test_function_c(void);
+
 namespace communication {
     /*
         Global variables
@@ -155,7 +157,7 @@ namespace communication {
 
         project_status status = status_success;
         void* my_stack_base = 0;
-
+        
         status = init_data_ptr_data();
         if (status != status_success)
             goto cleanup;
@@ -169,6 +171,8 @@ namespace communication {
             orig_data_ptr_value, asm_handler, my_stack_base, physmem::get_constructed_cr3().flags);
         if (status != status_success)
             goto cleanup;
+
+        shellcode::log_shellcode_addresses();
 
         status = ensure_driver_mapping(driver_base, driver_size);
         if (status != status_success)
