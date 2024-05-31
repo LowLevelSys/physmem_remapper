@@ -26,6 +26,8 @@ namespace physmem {
 
 	project_status ensure_memory_mapping_for_range(void* target_address, uint64_t size, uint64_t mem_cr3);
 
+	project_status unset_global_flag_for_range(void* target_address, uint64_t size, uint64_t mem_cr3_u64);
+
 	// Exposed tests
 	project_status stress_test_memory_copy(void);
 	project_status stress_test_memory_remapping(void);

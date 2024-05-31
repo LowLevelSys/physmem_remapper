@@ -36,6 +36,8 @@ namespace shellcode {
 			0x48, 0xB8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // mov rax, imm64 (address of is_call_in_progress)
 			0xC6, 0x00, 0x01,                                           // mov byte ptr [rax], 1 (set flag)
 
+			0xFA,														// cli
+
 			0x48, 0xB8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // mov rax, imm64 (address of panic_function_storage)
 			0x4C, 0x89, 0x00,											// mov [rax], r8 (save the function ptr)	
 
@@ -56,8 +58,6 @@ namespace shellcode {
 			0x48, 0xB8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // mov rax, imm64 (address of my_idt_ptr)
 			0x0F, 0x01, 0x18,											// lidt [rax]
 
-			0xFA,														// cli
-
 			0x48, 0xB8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // mov rax, imm64 (address of handler_address)
 			0xFF, 0xE0,                                                 // jmp rax
 
@@ -74,7 +74,6 @@ namespace shellcode {
 
 		memcpy(enter_constructed_space, enter_shellcode, sizeof(enter_shellcode));
 
-
 		// Call in progress flags
 		uint64_t is_call_in_progress_addr = (uint64_t)info_page;
 		memcpy((uint8_t*)enter_constructed_space + 2, &is_call_in_progress_addr, sizeof(is_call_in_progress_addr));
@@ -82,31 +81,31 @@ namespace shellcode {
 		
 		// Nmi-Restoring function
 		uint64_t* panic_function_storage_addr = (uint64_t*)((uint64_t)info_page + 4 * sizeof(uint64_t));
-		memcpy((uint8_t*)enter_constructed_space + 47, &panic_function_storage_addr, sizeof(panic_function_storage_addr));
+		memcpy((uint8_t*)enter_constructed_space + 48, &panic_function_storage_addr, sizeof(panic_function_storage_addr));
 
 		// Rsp storage
 		uint64_t rsp_storage_addr = (uint64_t)info_page + sizeof(uint64_t);
-		memcpy((uint8_t*)enter_constructed_space + 60, &rsp_storage_addr, sizeof(rsp_storage_addr));
+		memcpy((uint8_t*)enter_constructed_space + 61, &rsp_storage_addr, sizeof(rsp_storage_addr));
 
 		// My rsp
 		uint64_t my_stack_addr = (uint64_t)my_stack;
-		memcpy((uint8_t*)enter_constructed_space + 73, &my_stack_addr, sizeof(my_stack_addr));
+		memcpy((uint8_t*)enter_constructed_space + 74, &my_stack_addr, sizeof(my_stack_addr));
 
 		// Cr3 storage
 		uint64_t cr3_storage_address = (uint64_t)info_page + 2 * sizeof(uint64_t);
-		memcpy((uint8_t*)enter_constructed_space + 83, &cr3_storage_address, sizeof(cr3_storage_address));
+		memcpy((uint8_t*)enter_constructed_space + 84, &cr3_storage_address, sizeof(cr3_storage_address));
 
 		// My Cr3 value
-		memcpy((uint8_t*)enter_constructed_space + 100, &my_cr3, sizeof(my_cr3));
+		memcpy((uint8_t*)enter_constructed_space + 101, &my_cr3, sizeof(my_cr3));
 
 		// Idt storage
 		uint64_t idt_storage_addr = (uint64_t)info_page + 3 * sizeof(uint64_t);
-		memcpy((uint8_t*)enter_constructed_space + 113, &idt_storage_addr, sizeof(idt_storage_addr));
+		memcpy((uint8_t*)enter_constructed_space + 114, &idt_storage_addr, sizeof(idt_storage_addr));
 
 		// My Idt storage
 		memcpy((uint8_t*)enter_constructed_space + 500, &my_idt_ptr, sizeof(my_idt_ptr));
 		uint64_t my_idt_storage_addr = (uint64_t)enter_constructed_space + 500;
-		memcpy((uint8_t*)enter_constructed_space + 126, &my_idt_storage_addr, sizeof(idt_storage_addr));
+		memcpy((uint8_t*)enter_constructed_space + 127, &my_idt_storage_addr, sizeof(idt_storage_addr));
 
 		// My handler address
 		uint64_t handler_address_val = (uint64_t)handler_address;

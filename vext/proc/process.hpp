@@ -131,7 +131,7 @@ public:
 	t read(void* src, uint64_t size = sizeof(t)) {
 		t buffer;
 
-		if (!physmem_instance->copy_virtual_memory(target_cr3, owner_cr3, src, (uint64_t)&buffer, sizeof(t))) {
+		if (!physmem_instance->copy_virtual_memory(target_cr3, owner_cr3, src, &buffer, sizeof(t))) {
 			log("Failed to copy memory from src: [%p] to dest: [%p]", (void*)src, &buffer);
 			return { 0 };
 		}
@@ -152,6 +152,16 @@ public:
 		}
 
 		return { 0 };
+	}
+
+	uint64_t get_module_base(std::string module_name) {
+		module_info_t module = get_module(module_name);
+		return module.base;
+	}
+
+	uint64_t get_module_size(std::string module_name) {
+		module_info_t module = get_module(module_name);
+		return module.size;
 	}
 };
 

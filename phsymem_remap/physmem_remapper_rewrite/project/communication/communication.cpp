@@ -98,6 +98,14 @@ namespace communication {
     project_status ensure_driver_mapping(void* driver_base, uint64_t driver_size) {
         project_status status = status_success;
 
+        // First unset the global flag of the driver pages to avoid it staying in the tlb
+        status = physmem::unset_global_flag_for_range(driver_base, driver_size, physmem::get_system_cr3().flags);
+        if (status != status_success) {
+            project_log_error("Failed to unset the global flag on one of the drivers pages");
+            return status;
+        }
+
+        // Then ensure the driver mapping in our cr3
         status = physmem::ensure_memory_mapping_for_range(driver_base, driver_size, physmem::get_system_cr3().flags);
         if (status != status_success) {
             project_log_error("Failed to ensure driver mapping");

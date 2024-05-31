@@ -239,10 +239,7 @@ struct constructed_page_tables {
 
     uint32_t memcpy_pml4e_idx;
     uint32_t memcpy_pdpt_idx;
-    uint32_t memcpy_pdpt_large_idx;
     uint32_t memcpy_pd_idx;
-    uint32_t memcpy_pd_large_idx;
-    uint32_t memcpy_pt_idx;
 
     bool is_pdpt_table_occupied[TABLE_COUNT];
     bool is_pd_table_occupied[TABLE_COUNT];
