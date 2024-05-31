@@ -170,8 +170,6 @@ namespace communication {
         if (status != status_success)
             goto cleanup;
 
-        shellcode::log_shellcode_addresses();
-
         status = ensure_driver_mapping(driver_base, driver_size);
         if (status != status_success)
             goto cleanup;
