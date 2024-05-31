@@ -16,6 +16,16 @@ namespace handler_utility {
             return SYSTEM_PID;
 
         do {
+            uint32_t active_threads;
+
+            memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
+
+            if (!active_threads) {
+                PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+ FLINK_OFFSET);
+                curr_entry = (PEPROCESS)((uintptr_t)list->Flink - FLINK_OFFSET);
+                continue;
+            }
+
             memcpy(&image_name, (void*)((uintptr_t)curr_entry + IMAGE_NAME_OFFSET), IMAGE_NAME_LENGTH);
 
             // Check whether we found our process
@@ -27,9 +37,8 @@ namespace handler_utility {
                 return pid;
             }
 
-            PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry) + FLINK_OFFSET);
+            PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+FLINK_OFFSET);
             curr_entry = (PEPROCESS)((uintptr_t)list->Flink - FLINK_OFFSET);
-
         } while (curr_entry != sys_process);
 
         return 0;
@@ -43,6 +52,16 @@ namespace handler_utility {
             return status_invalid_parameter;
 
         do {
+            uint32_t active_threads;
+
+            memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
+
+            if (!active_threads) {
+                PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+FLINK_OFFSET);
+                curr_entry = (PEPROCESS)((uintptr_t)list->Flink - FLINK_OFFSET);
+                continue;
+            }
+
             uint64_t curr_pid;
 
             memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + PID_OFFSET), sizeof(curr_pid));
@@ -114,6 +133,16 @@ namespace handler_utility {
             return status_invalid_parameter;
 
         do {
+            uint32_t active_threads;
+
+            memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
+
+            if (!active_threads) {
+                PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+FLINK_OFFSET);
+                curr_entry = (PEPROCESS)((uintptr_t)list->Flink - FLINK_OFFSET);
+                continue;
+            }
+
             uint64_t curr_pid;
 
             memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + PID_OFFSET), sizeof(curr_pid));
@@ -170,6 +199,16 @@ namespace handler_utility {
             return status_invalid_parameter;
 
         do {
+            uint32_t active_threads;
+
+            memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
+
+            if (!active_threads) {
+                PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+FLINK_OFFSET);
+                curr_entry = (PEPROCESS)((uintptr_t)list->Flink - FLINK_OFFSET);
+                continue;
+            }
+
             uint64_t curr_pid;
 
             memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + PID_OFFSET), sizeof(curr_pid));

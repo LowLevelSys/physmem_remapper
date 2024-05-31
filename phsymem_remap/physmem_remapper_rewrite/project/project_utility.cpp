@@ -37,7 +37,7 @@ namespace utility {
             if (strcmp(image_name, process_name) == 0) {
                 uint32_t active_threads;
 
-                memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + 0x5f0), sizeof(active_threads));
+                memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
 
                 if (active_threads) {
                     pe_proc = curr_entry;
@@ -144,11 +144,17 @@ namespace utility {
             // Check whether we found our process
             if (target_pid == curr_pid) {
 
-                uint64_t cr3;
+                uint32_t active_threads;
 
-                memcpy(&cr3, (void*)((uintptr_t)curr_entry + 0x28), sizeof(cr3));
+                memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
 
-                return cr3;
+                if (active_threads || target_pid == 4) {
+                    uint64_t cr3;
+
+                    memcpy(&cr3, (void*)((uintptr_t)curr_entry + 0x28), sizeof(cr3));
+
+                    return cr3;
+                }
             }
 
             PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry) + 0x448);
