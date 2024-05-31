@@ -150,7 +150,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         if (status != status_success)
             break;
 
-        status = physmem::copy_virtual_memory(sub_cmd.source, sub_cmd.destination, sub_cmd.size, sub_cmd.source_cr3, sub_cmd.destination_cr3);
+        status = physmem::copy_virtual_memory(sub_cmd.destination, sub_cmd.source, sub_cmd.size, sub_cmd.destination_cr3, sub_cmd.source_cr3);
         if (status != status_success)
             break;
 
