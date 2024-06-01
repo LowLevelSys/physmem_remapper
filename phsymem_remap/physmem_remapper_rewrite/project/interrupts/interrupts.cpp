@@ -111,38 +111,39 @@ namespace interrupts {
     bool is_initialized(void) {
         return initialized;
     }
-
+	
 	/*
-	* APC
-	bool remove_apc() {
+		APC
+	*/
+
+	project_status remove_apc() {
 
 		KThread* Thread = reinterpret_cast<KThread*>(KeGetCurrentThread());
 
 		if (!Thread)
-			return STATUS_NOT_FOUND;
+			return status_not_present;
 
 		originalFlags = Thread->MiscFlags;
 
 		Thread->MiscFlags &= ~(1UL << MISC_FLAG_ALERTABLE); // Null Alertable
 		Thread->MiscFlags &= ~(1UL << MISC_FLAG_APC); // Null APC
 
-		//dbg_log("REMOVED APC! (Thread->MiscFlags : %i)\n", Thread->MiscFlags);
+		//project_log_info("REMOVED APC! (Thread->MiscFlags : %i)\n", Thread->MiscFlags);
 
-		return true;
+		return status_success;
 	}
 
-	bool restore_apc() {
+	project_status restore_apc() {
 
 		KThread* Thread = reinterpret_cast<KThread*>(KeGetCurrentThread());
 
 		if (!Thread)
-			return STATUS_NOT_FOUND;
+			return status_not_present;
 
 		Thread->MiscFlags = originalFlags;
 
-		//dbg_log("RESTORED APC! (Thread->MiscFlags : %i)\n", Thread->MiscFlags);
+		//project_log_info("RESTORED APC! (Thread->MiscFlags : %i)\n", Thread->MiscFlags);
 
-		return true;
+		return status_success;
 	}
-	*/
 };

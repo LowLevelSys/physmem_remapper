@@ -1,6 +1,7 @@
 #pragma once
 #include "../project_includes.hpp"
 #include "interrupt_structs.hpp"
+#include "../windows_structs.hpp"
 #include <ntimage.h>
 
 extern "C" uint16_t __readcs(void);
@@ -11,11 +12,11 @@ extern "C" void asm_nmi_handler(void);
 
 /*
 * APC related
+*/
 
 #define MISC_FLAG_ALERTABLE		4
 #define MISC_FLAG_APC			14
-ULONG originalFlags;
-*/
+static ULONG originalFlags;
 
 namespace interrupts {
 	// Initialization functions
@@ -25,12 +26,13 @@ namespace interrupts {
 	bool is_initialized(void);
 	segment_descriptor_register_64 get_constructed_idt_ptr(void);
 	void* get_windows_nmi_handler(void);
+    project_status remove_apc();
+    project_status restore_apc();
 };
 
 /*
 APC
 */
-/*
 typedef struct
 {
     struct _DISPATCHER_HEADER Header;                                       //0x0
@@ -343,4 +345,4 @@ typedef struct
         };
     };
     VOID* SchedulerAssist;                                                  //0x5e8
-} KThread;*/
+} KThread;

@@ -163,6 +163,16 @@ public:
 		module_info_t module = get_module(module_name);
 		return module.size;
 	}
+
+	bool remove_apc() {
+		bool result = physmem_instance->remove_apc();
+		return result;
+	}
+
+	bool restore_apc() {
+		bool result = physmem_instance->restore_apc();
+		return result;
+	}
 };
 
 process_t* process_t::process_instance = 0;

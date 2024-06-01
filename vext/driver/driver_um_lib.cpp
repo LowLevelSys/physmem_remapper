@@ -12,7 +12,6 @@ __int64 physmem_remapper_um_t::send_request(void* cmd, void* nmi_panic_function)
 
 bool physmem_remapper_um_t::copy_virtual_memory(uint64_t source_cr3, uint64_t destination_cr3, void* source, void* destination, uint64_t size) {
     std::lock_guard<std::mutex> lock(mtx);
-
     if (!inited || !NtUserGetCPD)
         return false;
 
@@ -177,6 +176,48 @@ bool physmem_remapper_um_t::get_data_table_entry_info(uint64_t pid, module_info_
     command_t cmd = { 0 };
     cmd.call_type = cmd_get_data_table_entry_info;
     cmd.sub_command_ptr = &get_module_at_index;
+
+    __int64 ret = send_request(&cmd, &nmi_panic_function);
+    if (ret == call_in_progress_signature) {
+        log("Call currently in progress");
+        return false;
+    }
+
+    return cmd.status;
+}
+
+bool physmem_remapper_um_t::remove_apc() {
+    std::lock_guard<std::mutex> lock(mtx);
+    if (!inited || !NtUserGetCPD)
+        return 0;
+
+    auto nmi_panic_function = [&](uint64_t pid) -> uint64_t {
+        return remove_apc();
+        };
+
+    command_t cmd = { 0 };
+    cmd.call_type = cmd_remove_apc;
+
+    __int64 ret = send_request(&cmd, &nmi_panic_function);
+    if (ret == call_in_progress_signature) {
+        log("Call currently in progress");
+        return false;
+    }
+
+    return cmd.status;
+}
+
+bool physmem_remapper_um_t::restore_apc() {
+    std::lock_guard<std::mutex> lock(mtx);
+    if (!inited || !NtUserGetCPD)
+        return 0;
+
+    auto nmi_panic_function = [&](uint64_t pid) -> uint64_t {
+        return restore_apc();
+        };
+
+    command_t cmd = { 0 };
+    cmd.call_type = cmd_restore_apc;
 
     __int64 ret = send_request(&cmd, &nmi_panic_function);
     if (ret == call_in_progress_signature) {

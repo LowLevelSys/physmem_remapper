@@ -25,12 +25,20 @@ int main(void) {
 		return -1;
 	}
 
+	std::this_thread::sleep_for(std::chrono::seconds(1));
+
 	uint64_t iteration = 0;
 	uint64_t result = 0;
 
 	for (;; iteration++) {
+		//bool apc_result = g_proc->remove_apc();
+		//log("Apc Remove: %s", apc_result ? "Success" : "Failed");
+
 		result = g_proc->read<uint64_t>((void*)(ow_base));
 		log("[%d] result %llx", iteration, result);
+
+		//apc_result = g_proc->restore_apc();
+		//log("Apc Restore: %s", apc_result ? "Success" : "Failed");
 	}
 
 	return 0;

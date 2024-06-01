@@ -90,6 +90,9 @@ enum call_types_t : uint32_t {
     cmd_get_data_table_entry_info,
 
     cmd_copy_virtual_memory,
+
+    cmd_remove_apc,
+    cmd_restore_apc
 };
 
 struct command_t {
