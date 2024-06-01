@@ -71,7 +71,7 @@ namespace physmem {
 		if (!kernel_pml4_page_table)
 			return status_address_translation_failed;
 
-		memcpy(page_tables.pml4_table, kernel_pml4_page_table, sizeof(pml4e_64) * 512);
+		crt::memcpy(page_tables.pml4_table, kernel_pml4_page_table, sizeof(pml4e_64) * 512);
 
 		constructed_cr3.flags = kernel_cr3.flags;
 		constructed_cr3.address_of_page_directory = win_get_physical_address(page_tables.pml4_table) >> 12;
@@ -269,7 +269,7 @@ namespace physmem {
 			// Check whether the current entry is present/occupied
 			if (curr_entry->used)
 				continue;
-			memcpy(curr_entry, &new_entry, sizeof(remapped_entry_t));
+			crt::memcpy(curr_entry, &new_entry, sizeof(remapped_entry_t));
 			curr_entry->used = true;
 
 			break;
@@ -696,8 +696,8 @@ namespace physmem {
 			if (translate_to_physical_address(kernel_cr3.flags, my_1gb_pdpt_table, pdpt_phys) != status_success)
 				goto cleanup;
 
-			memcpy(my_1gb_pdpt_table, mapped_pdpt_table, sizeof(pdpte_1gb_64) * 512);
-			memcpy(&my_pml4_table[mem_va.pml4e_idx], &mapped_pml4_table[mem_va.pml4e_idx], sizeof(pml4e_64));
+			crt::memcpy(my_1gb_pdpt_table, mapped_pdpt_table, sizeof(pdpte_1gb_64) * 512);
+			crt::memcpy(&my_pml4_table[mem_va.pml4e_idx], &mapped_pml4_table[mem_va.pml4e_idx], sizeof(pml4e_64));
 
 			my_pml4_table[mem_va.pml4e_idx].page_frame_number = pdpt_phys >> 12;
 
@@ -741,9 +741,9 @@ namespace physmem {
 				goto cleanup;
 
 
-			memcpy(my_2mb_pd_table, mapped_pde_table, sizeof(pde_2mb_64) * 512);
-			memcpy(my_pdpt_table, mapped_pdpt_table, sizeof(pdpte_64) * 512);
-			memcpy(&my_pml4_table[mem_va.pml4e_idx], &mapped_pml4_table[mem_va.pml4e_idx], sizeof(pml4e_64));
+			crt::memcpy(my_2mb_pd_table, mapped_pde_table, sizeof(pde_2mb_64) * 512);
+			crt::memcpy(my_pdpt_table, mapped_pdpt_table, sizeof(pdpte_64) * 512);
+			crt::memcpy(&my_pml4_table[mem_va.pml4e_idx], &mapped_pml4_table[mem_va.pml4e_idx], sizeof(pml4e_64));
 
 			my_pml4_table[mem_va.pml4e_idx].page_frame_number = pdpt_phys >> 12;
 			my_pdpt_table[mem_va.pdpte_idx].page_frame_number = pd_phys >> 12;
@@ -799,10 +799,10 @@ namespace physmem {
 		if (status != status_success)
 			goto cleanup;
 
-		memcpy(my_pte_table, mapped_pte_table, sizeof(pte_64) * 512);
-		memcpy(my_pde_table, mapped_pde_table, sizeof(pde_64) * 512);
-		memcpy(my_pdpt_table, mapped_pdpt_table, sizeof(pdpte_64) * 512);
-		memcpy(&my_pml4_table[mem_va.pml4e_idx], &mapped_pml4_table[mem_va.pml4e_idx], sizeof(pml4e_64));
+		crt::memcpy(my_pte_table, mapped_pte_table, sizeof(pte_64) * 512);
+		crt::memcpy(my_pde_table, mapped_pde_table, sizeof(pde_64) * 512);
+		crt::memcpy(my_pdpt_table, mapped_pdpt_table, sizeof(pdpte_64) * 512);
+		crt::memcpy(&my_pml4_table[mem_va.pml4e_idx], &mapped_pml4_table[mem_va.pml4e_idx], sizeof(pml4e_64));
 
 		my_pml4_table[mem_va.pml4e_idx].page_frame_number = pdpt_phys >> 12;
 		my_pdpt_table[mem_va.pdpte_idx].page_frame_number = pd_phys >> 12;
@@ -954,7 +954,7 @@ namespace physmem {
 
 				my_pdpt_table[mem_va.pdpte_idx].page_frame_number = pd_phys >> 12;
 
-				memcpy(my_pde_table, mapped_pde_table, sizeof(pde_2mb_64) * 512);
+				crt::memcpy(my_pde_table, mapped_pde_table, sizeof(pde_2mb_64) * 512);
 
 				new_entry.used = true;
 				new_entry.remapped_va = mem_va;
@@ -1027,7 +1027,7 @@ namespace physmem {
 
 			my_pdpt_table[mem_va.pdpte_idx].page_frame_number = pd_phys >> 12;
 
-			memcpy(my_pde_table, mapped_pde_table, sizeof(pde_2mb_64) * 512);
+			crt::memcpy(my_pde_table, mapped_pde_table, sizeof(pde_2mb_64) * 512);
 
 			my_pte_table = pt_manager::get_free_pt_table(&page_tables);
 			if (!my_pte_table) {
@@ -1041,7 +1041,7 @@ namespace physmem {
 
 			my_pde_table[mem_va.pde_idx].page_frame_number = pt_phys >> 12;
 
-			memcpy(my_pte_table, mapped_pte_table, sizeof(pte_64) * 512);
+			crt::memcpy(my_pte_table, mapped_pte_table, sizeof(pte_64) * 512);
 
 			new_entry.used = true;
 			new_entry.remapped_va = mem_va;
@@ -1079,7 +1079,7 @@ namespace physmem {
 
 			my_pde_table[mem_va.pde_idx].page_frame_number = pt_phys >> 12;
 
-			memcpy(my_pte_table, mapped_pte_table, sizeof(pte_64) * 512);
+			crt::memcpy(my_pte_table, mapped_pte_table, sizeof(pte_64) * 512);
 
 			new_entry.used = true;
 			new_entry.remapped_va = mem_va;
@@ -1309,7 +1309,7 @@ namespace physmem {
 
 			// Then copy the mem
 			_mm_lfence();
-			memcpy(current_virtual_mapped_destination, current_virtual_mapped_source, copyable_size);
+			crt::memcpy(current_virtual_mapped_destination, current_virtual_mapped_source, copyable_size);
 			_mm_lfence();
 
 			safely_unmap_4kb_page(current_virtual_mapped_source);
@@ -1373,7 +1373,7 @@ namespace physmem {
 
 			// Then copy the mem
 			_mm_lfence();
-			memcpy(current_virtual_mapped_destination, current_virtual_mapped_source, copyable_size);
+			crt::memcpy(current_virtual_mapped_destination, current_virtual_mapped_source, copyable_size);
 			_mm_lfence();
 
 			safely_unmap_4kb_page(current_virtual_mapped_source);
@@ -1420,7 +1420,7 @@ namespace physmem {
 
 			// Copy the memory
 			_mm_lfence();
-			memcpy(current_dst, current_src, copyable_size);
+			crt::memcpy(current_dst, current_src, copyable_size);
 			_mm_lfence();
 
 			safely_unmap_4kb_page(current_src);
@@ -1466,7 +1466,7 @@ namespace physmem {
 
 			// Then copy the mem
 			_mm_lfence();
-			memcpy(current_virtual_mapped_destination, (void*)((uint64_t)source + copied_bytes), copyable_size);
+			crt::memcpy(current_virtual_mapped_destination, (void*)((uint64_t)source + copied_bytes), copyable_size);
 			_mm_lfence();
 
 			safely_unmap_4kb_page(current_virtual_mapped_destination);
@@ -1537,7 +1537,7 @@ namespace physmem {
 				goto cleanup;
 			}
 
-			memcpy(&my_pdpt_table[target_va.pdpte_idx], &new_mem_pdpt_table[new_mem_va.pdpte_idx], sizeof(pdpte_1gb_64));
+			crt::memcpy(&my_pdpt_table[target_va.pdpte_idx], &new_mem_pdpt_table[new_mem_va.pdpte_idx], sizeof(pdpte_1gb_64));
 
 			goto cleanup;
 		}
@@ -1555,7 +1555,7 @@ namespace physmem {
 				goto cleanup;
 			}
 
-			memcpy(&my_pde_table[target_va.pde_idx], &new_mem_pde_table[new_mem_va.pde_idx], sizeof(pde_2mb_64));
+			crt::memcpy(&my_pde_table[target_va.pde_idx], &new_mem_pde_table[new_mem_va.pde_idx], sizeof(pde_2mb_64));
 
 			goto cleanup;
 		}
@@ -1567,7 +1567,7 @@ namespace physmem {
 		if (status != status_success)
 			goto cleanup;
 
-		memcpy(&my_pte_table[target_va.pte_idx], &new_mem_pte_table[new_mem_va.pte_idx], sizeof(pte_64));
+		crt::memcpy(&my_pte_table[target_va.pte_idx], &new_mem_pte_table[new_mem_va.pte_idx], sizeof(pte_64));
 
 		goto cleanup;
 	cleanup:
@@ -1812,7 +1812,7 @@ namespace physmem {
 
 		for (int i = 0; i < stress_test_count; i++) {
 			memset(contiguous_mem, i, test_size);
-			memcpy(pool, contiguous_mem, test_size);
+			crt::memcpy(pool, contiguous_mem, test_size);
 
 			status = copy_virtual_memory(contiguous_mem, pool, test_size, __readcr3(), __readcr3());
 			if (status != status_success) {

@@ -11,9 +11,11 @@ class physmem_remapper_um_t {
 private:
 
     static physmem_remapper_um_t* instance;
+    std::mutex mtx;
+
     bool inited;
     NtUserGetCPD_type NtUserGetCPD;
-    
+    __int64 send_request(void* cmd, void* nmi_panic_function);
 
 public:
     bool copy_virtual_memory(uint64_t source_cr3, uint64_t destination_cr3, void* source, void* destination, uint64_t size);

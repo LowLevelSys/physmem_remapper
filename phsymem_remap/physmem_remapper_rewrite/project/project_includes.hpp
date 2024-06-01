@@ -1,6 +1,7 @@
 #pragma once
 #include <ntddk.h>
 #include <intrin.h>
+#include "crt.hpp"
 
 /*
 	typedefs
@@ -70,7 +71,7 @@ enum project_status {
 	Macros
 */
 
-#define extract_file_name(file) (strrchr(file, '\\') ? strrchr(file, '\\') + 1 : file)
+#define extract_file_name(file) (crt::strrchr(file, '\\') ? crt::strrchr(file, '\\') + 1 : file)
 
 #define project_log_error(fmt, ...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[-] " "[%s:%d] " fmt, extract_file_name(__FILE__), __LINE__, ##__VA_ARGS__)
 #define project_log_warning(fmt, ...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[~] " "[%s:%d] " fmt, extract_file_name(__FILE__), __LINE__, ##__VA_ARGS__)

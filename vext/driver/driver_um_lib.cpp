@@ -4,6 +4,17 @@
 
 physmem_remapper_um_t* physmem_remapper_um_t::instance = 0;
 
+__int64 physmem_remapper_um_t::send_request(void* cmd, void* nmi_panic_function)
+{
+    mtx.lock();
+
+    __int64 ret = NtUserGetCPD((uint64_t)cmd, caller_signature, (uint64_t)nmi_panic_function);
+
+    mtx.unlock();
+
+    return ret;
+}
+
 bool physmem_remapper_um_t::copy_virtual_memory(uint64_t source_cr3, uint64_t destination_cr3, void* source, void* destination, uint64_t size) {
     if (!inited || !NtUserGetCPD)
         return false;
@@ -23,7 +34,7 @@ bool physmem_remapper_um_t::copy_virtual_memory(uint64_t source_cr3, uint64_t de
     cmd.call_type = cmd_copy_virtual_memory;
     cmd.sub_command_ptr = &copy_mem_cmd;
 
-    __int64 ret = NtUserGetCPD((uint64_t)&cmd, caller_signature, (uint64_t)&nmi_panic_function);
+    __int64 ret = send_request(&cmd, &nmi_panic_function);
     if (ret == call_in_progress_signature) {
         log("Call currently in progress");
         return false;
@@ -47,7 +58,7 @@ uint64_t physmem_remapper_um_t::get_cr3(uint64_t pid) {
     cmd.call_type = cmd_get_cr3;
     cmd.sub_command_ptr = &get_cr3_cmd;
 
-    __int64 ret = NtUserGetCPD((uint64_t)&cmd, caller_signature, (uint64_t)&nmi_panic_function);
+    __int64 ret = send_request(&cmd, &nmi_panic_function);
     if (ret == call_in_progress_signature) {
         log("Call currently in progress");
         return false;
@@ -72,7 +83,7 @@ uint64_t physmem_remapper_um_t::get_module_base(const char* module_name, uint64_
     cmd.call_type = cmd_get_module_base;
     cmd.sub_command_ptr = &get_module_base_cmd;
 
-    __int64 ret = NtUserGetCPD((uint64_t)&cmd, caller_signature, (uint64_t)&nmi_panic_function);
+    __int64 ret = send_request(&cmd, &nmi_panic_function);
     if (ret == call_in_progress_signature) {
         log("Call currently in progress");
         return false;
@@ -97,7 +108,7 @@ uint64_t physmem_remapper_um_t::get_module_size(const char* module_name, uint64_
     cmd.call_type = cmd_get_module_size;
     cmd.sub_command_ptr = &get_module_size_cmd;
 
-    __int64 ret = NtUserGetCPD((uint64_t)&cmd, caller_signature, (uint64_t)&nmi_panic_function);
+    __int64 ret = send_request(&cmd, &nmi_panic_function);
     if (ret == call_in_progress_signature) {
         log("Call currently in progress");
         return false;
@@ -121,7 +132,7 @@ uint64_t physmem_remapper_um_t::get_pid_by_name(const char* name) {
     cmd.call_type = cmd_get_pid_by_name;
     cmd.sub_command_ptr = &get_pid_by_name_cmd;
 
-    __int64 ret = NtUserGetCPD((uint64_t)&cmd, caller_signature, (uint64_t)&nmi_panic_function);
+    __int64 ret = send_request(&cmd, &nmi_panic_function);
     if (ret == call_in_progress_signature) {
         log("Call currently in progress");
         return false;
@@ -145,7 +156,7 @@ uint64_t physmem_remapper_um_t::get_ldr_data_table_entry_count(uint64_t pid) {
     cmd.call_type = cmd_get_ldr_data_table_entry_count;
     cmd.sub_command_ptr = &get_ldr_data_table_entry;
 
-    __int64 ret = NtUserGetCPD((uint64_t)&cmd, caller_signature, (uint64_t)&nmi_panic_function);
+    __int64 ret = send_request(&cmd, &nmi_panic_function);
     if (ret == call_in_progress_signature) {
         log("Call currently in progress");
         return false;
@@ -170,7 +181,7 @@ bool physmem_remapper_um_t::get_data_table_entry_info(uint64_t pid, module_info_
     cmd.call_type = cmd_get_data_table_entry_info;
     cmd.sub_command_ptr = &get_module_at_index;
 
-    __int64 ret = NtUserGetCPD((uint64_t)&cmd, caller_signature, (uint64_t)&nmi_panic_function);
+    __int64 ret = send_request(&cmd, &nmi_panic_function);
     if (ret == call_in_progress_signature) {
         log("Call currently in progress");
         return false;

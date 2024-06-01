@@ -7,6 +7,7 @@
 #include <string>
 #include <stdio.h>
 #include <assert.h>
+#include <mutex>
 
 // Logging macros
 #define log(fmt, ...) printf("[vext] " fmt "\n", ##__VA_ARGS__)

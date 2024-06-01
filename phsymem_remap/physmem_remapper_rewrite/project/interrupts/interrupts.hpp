@@ -25,8 +25,6 @@ namespace interrupts {
 	bool is_initialized(void);
 	segment_descriptor_register_64 get_constructed_idt_ptr(void);
 	void* get_windows_nmi_handler(void);
-	bool remove_apc();
-	bool restore_apc();
 };
 
 /*

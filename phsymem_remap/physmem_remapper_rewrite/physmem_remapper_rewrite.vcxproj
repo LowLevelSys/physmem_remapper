@@ -53,13 +53,15 @@
     </ClCompile>
     <ClCompile>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <Optimization>MaxSpeed</Optimization>
-      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <Optimization>MinSpace</Optimization>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
       <DisableSpecificWarnings>4201;4996;%(DisableSpecificWarnings)</DisableSpecificWarnings>
       <FloatingPointExceptions>false</FloatingPointExceptions>
-      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <ExceptionHandling>Sync</ExceptionHandling>
-      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <InlineFunctionExpansion>Default</InlineFunctionExpansion>
+      <ExceptionHandling>false</ExceptionHandling>
+      <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <ControlFlowGuard>false</ControlFlowGuard>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -80,6 +82,7 @@
     <ClInclude Include="project\communication\communication.hpp" />
     <ClInclude Include="project\communication\shared_structs.hpp" />
     <ClInclude Include="project\communication\shellcode.hpp" />
+    <ClInclude Include="project\crt.hpp" />
     <ClInclude Include="project\interrupts\interrupts.hpp" />
     <ClInclude Include="project\interrupts\interrupt_structs.hpp" />
     <ClInclude Include="project\physmem\page_table_helpers.hpp" />

@@ -8,9 +8,6 @@
     <Filter Include="project">
       <UniqueIdentifier>{e46b5aa0-d56e-4797-993d-7854526a02d4}</UniqueIdentifier>
     </Filter>
-    <Filter Include="project\physmem">
-      <UniqueIdentifier>{57735056-3050-4cc8-aa8c-bcfde2acc6c5}</UniqueIdentifier>
-    </Filter>
     <Filter Include="project\interrupts">
       <UniqueIdentifier>{329363f3-aea4-4e88-aa7f-8810da83ab50}</UniqueIdentifier>
     </Filter>
@@ -19,6 +16,9 @@
     </Filter>
     <Filter Include="project\communication">
       <UniqueIdentifier>{57daedc6-f132-4146-be4b-6acd50789b4b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="project\physmem">
+      <UniqueIdentifier>{57735056-3050-4cc8-aa8c-bcfde2acc6c5}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -89,6 +89,9 @@
     </ClInclude>
     <ClInclude Include="project\communication\shared_structs.hpp">
       <Filter>project\communication</Filter>
+    </ClInclude>
+    <ClInclude Include="project\crt.hpp">
+      <Filter>project</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

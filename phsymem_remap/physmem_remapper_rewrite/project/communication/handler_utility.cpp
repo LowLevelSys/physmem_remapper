@@ -12,13 +12,13 @@ namespace handler_utility {
         char image_name[IMAGE_NAME_LENGTH];
 
         // Easy way for system pid
-        if (strstr(target_process_name, "System"))
+        if (crt::strstr(target_process_name, "System"))
             return SYSTEM_PID;
 
         do {
             uint32_t active_threads;
 
-            memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
+            crt::memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
 
             if (!active_threads) {
                 PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+ FLINK_OFFSET);
@@ -26,13 +26,13 @@ namespace handler_utility {
                 continue;
             }
 
-            memcpy(&image_name, (void*)((uintptr_t)curr_entry + IMAGE_NAME_OFFSET), IMAGE_NAME_LENGTH);
+            crt::memcpy(&image_name, (void*)((uintptr_t)curr_entry + IMAGE_NAME_OFFSET), IMAGE_NAME_LENGTH);
 
             // Check whether we found our process
-            if (strstr(image_name, target_process_name) || strstr(target_process_name, image_name)) {
+            if (crt::strstr(image_name, target_process_name) || crt::strstr(target_process_name, image_name)) {
                 uint64_t pid = 0;
 
-                memcpy(&pid, (void*)((uintptr_t)curr_entry + PID_OFFSET), sizeof(pid));
+                crt::memcpy(&pid, (void*)((uintptr_t)curr_entry + PID_OFFSET), sizeof(pid));
 
                 return pid;
             }
@@ -54,7 +54,7 @@ namespace handler_utility {
         do {
             uint32_t active_threads;
 
-            memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
+            crt::memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
 
             if (!active_threads) {
                 PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+FLINK_OFFSET);
@@ -64,14 +64,14 @@ namespace handler_utility {
 
             uint64_t curr_pid;
 
-            memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + PID_OFFSET), sizeof(curr_pid));
+            crt::memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + PID_OFFSET), sizeof(curr_pid));
 
             if (target_pid == curr_pid) {
                 uint64_t dtb;
                 uint64_t peb;
 
-                memcpy(&dtb, (void*)((uintptr_t)curr_entry + DIRECTORY_TABLE_BASE_OFFSET), sizeof(dtb));
-                memcpy(&peb, (void*)((uintptr_t)curr_entry + PEB_OFFSET), sizeof(peb));
+                crt::memcpy(&dtb, (void*)((uintptr_t)curr_entry + DIRECTORY_TABLE_BASE_OFFSET), sizeof(dtb));
+                crt::memcpy(&peb, (void*)((uintptr_t)curr_entry + PEB_OFFSET), sizeof(peb));
 
                 PEB_LDR_DATA* pldr;
                 status = physmem::copy_memory_to_constructed_cr3(&pldr, (void*)(peb + LDR_DATA_OFFSET), sizeof(PEB_LDR_DATA*), dtb);
@@ -104,8 +104,8 @@ namespace handler_utility {
 
                     char_dll_name_buffer[entry.BaseDllName.Length / sizeof(wchar_t)] = '\0';
 
-                    if (strstr(char_dll_name_buffer, module_name)) {
-                        memcpy(module_entry, &entry, sizeof(LDR_DATA_TABLE_ENTRY));
+                    if (crt::strstr(char_dll_name_buffer, module_name)) {
+                        crt::memcpy(module_entry, &entry, sizeof(LDR_DATA_TABLE_ENTRY));
                         return status;
                     }
 
@@ -135,7 +135,7 @@ namespace handler_utility {
         do {
             uint32_t active_threads;
 
-            memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
+            crt::memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
 
             if (!active_threads) {
                 PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+FLINK_OFFSET);
@@ -145,14 +145,14 @@ namespace handler_utility {
 
             uint64_t curr_pid;
 
-            memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + PID_OFFSET), sizeof(curr_pid));
+            crt::memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + PID_OFFSET), sizeof(curr_pid));
 
             if (target_pid == curr_pid) {
                 uint64_t dtb;
                 uint64_t peb;
 
-                memcpy(&dtb, (void*)((uintptr_t)curr_entry + DIRECTORY_TABLE_BASE_OFFSET), sizeof(dtb));
-                memcpy(&peb, (void*)((uintptr_t)curr_entry + PEB_OFFSET), sizeof(peb));
+                crt::memcpy(&dtb, (void*)((uintptr_t)curr_entry + DIRECTORY_TABLE_BASE_OFFSET), sizeof(dtb));
+                crt::memcpy(&peb, (void*)((uintptr_t)curr_entry + PEB_OFFSET), sizeof(peb));
 
                 PEB_LDR_DATA* pldr;
                 status = physmem::copy_memory_to_constructed_cr3(&pldr, (void*)(peb + LDR_DATA_OFFSET), sizeof(PEB_LDR_DATA*), dtb);
@@ -201,7 +201,7 @@ namespace handler_utility {
         do {
             uint32_t active_threads;
 
-            memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
+            crt::memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
 
             if (!active_threads) {
                 PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+FLINK_OFFSET);
@@ -211,14 +211,14 @@ namespace handler_utility {
 
             uint64_t curr_pid;
 
-            memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + PID_OFFSET), sizeof(curr_pid));
+            crt::memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + PID_OFFSET), sizeof(curr_pid));
 
             if (target_pid == curr_pid) {
                 uint64_t dtb;
                 uint64_t peb;
 
-                memcpy(&dtb, (void*)((uintptr_t)curr_entry + DIRECTORY_TABLE_BASE_OFFSET), sizeof(dtb));
-                memcpy(&peb, (void*)((uintptr_t)curr_entry + PEB_OFFSET), sizeof(peb));
+                crt::memcpy(&dtb, (void*)((uintptr_t)curr_entry + DIRECTORY_TABLE_BASE_OFFSET), sizeof(dtb));
+                crt::memcpy(&peb, (void*)((uintptr_t)curr_entry + PEB_OFFSET), sizeof(peb));
 
                 PEB_LDR_DATA* pldr;
                 status = physmem::copy_memory_to_constructed_cr3(&pldr, (void*)(peb + LDR_DATA_OFFSET), sizeof(PEB_LDR_DATA*), dtb);
@@ -256,7 +256,7 @@ namespace handler_utility {
                     module_info_t info = { 0 };
                     info.base = (uint64_t)entry.DllBase;
                     info.size = entry.SizeOfImage;
-                    memcpy(&info.name, &char_dll_name_buffer, min(entry.BaseDllName.Length / sizeof(wchar_t), MAX_PATH - 1));
+                    crt::memcpy(&info.name, &char_dll_name_buffer, min(entry.BaseDllName.Length / sizeof(wchar_t), MAX_PATH - 1));
 
                     status = physmem::copy_memory_from_constructed_cr3((void*)curr_info_entry, &info, sizeof(module_info_t), proc_cr3);
                     if (status != status_success) {

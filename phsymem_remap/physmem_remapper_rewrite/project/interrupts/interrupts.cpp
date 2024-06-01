@@ -13,7 +13,7 @@ namespace interrupts {
 	*/
     bool initialized = false;
 	uint64_t g_windows_nmi_handler = 0;
-	segment_descriptor_interrupt_gate_64 constructed_idt_table[256] = { 0 };
+	segment_descriptor_interrupt_gate_64* constructed_idt_table = 0;
     segment_descriptor_register_64 constructed_idt_ptr = { 0 };
 
 
@@ -76,20 +76,24 @@ namespace interrupts {
 
 	project_status init_interrupts() {
 		segment_descriptor_register_64 idt = { 0 };
+		PHYSICAL_ADDRESS max_addr = { 0 };
 		__sidt(&idt);
+		max_addr.QuadPart = MAXULONG64;
+
+		constructed_idt_table = (segment_descriptor_interrupt_gate_64*)MmAllocateContiguousMemory(sizeof(segment_descriptor_interrupt_gate_64) * 256, max_addr);
+		if (!constructed_idt_table)
+			return status_memory_allocation_failed;
+
+		crt::memset(constructed_idt_table, 0, sizeof(segment_descriptor_interrupt_gate_64) * 256);
 
 		segment_descriptor_interrupt_gate_64* windows_idt = (segment_descriptor_interrupt_gate_64*)idt.base_address;
 		if (!windows_idt)
 			return status_failure;
 
-		// Copy the system handlers to avoid the ocasional pc restart due to an exception being called that doesn't even have a handler...
-		memcpy(constructed_idt_table, (void*)idt.base_address, idt.limit);
-
 		// Get the address of the windows nmi handler
 		g_windows_nmi_handler = (static_cast<uint64_t>(windows_idt[exception_vector::nmi].offset_high) << 32) |
 			(static_cast<uint64_t>(windows_idt[exception_vector::nmi].offset_middle) << 16) |
 			(windows_idt[exception_vector::nmi].offset_low);
-
 
 		constructed_idt_table[exception_vector::nmi] = create_interrupt_gate(asm_nmi_handler);
 
