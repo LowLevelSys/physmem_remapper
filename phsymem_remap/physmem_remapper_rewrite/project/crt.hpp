@@ -123,6 +123,8 @@ namespace crt {
             p1++;
             p2++;
         }
+
+        return 0;
     }
 
     inline void* memcpy(void* dest, const void* src, size_t count) {

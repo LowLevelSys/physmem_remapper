@@ -25,8 +25,6 @@
     <ConfigurationType>Driver</ConfigurationType>
     <DriverType>WDM</DriverType>
     <Driver_SpectreMitigation>Spectre</Driver_SpectreMitigation>
-    <ALLOW_DATE_TIME>1</ALLOW_DATE_TIME>
-    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -42,7 +40,6 @@
     <IntDir>.\intermediate directory\</IntDir>
     <TargetName>remapper</TargetName>
     <EnableInf2cat>false</EnableInf2cat>
-    <IncludePath>$(ProjectDir)project/extern;$(ProjectDir)project;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <DriverSign>
