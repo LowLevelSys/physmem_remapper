@@ -12,13 +12,13 @@ int main(void) {
 
 	// VALORANT-Win64-Shipping.exe
 	// notepad.exe
-	if (!g_proc->init_process("Overwatch.exe")) {
+	if (!g_proc->init_process("notepad.exe")) {
 		log("Failed to attach to process");
 		getchar();
 		return -1;
 	}
 
-	uint64_t ow_base = g_proc->get_module_base("Overwatch.exe");
+	uint64_t ow_base = g_proc->get_module_base("notepad.exe");
 	if (!ow_base) {
 		log("Failed to get Ow base");
 		getchar();
@@ -29,11 +29,11 @@ int main(void) {
 	while (true) {
 		float current_fov = 0.f;
 
-		current_fov = g_proc->read<float>((void*)(ow_base + 0x395edb8));
+		current_fov = g_proc->read<float>((void*)(0x7FFB7955101F));
 
 		log("[%p] Current fov %.2f", iteration, current_fov);
 
-		//std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		//std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 		iteration++;
 	}
 

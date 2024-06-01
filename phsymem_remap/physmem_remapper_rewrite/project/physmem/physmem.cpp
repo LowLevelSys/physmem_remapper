@@ -34,7 +34,7 @@ namespace physmem {
 		void* table = (void*)MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
 
 		if (table)
-			memset(table, 0, PAGE_SIZE);
+			crt::memset(table, 0, PAGE_SIZE);
 
 		return table;
 	}
@@ -291,7 +291,7 @@ namespace physmem {
 			if (curr_entry != remapping_entry)
 				continue;
 
-			memset(curr_entry, 0, sizeof(remapped_entry_t));
+			crt::memset(curr_entry, 0, sizeof(remapped_entry_t));
 
 			status = status_success;
 			return status;
@@ -1821,7 +1821,7 @@ namespace physmem {
 				goto cleanup;
 			}
 
-			if (memcmp(pool, contiguous_mem, test_size) != 0) {
+			if (crt::memcmp(pool, contiguous_mem, test_size) != 0) {
 				status = status_data_mismatch;
 				_sti();
 				__writecr3(curr_cr3);
@@ -1860,8 +1860,8 @@ namespace physmem {
 			goto cleanup;
 		}
 
-		memset(mema, 0xa, PAGE_SIZE);
-		memset(memb, 0xb, PAGE_SIZE);
+		crt::memset(mema, 0xa, PAGE_SIZE);
+		crt::memset(memb, 0xb, PAGE_SIZE);
 
 		_cli();
 		curr_cr3 = __readcr3();
@@ -1871,7 +1871,7 @@ namespace physmem {
 		if (status != status_success)
 			goto cleanup;
 
-		if (memcmp(mema, memb, PAGE_SIZE) == 0) {
+		if (crt::memcmp(mema, memb, PAGE_SIZE) == 0) {
 			_sti();
 			project_log_info("Memory remapping stress test finished successfully");
 			_cli();
@@ -1887,7 +1887,7 @@ namespace physmem {
 		if (status != status_success)
 			goto cleanup;
 
-		if (memcmp(mema, memb, PAGE_SIZE) != 0) {
+		if (crt::memcmp(mema, memb, PAGE_SIZE) != 0) {
 			_sti();
 			project_log_info("Memory remapping restoring stress test finished successfully");
 			_cli();

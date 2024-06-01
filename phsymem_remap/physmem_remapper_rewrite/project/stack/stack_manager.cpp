@@ -22,7 +22,7 @@ namespace stack_manager {
 			goto cleanup;
 		}
 
-		memset(my_stack_base, 0, KERNEL_STACK_SIZE);
+		crt::memset(my_stack_base, 0, KERNEL_STACK_SIZE);
 
 		my_stack_base = static_cast<char*>(my_stack_base) + KERNEL_STACK_SIZE;
 

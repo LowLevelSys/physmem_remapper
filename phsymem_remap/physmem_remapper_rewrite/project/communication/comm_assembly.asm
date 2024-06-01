@@ -1,3 +1,4 @@
+
 .code
 extern exit_constructed_space:qword
 extern handler: proc
