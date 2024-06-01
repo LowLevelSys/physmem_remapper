@@ -75,48 +75,48 @@ namespace shellcode {
 			0xFF, 0xE0                                                  // jmp rax
 		};
 
-		memcpy(enter_constructed_space, enter_shellcode, sizeof(enter_shellcode));
+		crt::memcpy(enter_constructed_space, enter_shellcode, sizeof(enter_shellcode));
 
 		// Call in progress flags
 		uint64_t is_call_in_progress_addr = (uint64_t)info_page;
-		memcpy((uint8_t*)enter_constructed_space + 2, &is_call_in_progress_addr, sizeof(is_call_in_progress_addr));
-		memcpy((uint8_t*)enter_constructed_space + 34, &is_call_in_progress_addr, sizeof(is_call_in_progress_addr));
+		crt::memcpy((uint8_t*)enter_constructed_space + 2, &is_call_in_progress_addr, sizeof(is_call_in_progress_addr));
+		crt::memcpy((uint8_t*)enter_constructed_space + 34, &is_call_in_progress_addr, sizeof(is_call_in_progress_addr));
 		
 		// Nmi-Restoring function
 		uint64_t* panic_function_storage_addr = (uint64_t*)((uint64_t)info_page + 4 * sizeof(uint64_t));
-		memcpy((uint8_t*)enter_constructed_space + 48, &panic_function_storage_addr, sizeof(panic_function_storage_addr));
+		crt::memcpy((uint8_t*)enter_constructed_space + 48, &panic_function_storage_addr, sizeof(panic_function_storage_addr));
 
 		// Rsp storage
 		uint64_t rsp_storage_addr = (uint64_t)info_page + sizeof(uint64_t);
-		memcpy((uint8_t*)enter_constructed_space + 61, &rsp_storage_addr, sizeof(rsp_storage_addr));
+		crt::memcpy((uint8_t*)enter_constructed_space + 61, &rsp_storage_addr, sizeof(rsp_storage_addr));
 
 		// My rsp
 		uint64_t my_stack_addr = (uint64_t)my_stack;
-		memcpy((uint8_t*)enter_constructed_space + 74, &my_stack_addr, sizeof(my_stack_addr));
+		crt::memcpy((uint8_t*)enter_constructed_space + 74, &my_stack_addr, sizeof(my_stack_addr));
 
 		// Cr3 storage
 		uint64_t cr3_storage_address = (uint64_t)info_page + 2 * sizeof(uint64_t);
-		memcpy((uint8_t*)enter_constructed_space + 84, &cr3_storage_address, sizeof(cr3_storage_address));
+		crt::memcpy((uint8_t*)enter_constructed_space + 84, &cr3_storage_address, sizeof(cr3_storage_address));
 
 		// My Cr3 value
-		memcpy((uint8_t*)enter_constructed_space + 101, &my_cr3, sizeof(my_cr3));
+		crt::memcpy((uint8_t*)enter_constructed_space + 101, &my_cr3, sizeof(my_cr3));
 
 		// Idt storage
 		uint64_t idt_storage_addr = (uint64_t)info_page + 3 * sizeof(uint64_t);
-		memcpy((uint8_t*)enter_constructed_space + 114, &idt_storage_addr, sizeof(idt_storage_addr));
+		crt::memcpy((uint8_t*)enter_constructed_space + 114, &idt_storage_addr, sizeof(idt_storage_addr));
 
 		// My Idt storage
-		memcpy((uint8_t*)enter_constructed_space + 500, &my_idt_ptr, sizeof(my_idt_ptr));
+		crt::memcpy((uint8_t*)enter_constructed_space + 500, &my_idt_ptr, sizeof(my_idt_ptr));
 		uint64_t my_idt_storage_addr = (uint64_t)enter_constructed_space + 500;
-		memcpy((uint8_t*)enter_constructed_space + 127, &my_idt_storage_addr, sizeof(idt_storage_addr));
+		crt::memcpy((uint8_t*)enter_constructed_space + 127, &my_idt_storage_addr, sizeof(idt_storage_addr));
 
 		// My handler address
 		uint64_t handler_address_val = (uint64_t)handler_address;
-		memcpy((uint8_t*)enter_constructed_space + 140, &handler_address_val, sizeof(handler_address_val));
+		crt::memcpy((uint8_t*)enter_constructed_space + 140, &handler_address_val, sizeof(handler_address_val));
 
 		// Orig NtUserGetCmd
 		uint64_t orig_data_ptr_value_addr = (uint64_t)orig_data_ptr_value;
-		memcpy((uint8_t*)enter_constructed_space + 171, &orig_data_ptr_value_addr, sizeof(orig_data_ptr_value_addr));
+		crt::memcpy((uint8_t*)enter_constructed_space + 171, &orig_data_ptr_value_addr, sizeof(orig_data_ptr_value_addr));
 	}
 
 	inline void construct_exit_shellcode(void* exit_constructed_space, void* info_page) {
@@ -139,19 +139,19 @@ namespace shellcode {
 			0xC3														// ret
 		};
 
-		memcpy(exit_constructed_space, exiting_shellcode, sizeof(exiting_shellcode));
+		crt::memcpy(exit_constructed_space, exiting_shellcode, sizeof(exiting_shellcode));
 
 		uint64_t is_call_in_progress_addr = (uint64_t)info_page;
-		memcpy((uint8_t*)exit_constructed_space + 2, &is_call_in_progress_addr, sizeof(is_call_in_progress_addr));
+		crt::memcpy((uint8_t*)exit_constructed_space + 2, &is_call_in_progress_addr, sizeof(is_call_in_progress_addr));
 
 		uint64_t rsp_storage_addr = (uint64_t)info_page + sizeof(uint64_t);
-		memcpy((uint8_t*)exit_constructed_space + 15, &rsp_storage_addr, sizeof(rsp_storage_addr));
+		crt::memcpy((uint8_t*)exit_constructed_space + 15, &rsp_storage_addr, sizeof(rsp_storage_addr));
 
 		uint64_t cr3_storage_addr = (uint64_t)info_page + 2 * sizeof(uint64_t);
-		memcpy((uint8_t*)exit_constructed_space + 28, &cr3_storage_addr, sizeof(cr3_storage_addr));
+		crt::memcpy((uint8_t*)exit_constructed_space + 28, &cr3_storage_addr, sizeof(cr3_storage_addr));
 
 		uint64_t idt_storage_addr = (uint64_t)info_page + 3 * sizeof(uint64_t);
-		memcpy((uint8_t*)exit_constructed_space + 44, &idt_storage_addr, sizeof(idt_storage_addr));
+		crt::memcpy((uint8_t*)exit_constructed_space + 44, &idt_storage_addr, sizeof(idt_storage_addr));
 	}
 
 	inline void construct_nmi_shellcode(void* exit_nmi_space, void* info_page, void* windows_nmi_handler) {
@@ -170,22 +170,22 @@ namespace shellcode {
 			0xFF, 0xE0,                                                 // jmp rax
 		};
 
-		memcpy(exit_nmi_space, nmi_shellcode, sizeof(nmi_shellcode));
+		crt::memcpy(exit_nmi_space, nmi_shellcode, sizeof(nmi_shellcode));
 
 		// Call in progress flags
 		uint64_t is_call_in_progress_addr = (uint64_t)info_page;
-		memcpy((uint8_t*)exit_nmi_space + 2, &is_call_in_progress_addr, sizeof(is_call_in_progress_addr));
+		crt::memcpy((uint8_t*)exit_nmi_space + 2, &is_call_in_progress_addr, sizeof(is_call_in_progress_addr));
 
 		// Cr3 storage
 		uint64_t cr3_storage_addr = (uint64_t)info_page + 2 * sizeof(uint64_t);
-		memcpy((uint8_t*)exit_nmi_space + 15, &cr3_storage_addr, sizeof(cr3_storage_addr));
+		crt::memcpy((uint8_t*)exit_nmi_space + 15, &cr3_storage_addr, sizeof(cr3_storage_addr));
 
 		// Idt storage
 		uint64_t idt_storage_addr = (uint64_t)info_page + 3 * sizeof(uint64_t);
-		memcpy((uint8_t*)exit_nmi_space + 31, &idt_storage_addr, sizeof(idt_storage_addr));
+		crt::memcpy((uint8_t*)exit_nmi_space + 31, &idt_storage_addr, sizeof(idt_storage_addr));
 
 		// Windows nmi handler address
-		memcpy((uint8_t*)exit_nmi_space + 44, &windows_nmi_handler, sizeof(windows_nmi_handler));
+		crt::memcpy((uint8_t*)exit_nmi_space + 44, &windows_nmi_handler, sizeof(windows_nmi_handler));
 	}
 
 	inline project_status construct_shellcodes(void*& enter_constructed_space, void*& exit_constructed_space, void*& nmi_shellcode,
@@ -208,10 +208,10 @@ namespace shellcode {
 			goto cleanup;
 		}
 
-		memset(enter_constructed_space, 0, PAGE_SIZE);
-		memset(exit_constructed_space, 0, PAGE_SIZE);
-		memset(nmi_shellcode, 0, PAGE_SIZE);
-		memset(info_page, 0, PAGE_SIZE);
+		crt::memset(enter_constructed_space, 0, PAGE_SIZE);
+		crt::memset(exit_constructed_space, 0, PAGE_SIZE);
+		crt::memset(nmi_shellcode, 0, PAGE_SIZE);
+		crt::memset(info_page, 0, PAGE_SIZE);
 		
 		construct_enter_shellcode(enter_constructed_space, info_page, 
 								  my_idt_ptr, orig_data_ptr_value, 

@@ -20,6 +20,9 @@
     <Filter Include="project\communication">
       <UniqueIdentifier>{57daedc6-f132-4146-be4b-6acd50789b4b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="project\extern">
+      <UniqueIdentifier>{76317f35-b521-44e9-9fda-f6b9df597402}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -89,6 +92,9 @@
     </ClInclude>
     <ClInclude Include="project\communication\shared_structs.hpp">
       <Filter>project\communication</Filter>
+    </ClInclude>
+    <ClInclude Include="project\extern\crt.hpp">
+      <Filter>project\extern</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -32,12 +32,12 @@ namespace utility {
         char image_name[15];
 
         do {
-            memcpy((void*)(&image_name), (void*)((uintptr_t)curr_entry + 0x5a8), sizeof(image_name));
+            crt::memcpy((void*)(&image_name), (void*)((uintptr_t)curr_entry + 0x5a8), sizeof(image_name));
 
-            if (strcmp(image_name, process_name) == 0) {
+            if (crt::strcmp(image_name, process_name) == 0) {
                 uint32_t active_threads;
 
-                memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
+                crt::memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
 
                 if (active_threads) {
                     pe_proc = curr_entry;
@@ -139,19 +139,19 @@ namespace utility {
         do {
             uint64_t curr_pid;
 
-            memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + 0x440), sizeof(curr_pid));
+            crt::memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + 0x440), sizeof(curr_pid));
 
             // Check whether we found our process
             if (target_pid == curr_pid) {
 
                 uint32_t active_threads;
 
-                memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
+                crt::memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
 
                 if (active_threads || target_pid == 4) {
                     uint64_t cr3;
 
-                    memcpy(&cr3, (void*)((uintptr_t)curr_entry + 0x28), sizeof(cr3));
+                    crt::memcpy(&cr3, (void*)((uintptr_t)curr_entry + 0x28), sizeof(cr3));
 
                     return cr3;
                 }

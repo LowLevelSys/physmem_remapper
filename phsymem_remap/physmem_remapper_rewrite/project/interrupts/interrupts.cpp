@@ -83,7 +83,7 @@ namespace interrupts {
 			return status_failure;
 
 		// Copy the system handlers to avoid the ocasional pc restart due to an exception being called that doesn't even have a handler...
-		memcpy(constructed_idt_table, (void*)idt.base_address, idt.limit);
+		crt::memcpy(constructed_idt_table, (void*)idt.base_address, idt.limit);
 
 		// Get the address of the windows nmi handler
 		g_windows_nmi_handler = (static_cast<uint64_t>(windows_idt[exception_vector::nmi].offset_high) << 32) |
