@@ -9,7 +9,7 @@ private:
 	static std::mutex instance_mutex;
 
 	physmem_remapper_um_t* physmem_instance = 0;
-	bool inited;
+	bool inited = false;
 
 	// Owner specific data
 	uint64_t owner_pid = 0;
@@ -129,7 +129,7 @@ public:
 
 	template <typename t>
 	t read(void* src, uint64_t size = sizeof(t)) {
-		t buffer;
+		t buffer{};
 
 		if (!physmem_instance->copy_virtual_memory(target_cr3, owner_cr3, src, &buffer, sizeof(t))) {
 			log("Failed to copy memory from src: [%p] to dest: [%p]", (void*)src, &buffer);

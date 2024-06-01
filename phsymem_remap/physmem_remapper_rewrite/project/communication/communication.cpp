@@ -42,7 +42,9 @@ namespace communication {
         void* win32k_base = 0;
         PEPROCESS winlogon_eproc = 0;
         KAPC_STATE apc = { 0 };
-        uint64_t pattern = 0;
+
+        const char* patterns[3] = { "\x48\x83\xEC\x28\x48\x8B\x05\x99\x02", "\x48\x83\xEC\x28\x48\x8B\x05\x59\x02", "\x48\x83\xEC\x28\x48\x8B\x05\xF5\x9C" };
+        uint64_t function = 0;
 
         int* displacement_ptr = 0;
         uint64_t target_address = 0;
@@ -64,21 +66,21 @@ namespace communication {
 
         // NtUserGetCPD
         // 48 83 EC 28 48 8B 05 99/59 02
-        pattern = utility::search_pattern_in_section(win32k_base, ".text", "\x48\x83\xEC\x28\x48\x8B\x05\x99\x02", 9, 0x0);
-
-        if (!pattern) {
-            pattern = utility::search_pattern_in_section(win32k_base, ".text", "\x48\x83\xEC\x28\x48\x8B\x05\x59\x02", 9, 0x0);
-
-            if (!pattern) {
-                status = status_failure;
-                project_log_error("Failed to find NtUserGetCPD; You are maybe running the wrong winver");
-                KeUnstackDetachProcess(&apc);
-                goto cleanup;
-            }
+        for (const auto& pattern : patterns) {
+            function = utility::search_pattern_in_section(win32k_base, ".text", pattern, 9, 0x0);
+            if (function)
+                break;
         }
 
-        displacement_ptr = (int*)(pattern + 7);
-        target_address = pattern + 7 + 4 + *displacement_ptr;
+        if (!function) {
+            status = status_failure;
+            project_log_error("Failed to find NtUserGetCPD; You are maybe running the wrong winver");
+            KeUnstackDetachProcess(&apc);
+            goto cleanup;
+        }
+
+        displacement_ptr = (int*)(function + 7);
+        target_address = function + 7 + 4 + *displacement_ptr;
         if (!target_address) {
             project_log_error("Failed to find data ptr address");
             KeUnstackDetachProcess(&apc);

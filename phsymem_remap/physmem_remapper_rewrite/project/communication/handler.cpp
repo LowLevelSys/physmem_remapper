@@ -146,6 +146,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
 
     case cmd_copy_virtual_memory: {
         copy_virtual_memory_t sub_cmd;
+
         status = physmem::copy_memory_to_constructed_cr3(&sub_cmd, cmd.sub_command_ptr, sizeof(sub_cmd), shellcode::get_current_user_cr3());
         if (status != status_success)
             break;

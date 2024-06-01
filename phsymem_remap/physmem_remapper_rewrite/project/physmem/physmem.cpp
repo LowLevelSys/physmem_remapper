@@ -1344,7 +1344,6 @@ namespace physmem {
 			uint64_t copyable_size = 0;
 
 			// First translate the va's to pa's 
-
 			status = translate_to_physical_address(source_cr3, (void*)((uint64_t)source + copied_bytes), current_physical_source);
 			if (status != status_success)
 				break;
@@ -1381,7 +1380,6 @@ namespace physmem {
 
 			copied_bytes += copyable_size;
 		}
-
 		return status;
 	}
 

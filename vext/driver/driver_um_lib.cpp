@@ -4,18 +4,15 @@
 
 physmem_remapper_um_t* physmem_remapper_um_t::instance = 0;
 
-__int64 physmem_remapper_um_t::send_request(void* cmd, void* nmi_panic_function)
+__int64 physmem_remapper_um_t::send_request(void* cmd, void* nmi_panic_function) const
 {
-    mtx.lock();
-
     __int64 ret = NtUserGetCPD((uint64_t)cmd, caller_signature, (uint64_t)nmi_panic_function);
-
-    mtx.unlock();
-
     return ret;
 }
 
 bool physmem_remapper_um_t::copy_virtual_memory(uint64_t source_cr3, uint64_t destination_cr3, void* source, void* destination, uint64_t size) {
+    std::lock_guard<std::mutex> lock(mtx);
+
     if (!inited || !NtUserGetCPD)
         return false;
 
