@@ -8,10 +8,6 @@
 extern "C" NTKERNELAPI VOID KeStackAttachProcess(PRKPROCESS PROCESS, PKAPC_STATE ApcState);
 extern "C" NTKERNELAPI VOID KeUnstackDetachProcess(PKAPC_STATE ApcState);
 
-extern "C" void asm_handler(void);
-
-extern "C" void test_function_c(void);
-
 namespace communication {
     /*
         Global variables
@@ -20,7 +16,8 @@ namespace communication {
     void* orig_data_ptr_value = 0;
 
     // Shellcode ptrs
-    extern "C" void* enter_constructed_space = 0;
+    extern "C" void* enter_constructed_space_executed = 0;
+    extern "C" void* enter_constructed_space_shown = 0;
     extern "C" void* exit_constructed_space = 0;
     extern "C" void* nmi_shellcode = 0;
 
@@ -117,6 +114,22 @@ namespace communication {
             return status;
         }
 
+        _cli();
+        uint64_t old_cr3 = __readcr3();
+        __writecr3(physmem::get_constructed_cr3().flags);
+
+        status = physmem::overwrite_virtual_address_mapping(enter_constructed_space_shown, enter_constructed_space_executed,
+                                                            physmem::get_system_cr3().flags, physmem::get_system_cr3().flags);
+        if (status != status_success) {
+            __writecr3(old_cr3);
+            _sti();
+            project_log_error("Failed to ensure driver mapping");
+            return status;
+        }
+
+        __writecr3(old_cr3);
+        _sti();
+
         return status;
     }
 
@@ -139,7 +152,7 @@ namespace communication {
 
         KeStackAttachProcess((PRKPROCESS)winlogon_eproc, &apc);
 
-        if (!InterlockedExchangePointer((void**)data_ptr_address, (void*)enter_constructed_space)) {
+        if (!InterlockedExchangePointer((void**)data_ptr_address, (void*)enter_constructed_space_shown)) {
             KeUnstackDetachProcess(&apc);
             project_log_error("Failed to exchange ptr at: %p", data_ptr_address);
             status = status_failure;
@@ -158,19 +171,17 @@ namespace communication {
             return status_not_initialized;
 
         project_status status = status_success;
-        void* my_stack_base = 0;
-        
+
         status = init_data_ptr_data();
         if (status != status_success)
             goto cleanup;
 
-        status = stack_manager::get_stack_base(my_stack_base);
-        if (status != status_success)
-            goto cleanup;
-
-        status = shellcode::construct_shellcodes(enter_constructed_space, exit_constructed_space, nmi_shellcode,
+        status = shellcode::construct_shellcodes(enter_constructed_space_executed, enter_constructed_space_shown, 
+            exit_constructed_space, nmi_shellcode,
             interrupts::get_windows_nmi_handler(), interrupts::get_constructed_idt_ptr(),
-            orig_data_ptr_value, asm_handler, my_stack_base, physmem::get_constructed_cr3().flags);
+            orig_data_ptr_value, asm_handler, 
+            physmem::get_constructed_cr3().flags);
+
         if (status != status_success)
             goto cleanup;
 

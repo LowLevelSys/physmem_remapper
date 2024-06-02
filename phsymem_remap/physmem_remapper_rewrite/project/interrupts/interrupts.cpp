@@ -1,6 +1,8 @@
 #pragma once
 #include "interrupts.hpp"
+
 #include "../communication/shellcode.hpp"
+#include "../spinlock.hpp"
 
 namespace interrupts {
 	/*
@@ -67,6 +69,8 @@ namespace interrupts {
 			regs->rsp = curr_user_rsp;
 			regs->rip = curr_user_panic_rip;
 			regs->rflags = curr_user_rflags.flags;
+
+			spinlock_unlock(&handler_lock);
 		}
     };
 

@@ -12,7 +12,6 @@ namespace physmem {
 	/*
 		Declarations
 	*/
-	void log_remaining_pte_entries(pte_64* pte_table);
 	project_status get_pte_entry(void* virtual_address, uint64_t mem_cr3_u64, pte_64*& mem_pte);
 	void safely_unmap_4kb_page(void* mapped_page);
 

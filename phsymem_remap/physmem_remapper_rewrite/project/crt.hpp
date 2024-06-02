@@ -6,7 +6,6 @@ using uint16_t = unsigned short;
 using uint32_t = unsigned int;
 using uint64_t = unsigned long long;
 
-
 namespace crt {
     inline void* memset(void* src, int val, size_t count) {
         unsigned char* ptr = static_cast<unsigned char*>(src);
