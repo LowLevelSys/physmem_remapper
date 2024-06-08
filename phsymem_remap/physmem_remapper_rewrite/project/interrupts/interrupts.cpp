@@ -14,7 +14,6 @@ namespace interrupts {
 		Global variables
 	*/
     bool initialized = false;
-	uint64_t g_windows_nmi_handler = 0;
 	segment_descriptor_interrupt_gate_64* constructed_idt_table = 0;
     segment_descriptor_register_64 constructed_idt_ptr = { 0 };
 
@@ -46,42 +45,12 @@ namespace interrupts {
 		return constructed_idt_ptr;
 	}
 
-	void* get_windows_nmi_handler(void) {
-		if (!initialized)
-			return 0;
-
-		return (void*)g_windows_nmi_handler;
-	}
-
-	/*
-		Core functions
-	*/
-
-    namespace nmi {
-		extern "C" void handle_nmi(trap_frame_t* regs) {
-			uint64_t curr_user_rsp = shellcode::get_current_user_rsp();
-			uint64_t curr_user_panic_rip = shellcode::get_current_nmi_panic_function();
-			rflags curr_user_rflags = { 0 };
-
-			curr_user_rflags.flags = regs->rflags;
-			curr_user_rflags.interrupt_enable_flag = true;
-
-			regs->rsp = curr_user_rsp;
-			regs->rip = curr_user_panic_rip;
-			regs->rflags = curr_user_rflags.flags;
-
-			spinlock_unlock(&handler_lock);
-		}
-    };
-
 	/*
 		Initialization functions
 	*/
 
 	project_status init_interrupts() {
-		segment_descriptor_register_64 idt = { 0 };
 		PHYSICAL_ADDRESS max_addr = { 0 };
-		__sidt(&idt);
 		max_addr.QuadPart = MAXULONG64;
 
 		constructed_idt_table = (segment_descriptor_interrupt_gate_64*)MmAllocateContiguousMemory(sizeof(segment_descriptor_interrupt_gate_64) * 256, max_addr);
@@ -89,15 +58,6 @@ namespace interrupts {
 			return status_memory_allocation_failed;
 
 		crt::memset(constructed_idt_table, 0, sizeof(segment_descriptor_interrupt_gate_64) * 256);
-
-		segment_descriptor_interrupt_gate_64* windows_idt = (segment_descriptor_interrupt_gate_64*)idt.base_address;
-		if (!windows_idt)
-			return status_failure;
-
-		// Get the address of the windows nmi handler
-		g_windows_nmi_handler = (static_cast<uint64_t>(windows_idt[exception_vector::nmi].offset_high) << 32) |
-			(static_cast<uint64_t>(windows_idt[exception_vector::nmi].offset_middle) << 16) |
-			(windows_idt[exception_vector::nmi].offset_low);
 
 		constructed_idt_table[exception_vector::nmi] = create_interrupt_gate(asm_nmi_handler);
 

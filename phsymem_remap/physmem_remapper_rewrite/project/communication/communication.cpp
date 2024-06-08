@@ -16,10 +16,9 @@ namespace communication {
     void* orig_data_ptr_value = 0;
 
     // Shellcode ptrs
-    extern "C" void* enter_constructed_space_executed = 0;
-    extern "C" void* enter_constructed_space_shown = 0;
+    void* enter_constructed_space_executed = 0;
+    void* enter_constructed_space_shown = 0;
     extern "C" void* exit_constructed_space = 0;
-    extern "C" void* nmi_shellcode = 0;
 
     /*
         Util
@@ -177,10 +176,9 @@ namespace communication {
             goto cleanup;
 
         status = shellcode::construct_shellcodes(enter_constructed_space_executed, enter_constructed_space_shown, 
-            exit_constructed_space, nmi_shellcode,
-            interrupts::get_windows_nmi_handler(), interrupts::get_constructed_idt_ptr(),
-            orig_data_ptr_value, asm_handler, 
-            physmem::get_constructed_cr3().flags);
+            exit_constructed_space,
+            interrupts::get_constructed_idt_ptr(), orig_data_ptr_value, 
+            asm_handler, physmem::get_constructed_cr3().flags);
 
         if (status != status_success)
             goto cleanup;
@@ -188,6 +186,8 @@ namespace communication {
         status = ensure_driver_mapping(driver_base, driver_size);
         if (status != status_success)
             goto cleanup;
+
+        shellcode::log_shellcode_addresses();
 
         status = init_data_ptr_hook();
         if (status != status_success)
