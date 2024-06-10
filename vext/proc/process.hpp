@@ -1,12 +1,10 @@
 #pragma warning (disable: 4003)
 #include "../driver/driver_um_lib.hpp"
-#include <mutex>
 
 class process_t {
 private:
 	// 1 Static instance to ensure you don't accidentily use an unitialized or different class with another process loaded or sth.
 	static process_t* process_instance;
-	static std::mutex instance_mutex;
 
 	physmem_remapper_um_t* physmem_instance = 0;
 	bool inited = false;
@@ -23,32 +21,11 @@ private:
 
 	module_info_t* target_modules = 0;
 
-public:
-
-	~process_t() {
-		delete physmem_instance;
-		physmem_instance = 0;
-	}
-
-	static process_t* get_inst() {
-		std::lock_guard<std::mutex> lock(instance_mutex);
-
-		if (!process_instance) {
-			process_instance = new process_t();
-			if (!process_instance) {
-				log("Failed to allocate process instance");
-				return 0;
-			}
-		}
-
-		return process_instance;
-	}
-
 	bool init_process(std::string process_name) {
 
 		physmem_instance = physmem_remapper_um_t::init_physmem_remapper_lib();
 
-		if(!physmem_instance) {
+		if (!physmem_instance) {
 			log("Can't init process if the physmem instance is not allocated");
 			return false;
 		}
@@ -74,17 +51,17 @@ public:
 
 		log("Owner cr3: [%p]", (void*)owner_cr3);
 
-	    target_pid = physmem_instance->get_pid_by_name(process_name.c_str());
+		target_pid = physmem_instance->get_pid_by_name(process_name.c_str());
 		if (!target_pid) {
 			log("Failed to get pid of target process: %s", process_name.c_str());
 			return false;
 		}
 
-	
+
 		log("%s pid: [%p]", process_name.c_str(), (void*)target_pid);
 
 		// Then get the cr3
-	    target_cr3 = physmem_instance->get_cr3(target_pid);
+		target_cr3 = physmem_instance->get_cr3(target_pid);
 		if (!target_cr3) {
 			log("Failed to get cr3 of target process: %s", process_name.c_str());
 			return false;
@@ -118,13 +95,38 @@ public:
 
 		log("Logging modules: ");
 		log_new_line();
-		
+
 		// last one is not valid
 		for (uint64_t i = 0; i < target_module_count - 1; i++) {
 			log("%s loaded at: [%p] with size [%p]", target_modules[i].name, (void*)target_modules[i].base, (void*)target_modules[i].size);
 		}
 
 		return true;
+	}
+
+
+public:
+
+	~process_t() {
+		delete physmem_instance;
+		physmem_instance = 0;
+	}
+
+	static process_t* get_inst(std::string process_name) {
+		if (!process_instance) {
+			process_instance = new process_t();
+			if (!process_instance) {
+				log("Failed to allocate process instance");
+				return 0;
+			}
+
+			if (!process_instance->init_process(process_name)) {
+				log("Failed to init for process %s", process_name.c_str());
+				return 0;
+			}
+		}
+
+		return process_instance;
 	}
 
 	template <typename t>
@@ -176,6 +178,5 @@ public:
 };
 
 process_t* process_t::process_instance = 0;
-std::mutex process_t::instance_mutex;
 
 inline process_t* g_proc;

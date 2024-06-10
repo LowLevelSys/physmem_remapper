@@ -61,8 +61,8 @@ namespace interrupts {
 
 		constructed_idt_table[exception_vector::nmi] = create_interrupt_gate(asm_nmi_handler);
 
-        constructed_idt_ptr.base_address = (uint64_t)&constructed_idt_table;
-        constructed_idt_ptr.limit = sizeof(constructed_idt_table) - 1;
+        constructed_idt_ptr.base_address = (uint64_t)constructed_idt_table;
+        constructed_idt_ptr.limit = (sizeof(segment_descriptor_interrupt_gate_64) * 256) - 1;
 
         initialized = true;
 

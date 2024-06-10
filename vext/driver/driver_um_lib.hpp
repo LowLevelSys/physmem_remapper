@@ -11,7 +11,6 @@ class physmem_remapper_um_t {
 private:
 
     static physmem_remapper_um_t* instance;
-    std::mutex mtx;
 
     bool inited = false;
     NtUserGetCPD_type NtUserGetCPD = (NtUserGetCPD_type)0;

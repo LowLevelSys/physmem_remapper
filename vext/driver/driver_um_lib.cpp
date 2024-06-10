@@ -11,7 +11,7 @@ __int64 physmem_remapper_um_t::send_request(void* cmd, void* nmi_panic_function)
 }
 
 bool physmem_remapper_um_t::copy_virtual_memory(uint64_t source_cr3, uint64_t destination_cr3, void* source, void* destination, uint64_t size) {
-    std::lock_guard<std::mutex> lock(mtx);
+
     if (!inited || !NtUserGetCPD)
         return false;
 
@@ -187,7 +187,7 @@ bool physmem_remapper_um_t::get_data_table_entry_info(uint64_t pid, module_info_
 }
 
 bool physmem_remapper_um_t::remove_apc() {
-    std::lock_guard<std::mutex> lock(mtx);
+
     if (!inited || !NtUserGetCPD)
         return 0;
 
@@ -208,7 +208,7 @@ bool physmem_remapper_um_t::remove_apc() {
 }
 
 bool physmem_remapper_um_t::restore_apc() {
-    std::lock_guard<std::mutex> lock(mtx);
+
     if (!inited || !NtUserGetCPD)
         return 0;
 
