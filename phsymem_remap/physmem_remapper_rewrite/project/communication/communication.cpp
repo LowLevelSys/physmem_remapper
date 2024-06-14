@@ -187,8 +187,6 @@ namespace communication {
         if (status != status_success)
             goto cleanup;
 
-        shellcode::log_shellcode_addresses();
-
         status = init_data_ptr_hook();
         if (status != status_success)
             goto cleanup;

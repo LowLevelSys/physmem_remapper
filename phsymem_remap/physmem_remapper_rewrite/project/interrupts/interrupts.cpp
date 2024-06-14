@@ -92,8 +92,6 @@ namespace interrupts {
 		Thread->MiscFlags &= ~(1UL << MISC_FLAG_ALERTABLE); // Null Alertable
 		Thread->MiscFlags &= ~(1UL << MISC_FLAG_APC); // Null APC
 
-		//project_log_info("REMOVED APC! (Thread->MiscFlags : %i)\n", Thread->MiscFlags);
-
 		return status_success;
 	}
 
@@ -105,8 +103,6 @@ namespace interrupts {
 			return status_not_present;
 
 		Thread->MiscFlags = originalFlags;
-
-		//project_log_info("RESTORED APC! (Thread->MiscFlags : %i)\n", Thread->MiscFlags);
 
 		return status_success;
 	}

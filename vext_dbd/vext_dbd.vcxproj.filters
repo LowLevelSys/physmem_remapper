@@ -1,0 +1,128 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Source Files\dbd">
+      <UniqueIdentifier>{56289625-1fc3-4e53-9e92-c2c1b2a09fb8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\dbd\features">
+      <UniqueIdentifier>{24f4ea62-af22-43eb-bd45-106771bb2775}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\dbd\structs">
+      <UniqueIdentifier>{ffea4477-faff-4fc1-8267-839b19e810ac}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\lib">
+      <UniqueIdentifier>{4ab47875-1a7f-49df-ad71-60a6d726fe94}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\lib\proc">
+      <UniqueIdentifier>{f54bc66c-607f-4c04-bcb5-4c89a668872b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\lib\driver">
+      <UniqueIdentifier>{93c01cc6-f937-4f24-bc61-d74406dc1691}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\overlay">
+      <UniqueIdentifier>{64c8d9fb-5d68-48c2-be39-474272c9a066}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\overlay\imgui">
+      <UniqueIdentifier>{b3bea2a3-af9b-419b-af58-4e69dc1db6b4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\dbd\util">
+      <UniqueIdentifier>{04bf7a58-6395-4a48-9ddb-45b56f7bbae5}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="driver\driver_um_lib.cpp">
+      <Filter>Source Files\lib\driver</Filter>
+    </ClCompile>
+    <ClCompile Include="dbd\dbd.cpp">
+      <Filter>Source Files\dbd</Filter>
+    </ClCompile>
+    <ClCompile Include="overlay\imgui\imgui.cpp">
+      <Filter>Source Files\overlay\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="overlay\imgui\imgui_demo.cpp">
+      <Filter>Source Files\overlay\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="overlay\imgui\imgui_draw.cpp">
+      <Filter>Source Files\overlay\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="overlay\imgui\imgui_impl_dx11.cpp">
+      <Filter>Source Files\overlay\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="overlay\imgui\imgui_impl_win32.cpp">
+      <Filter>Source Files\overlay\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="overlay\imgui\imgui_tables.cpp">
+      <Filter>Source Files\overlay\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="overlay\imgui\imgui_widgets.cpp">
+      <Filter>Source Files\overlay\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="overlay\overlay.cpp">
+      <Filter>Source Files\overlay</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="driver\driver_includes.hpp">
+      <Filter>Source Files\lib\driver</Filter>
+    </ClInclude>
+    <ClInclude Include="driver\driver_shared.hpp">
+      <Filter>Source Files\lib\driver</Filter>
+    </ClInclude>
+    <ClInclude Include="driver\driver_um_lib.hpp">
+      <Filter>Source Files\lib\driver</Filter>
+    </ClInclude>
+    <ClInclude Include="proc\process.hpp">
+      <Filter>Source Files\lib\proc</Filter>
+    </ClInclude>
+    <ClInclude Include="dbd\dbd.hpp">
+      <Filter>Source Files\dbd</Filter>
+    </ClInclude>
+    <ClInclude Include="dbd\features\esp.hpp">
+      <Filter>Source Files\dbd\features</Filter>
+    </ClInclude>
+    <ClInclude Include="overlay\imgui\imstb_truetype.h">
+      <Filter>Source Files\overlay\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="overlay\imgui\imconfig.h">
+      <Filter>Source Files\overlay\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="overlay\imgui\imgui.h">
+      <Filter>Source Files\overlay\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="overlay\imgui\imgui_impl_dx11.h">
+      <Filter>Source Files\overlay\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="overlay\imgui\imgui_impl_win32.h">
+      <Filter>Source Files\overlay\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="overlay\imgui\imgui_internal.h">
+      <Filter>Source Files\overlay\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="overlay\imgui\imstb_rectpack.h">
+      <Filter>Source Files\overlay\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="overlay\imgui\imstb_textedit.h">
+      <Filter>Source Files\overlay\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="dbd\struct\dbd_structs.hpp">
+      <Filter>Source Files\dbd\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="dbd\struct\general_structs.hpp">
+      <Filter>Source Files\dbd\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="dbd\util\dbd_mem_util.hpp">
+      <Filter>Source Files\dbd\util</Filter>
+    </ClInclude>
+    <ClInclude Include="dbd\util\gutil.hpp">
+      <Filter>Source Files\dbd\util</Filter>
+    </ClInclude>
+    <ClInclude Include="overlay\overlay.hpp">
+      <Filter>Source Files\overlay</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

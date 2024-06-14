@@ -9,6 +9,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "vext", "vext\vext.vcxproj",
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "my_mapper", "mapper\my_mapper\my_mapper.vcxproj", "{278B99AC-C438-472A-8272-79F83DEF7F7D}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "vext_dbd", "vext_dbd\vext_dbd.vcxproj", "{33F8840D-BAF6-4968-B22C-52ACE0DB623C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Release|x64 = Release|x64
@@ -21,6 +23,8 @@ Global
 		{3115ECC5-0DA7-4743-B2D0-234F3F46A97F}.Release|x64.Build.0 = Release|x64
 		{278B99AC-C438-472A-8272-79F83DEF7F7D}.Release|x64.ActiveCfg = Release|x64
 		{278B99AC-C438-472A-8272-79F83DEF7F7D}.Release|x64.Build.0 = Release|x64
+		{33F8840D-BAF6-4968-B22C-52ACE0DB623C}.Release|x64.ActiveCfg = Release|x64
+		{33F8840D-BAF6-4968-B22C-52ACE0DB623C}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
