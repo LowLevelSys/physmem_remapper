@@ -34,7 +34,7 @@ namespace dbd_esp {
 			USceneComponent curr_scene_component = g_proc->read<USceneComponent>((void*)curr_instigator.root_component);
 
 			APlayerCameraManager cam = dbd::game_data::camera_manager;
-			vector2 root_comp = gutil::world_to_screen(cam.private_camera_cache.pov, curr_scene_component.relative_location);
+			vector2 root_comp = gutil::world_to_screen(cam.private_camera_cache.pov, cam.locked_fov, curr_scene_component.relative_location);
 			if (!root_comp.x || !root_comp.y) {
 				log("Failed to project world to screen");
 				continue;

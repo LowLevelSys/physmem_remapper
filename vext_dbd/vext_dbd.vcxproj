@@ -163,6 +163,7 @@
     <ClInclude Include="dbd\dbd.hpp" />
     <ClInclude Include="dbd\features\auto_skillcheck.hpp" />
     <ClInclude Include="dbd\features\esp.hpp" />
+    <ClInclude Include="dbd\features\fov_changer.hpp" />
     <ClInclude Include="dbd\struct\dbd_structs.hpp" />
     <ClInclude Include="dbd\struct\general_structs.hpp" />
     <ClInclude Include="dbd\util\dbd_mem_util.hpp" />

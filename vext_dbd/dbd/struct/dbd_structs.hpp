@@ -181,9 +181,14 @@ struct FCameraCacheEntry {
 };
 
 struct APlayerCameraManager {
-    char padding_0[0x22d0];
+    char padding_0[0x2bc];
+    float default_fov;
+    float locked_fov;
+    char padding_1[0x200c];
     FCameraCacheEntry private_camera_cache;
 };
+
+const int a = offsetof(APlayerCameraManager, private_camera_cache);
 
 struct APlayerController {
     char padding_0[0x348];

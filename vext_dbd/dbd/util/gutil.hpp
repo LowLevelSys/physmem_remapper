@@ -45,7 +45,7 @@ namespace gutil {
         return matrix;
     }
 
-    vector2 world_to_screen(FMinimalViewInfo camera, FVector world_location) {
+    vector2 world_to_screen(FMinimalViewInfo camera, float real_fov, FVector world_location) {
         // Initialize screen center coordinates if not set
         if (screen_centerx == 0 || screen_centery == 0) {
             screen_centerx = GetSystemMetrics(SM_CXSCREEN) / 2;
@@ -74,8 +74,8 @@ namespace gutil {
 
         // Calculate the screen position
         vector2 screen_location(0, 0);
-        screen_location.x = screen_centerx + vtransformed.x * (screen_centerx / tanf(camera.fov * deg_to_rad)) / vtransformed.z;
-        screen_location.y = screen_centery - vtransformed.y * (screen_centery / tanf(camera.fov * deg_to_rad)) / vtransformed.z;
+        screen_location.x = screen_centerx + vtransformed.x * (screen_centerx / tanf(real_fov * deg_to_rad)) / vtransformed.z;
+        screen_location.y = screen_centery - vtransformed.y * (screen_centery / tanf(real_fov * deg_to_rad)) / vtransformed.z;
 
 
         return screen_location;

@@ -3,6 +3,7 @@
 #include "util/dbd_mem_util.hpp"
 #include "features/esp.hpp"
 #include "features/auto_skillcheck.hpp"
+#include "features/fov_changer.hpp"
 
 #include "../overlay/overlay.hpp"
 
@@ -90,6 +91,9 @@ namespace dbd {
 
 				if (settings::misc::auto_skillcheck)
 					auto_skillcheck::auto_skillcheck();
+
+				if (settings::misc::fov)
+					fov_changer::set_fov(settings::misc::fov);
 			}
 			overlay::end_frame();
 			overlay::render();

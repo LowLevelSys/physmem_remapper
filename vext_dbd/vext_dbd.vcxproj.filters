@@ -127,5 +127,8 @@
     <ClInclude Include="dbd\features\auto_skillcheck.hpp">
       <Filter>Source Files\dbd\features</Filter>
     </ClInclude>
+    <ClInclude Include="dbd\features\fov_changer.hpp">
+      <Filter>Source Files\dbd\features</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -129,9 +129,9 @@ public:
 		return buffer;
 	}
 
-
-	bool write(void* dest, void* src, uint64_t size) {
-		return physmem_instance->copy_virtual_memory(owner_cr3, target_cr3, src, dest, size);
+	template <typename T>
+	bool write(void* dest, T val, uint64_t size = sizeof(T)) {
+		return physmem_instance->copy_virtual_memory(owner_cr3, target_cr3, &val, dest, size);
 	}
 
 	module_info_t get_module(std::string module_name) {
