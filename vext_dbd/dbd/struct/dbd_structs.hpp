@@ -187,7 +187,7 @@ struct APlayerCameraManager {
 
 struct APlayerController {
     char padding_0[0x348];
-    UPlayer* player;
+    UPlayer* player; 
     APawn* acknowledged_pawn;
     char padding_1[0x8];
     APlayerCameraManager* camera_manager;
@@ -216,7 +216,7 @@ struct UWorld {
 	char padding_0[0x168];
     AGameStateBase* game_state;
     char padding_1[0x10];
-    TArray<ULevel*> levels;
+    TArray<ULevel*> levels; // 0x180
     char padding_2[0x32];
     UGameInstance* owning_game_instance;
 };

@@ -33,15 +33,15 @@ namespace dbd_esp {
 
 			auto cam = dbd::game_data::camera_manager;
 
-			log("Camera: FOV: %f X: %f Y: %f Z: %f", cam.private_camera_cache.pov.fov, cam.private_camera_cache.pov.location.x, cam.private_camera_cache.pov.location.y, cam.private_camera_cache.pov.location.z);
-			/*
+			//log("Camera: FOV: %f X: %f Y: %f Z: %f", cam.private_camera_cache.pov.fov, cam.private_camera_cache.pov.location.x, cam.private_camera_cache.pov.location.y, cam.private_camera_cache.pov.location.z);
+			
 			vector2 root_comp = gutil::world_to_screen(cam.private_camera_cache.pov, curr_scene_component.relative_location);
 			if (!root_comp.x || !root_comp.y) {
 				log("Failed to project world to screen");
 				continue;
 			}
-			*/
-			//overlay::draw_text(root_comp.x, root_comp.y, player_name.c_str(), IM_COL32(255, 255, 255, 255));
+			
+			overlay::draw_text(root_comp.x, root_comp.y, player_name.c_str(), IM_COL32(255, 255, 255, 255));
 		}
 
 		delete[] player_state_addresses.GetData();

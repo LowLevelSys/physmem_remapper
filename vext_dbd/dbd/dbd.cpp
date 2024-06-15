@@ -31,13 +31,13 @@ namespace dbd {
 		game_data::uworld = g_proc->read<uint64_t>((void*)(game_base + offsets::OFFSET_GWORLD));
 		if (!game_data::uworld)
 			return false;
-
+		
 		game_data::uworld_data = g_proc->read<UWorld>((void*)game_data::uworld);
 		if (!game_data::uworld_data.game_state)
 			return false;
 
 		game_data::game_state = g_proc->read<AGameStateBase>((void*)(game_data::uworld_data.game_state));
-		if (!game_data::game_state.player_array.Data || game_data::game_state.player_array.Count <= 0)
+		if (!game_data::game_state.player_array.Data || game_data::game_state.player_array.Count <= 0) 
 			return false;
 
 		game_data::owning_game_instance = g_proc->read<UGameInstance>((void*)game_data::uworld_data.owning_game_instance);
@@ -48,7 +48,7 @@ namespace dbd {
 		if (!local_players.Data || local_players.Count <= 0)
 			return false;
 
-		game_data::local_player = g_proc->read<UPlayer>(local_players.Data); // We are the first entry in local_players
+		game_data::local_player = g_proc->read<UPlayer>((void*)g_proc->read<uint64_t>(local_players.Data)); // We are the first entry in local_players
 		if (!game_data::local_player.player_controller)
 			return false;
 
@@ -85,8 +85,6 @@ namespace dbd {
 			{
 				if (settings::esp::draw_player_esp)
 					dbd_esp::draw_player_esp();
-
-				overlay::draw_box(100, 100, 200, 150, IM_COL32(255, 0, 0, 255), 3.0f);
 			}
 			overlay::end_frame();
 			overlay::render();
