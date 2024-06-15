@@ -2,6 +2,8 @@
 #include "struct/dbd_structs.hpp"
 #include "util/dbd_mem_util.hpp"
 #include "features/esp.hpp"
+#include "features/auto_skillcheck.hpp"
+
 #include "../overlay/overlay.hpp"
 
 namespace dbd {
@@ -67,29 +69,32 @@ namespace dbd {
 
 		// Continously execute the cheat loop
 		while (!done) {
-
-			if (!overlay::handle_messages())
+			if (!overlay::handle_messages()) {
 				done = true;
+				break;
+			}
 
 			// Update and validate game data
 			update_base_game_data();
 			if (!validate_game_data()) {
-				log("Invalid game data!");
-				std::this_thread::sleep_for(std::chrono::milliseconds(10));
-				overlay::end_frame();
-				overlay::render();
+				Sleep(10);
 				continue;
 			}
 
-			overlay::begin_frame();
-			{
+			if (settings::misc::auto_skillcheck)
+					auto_skillcheck::auto_skillcheck();
+
+			overlay::begin_frame(); {
 				if (settings::esp::draw_player_esp)
 					dbd_esp::draw_player_esp();
+
+				if (settings::misc::auto_skillcheck)
+					auto_skillcheck::auto_skillcheck();
 			}
 			overlay::end_frame();
 			overlay::render();
 
-			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			Sleep(10);
 		}
 
 		overlay::cleanup();
@@ -117,8 +122,7 @@ namespace dbd {
 
 		is_inited = true;
 
-		std::thread cheat_thread(cheat_loop);
-		cheat_thread.detach();
+		cheat_loop();
 
 		return true;
 	}

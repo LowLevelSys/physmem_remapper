@@ -124,5 +124,8 @@
     <ClInclude Include="overlay\overlay.hpp">
       <Filter>Source Files\overlay</Filter>
     </ClInclude>
+    <ClInclude Include="dbd\features\auto_skillcheck.hpp">
+      <Filter>Source Files\dbd\features</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

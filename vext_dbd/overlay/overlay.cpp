@@ -76,10 +76,10 @@ namespace overlay {
     }
 
     bool init_overlay(void) {
-        WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, wnd_proc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"Razer Synapse", nullptr };
+        WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, wnd_proc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"Discord", nullptr };
         ::RegisterClassExW(&wc);
 
-        g_hwnd = ::CreateWindowExW(WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST, wc.lpszClassName, L"Overlay", WS_POPUP, 0, 0, 1920, 1080, nullptr, nullptr, wc.hInstance, nullptr);
+        g_hwnd = ::CreateWindowExW(WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST, wc.lpszClassName, L"Discord", WS_POPUP, 0, 0, 1920, 1080, nullptr, nullptr, wc.hInstance, nullptr);
 
         SetLayeredWindowAttributes(g_hwnd, RGB(0, 0, 0), 0, ULW_COLORKEY);
 
@@ -156,6 +156,6 @@ namespace overlay {
 
         cleanup_d3d_device();
 
-        UnregisterClassW(L"Razer Synapse", GetModuleHandle(nullptr));
+        UnregisterClassW(L"Discord", GetModuleHandle(nullptr));
     }
 }

@@ -198,6 +198,24 @@ struct UPlayer {
     APlayerController* player_controller;
 };
 
+struct USkillCheck {
+    char padding_0[0x151];
+    bool is_displayed;
+    float current_progress;
+    char padding_1[0x4C];
+    float bonus_zone;
+};
+
+struct UPlayerInteractionHandler {
+    char padding_0[0x310];
+    USkillCheck* skillcheck;
+};
+
+struct ADBDPlayer {
+    char padding_0[0xb58];
+    UPlayerInteractionHandler* interaction_handler;
+};
+
 /*
     Core structs
 */

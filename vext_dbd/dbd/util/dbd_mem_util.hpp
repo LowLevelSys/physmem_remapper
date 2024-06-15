@@ -49,7 +49,6 @@ namespace dbd_mem_util {
         local_array.Max = remote_tarray.Max;
 
         if (!local_array.Count && remote_tarray.Count <= 0) {
-            log("TArray is empty or invalid.");
             local_array.Count = 0;
             local_array.Max = 0;
             local_array.Data = nullptr;

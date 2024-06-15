@@ -59,16 +59,16 @@ namespace gutil {
         vector3 axis_y(temp_matrix[1][0], temp_matrix[1][1], temp_matrix[1][2]);
         vector3 axis_z(temp_matrix[2][0], temp_matrix[2][1], temp_matrix[2][2]);
 
-        vector3 camera_vec_location(camera.location.x, camera.location.y, camera.location.z);
-        vector3 world_vec_location(world_location.x, world_location.y, world_location.z);
+        vector3 camera_vec_location((float)camera.location.x, (float)camera.location.y, (float)camera.location.z);
+        vector3 world_vec_location((float)world_location.x, (float)world_location.y, (float)world_location.z);
 
         vector3 vdelta = world_vec_location - camera_vec_location;
         vector3 vtransformed(vdelta.dot(axis_y), vdelta.dot(axis_z), vdelta.dot(axis_x));
 
         // Avoid division by zero
-        if (vtransformed.z < 1.0f) {
+        if (vtransformed.z < 1.0f)
             vtransformed.z = 1.0f;
-        }
+        
 
         const float deg_to_rad = static_cast<float>(3.14159265358979323846) / 360.0f;
 
@@ -77,7 +77,6 @@ namespace gutil {
         screen_location.x = screen_centerx + vtransformed.x * (screen_centerx / tanf(camera.fov * deg_to_rad)) / vtransformed.z;
         screen_location.y = screen_centery - vtransformed.y * (screen_centery / tanf(camera.fov * deg_to_rad)) / vtransformed.z;
 
-        //log("X: %f; Y: %f", screen_location.x, screen_location.y);
 
         return screen_location;
     }

@@ -1,8 +1,7 @@
+#pragma once
 #include "../driver/driver_um_lib.hpp"
 #include "../proc/process.hpp"
 #include "struct/dbd_structs.hpp"
-
-#include <thread>
 
 namespace dbd {
 	inline bool is_inited = false;
@@ -35,6 +34,10 @@ namespace dbd {
 			inline bool draw_player_esp = true;
 
 			inline bool draw_name_esp = true;
+		};
+
+		namespace misc {
+			inline bool auto_skillcheck = true;
 		};
 	};
 
