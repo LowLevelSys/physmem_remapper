@@ -21,7 +21,7 @@ namespace dbd_esp {
 
 			if (!curr_player.pawn_private)
 				continue;
-
+			
 			APawn curr_pawn = g_proc->read<APawn>((void*)curr_player.pawn_private);
 			if (!curr_pawn.instigator)
 				continue;
@@ -41,6 +41,21 @@ namespace dbd_esp {
 			}
 			
 			overlay::draw_text(root_comp.x, root_comp.y, player_name.c_str(), IM_COL32(255, 255, 255, 255));
+		}
+
+		for (AActor* generator : dbd::game_data::generators) {
+			AActor generator_instance = g_proc->read<AActor>(generator);
+			APawn instigator = g_proc->read<APawn>(generator_instance.instigator);
+
+			USceneComponent curr_scene_component = g_proc->read<USceneComponent>((void*)instigator.root_component);
+			APlayerCameraManager cam = dbd::game_data::camera_manager;
+			vector2 root_comp = gutil::world_to_screen(cam.private_camera_cache.pov, cam.locked_fov, curr_scene_component.relative_location);
+			if (!root_comp.x || !root_comp.y) {
+				log("Failed to project world to screen");
+				continue;
+			}
+
+			overlay::draw_text(root_comp.x, root_comp.y, "Generator", IM_COL32(255, 255, 255, 255));
 		}
 
 		delete[] player_state_addresses.GetData();

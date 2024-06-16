@@ -118,6 +118,24 @@ public:
 		return physmem_instance->copy_virtual_memory(owner_cr3, target_cr3, src, dest, size);
 	}
 
+	std::string read_ascii_string(uint64_t src, uint64_t size = 256) {
+		std::string buffer(size, 0);
+
+		// Read the entire string at once
+		bool result = read_array(&buffer[0], (void*)src, size);
+		if (!result)
+			return "";
+
+		// Find the position of the first null character
+		size_t pos = buffer.find('\0');
+
+		// If a null character was found, resize the string to remove the null character and everything after it
+		if (pos != std::string::npos)
+			buffer.resize(pos);
+
+		return buffer;
+	}
+
 	template <typename T>
 	T read(void* src, uint64_t size = sizeof(T)) {
 		T buffer{};

@@ -5,12 +5,6 @@
 
 namespace dbd {
 	inline bool is_inited = false;
-	inline uint64_t game_base = 0;
-
-	namespace offsets {
-		// Global
-		constexpr auto OFFSET_GWORLD = 0xf34ce80;
-	};
 
 	namespace game_data {
 		/*
@@ -18,8 +12,9 @@ namespace dbd {
 		*/
 		inline bool usable_game_data;
 
+		inline std::vector<AActor*> generators;
 		inline uint64_t uworld;
-
+		inline TUObjectArray uobjects;
 		inline UWorld uworld_data;
 		inline AGameStateBase game_state;
 		inline UGameInstance owning_game_instance;

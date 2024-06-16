@@ -53,7 +53,7 @@ namespace gutil {
         }
 
         // Create a transformation matrix from the camera rotation
-        vmatrix temp_matrix = create_matrix(camera.rotation, vector3(0, 0, 0));
+        vmatrix temp_matrix = create_matrix(camera.rotation, vector3(0.f, 0.f, 0.f));
 
         vector3 axis_x(temp_matrix[0][0], temp_matrix[0][1], temp_matrix[0][2]);
         vector3 axis_y(temp_matrix[1][0], temp_matrix[1][1], temp_matrix[1][2]);

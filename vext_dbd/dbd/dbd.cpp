@@ -26,6 +26,31 @@ namespace dbd {
 		return game_data::usable_game_data;
 	}
 
+	//static std::string GetNameById(int32_t actor_id)
+	//{
+	//	int chunkOffset = (uint32_t)(actor_id >> 16);
+	//	uint16_t nameOffset = (uint16_t)actor_id;
+	//	uint64_t fNamePool = game_base + dbd::offsets::OFFSET_GNAMES;
+
+	//	uint64_t namePoolChunk = g_proc->read<uint64_t>((void*)(fNamePool + ((chunkOffset + 2) * 8)));
+	//	uint64_t entryOffset = namePoolChunk + (uint64_t)(2 * nameOffset);
+	//	uint16_t nameEntry = g_proc->read<uint16_t>((void*)entryOffset);
+	//	auto nameLength = nameEntry >> 6;
+	//	std::string result = g_proc->read_ascii_string(entryOffset + 2, nameLength * 2);
+	//	if(!result.empty() || result != "NULL")
+	//		return result
+
+	//	//uint64_t TableLocationAddress = g_proc->read<uint64_t>((void*)(GNameTable + 0x10 + static_cast<unsigned long long>(TableLocation) * 0x8)) + (unsigned __int32)(4 * RowLocation);
+
+	//	//uint64_t sLength = (unsigned __int64)(g_proc->read<uint16_t>((void*)(TableLocationAddress + 4))) >> 1;
+
+	//	//if (sLength < 128)
+	//	//{
+	//	//	return result;
+	//	//}
+
+	//	return std::string("NULL");
+	//}
 
 	bool update_base_game_data(void) {
 		if (!game_base)
@@ -58,6 +83,23 @@ namespace dbd {
 		game_data::player_controller = g_proc->read<APlayerController>((void*)game_data::local_player.player_controller);
 		if (!game_data::player_controller.camera_manager)
 			return false;
+
+
+		game_data::uobjects = g_proc->read<TUObjectArray>((void*)(game_base + offsets::OFFSET_GOBJECTS));
+
+		// Doesn't seem to work quite properly... wip... seems like we're either not finding the correct generator class, or our comparison isn't correct, OR maybe the generator isn't in the persistent level? it should be though...?
+		//UObject* default_generator = game_data::uobjects.FindObject("DeadByDaylight.Generator");
+		//UClass* generator_class = g_proc->read<UClass*>(default_generator + offsetof(UObject, Class));
+
+		//ULevel persistent_level = g_proc->read<ULevel>(game_data::uworld_data.persistent_level);
+		//uint64_t actor_list = g_proc->read<uint64_t>(persistent_level.actors.Data);
+		//for (int i = 0; i < persistent_level.actors.Count; i++) {
+		//	AActor* actor = (AActor*)(actor_list + i * 0x8);
+		//	AActor actor_instance = g_proc->read<AActor>(actor);
+
+		//	if (actor->IsA(generator_class))
+		//		dbd::game_data::generators.push_back(actor);
+		//}
 
 		game_data::camera_manager = g_proc->read<APlayerCameraManager>((void*)game_data::player_controller.camera_manager);
 

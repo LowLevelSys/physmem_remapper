@@ -57,6 +57,7 @@ struct vector2 {
 
 struct vector3 {
 	float x, y, z;
+
 	vector3 operator-(vector3 ape) {
 		return { x - ape.x, y - ape.y, z - ape.z };
 	}
@@ -108,10 +109,17 @@ struct vector3 {
 	float dot(vector3& v) {
 		return x * v.x + y * v.y + z * v.z;
 	}
+
+	vector3() : x(0.f), y(0.f), z(0.f) {};
+	vector3(float x, float y, float z) : x(x), y(y), z(z) {};
 };
 
 struct vmatrix {
-	vmatrix() {}
+	vmatrix() {
+		for (int i = 0; i < 3; i++)
+			for (int j = 0; j < 4; j++)
+				m_flMatVal[i][j] = {};
+	}
 	vmatrix(
 		float m00, float m01, float m02, float m03,
 		float m10, float m11, float m12, float m13,
