@@ -1,0 +1,83 @@
+import "types.genny"
+
+struct RTTITest{}
+
+enum Place {
+    EARTH = 1,
+    MOON = 2,
+    MARS = 3,
+}
+
+enum Color : byte {
+	RED = 1,
+	GREEN = 2,
+	BLUE = 3
+}
+
+struct Date {
+    ushort nWeekDay : 3
+    ushort nMonthDay : 6
+    ushort nMonth : 5
+    ushort nYear : 8
+}
+
+struct Foo {
+    int a
+    int b
+    float c
+    Place p
+    Place bf1 : 4
+    Place bf2 : 2
+    Place places[3]
+	Color colors[3]
+	//Color red
+	//Color blue
+}
+
+struct Bar {
+    int d
+    Foo* foo
+    int[4][3] m
+    Date date
+}
+
+struct Thing {
+    int abc
+}
+
+struct Person {
+    int age
+}
+
+struct Student : Person {
+    float gpa
+}
+
+struct Faculty : Person {
+    int wage
+}
+
+struct TA : Student, Faculty {
+    int hours
+}
+
+struct Baz : Bar 0x100 {
+	TA ta
+    int e
+    int thing
+    int* f
+    Foo g
+    Thing* things
+    char* hello [[utf8*]]
+    //wchar_t* wide_hello [[utf16*]]
+    //char[32] intrusive_hello [[utf8*]]
+    bool im_true +40
+    bool im_false
+    bool im_also_true
+	//RTTITest* test + 5
+}
+
+struct RTTITest 0x100 {
+	uintptr_t** vtable
+}
+
