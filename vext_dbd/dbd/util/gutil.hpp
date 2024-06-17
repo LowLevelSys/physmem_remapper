@@ -53,13 +53,14 @@ namespace gutil {
         }
 
         // Create a transformation matrix from the camera rotation
-        vmatrix temp_matrix = create_matrix(camera.rotation, vector3(0.f, 0.f, 0.f));
+        vmatrix temp_matrix{};
+        temp_matrix = create_matrix(camera.Rotation, vector3());
 
         vector3 axis_x(temp_matrix[0][0], temp_matrix[0][1], temp_matrix[0][2]);
         vector3 axis_y(temp_matrix[1][0], temp_matrix[1][1], temp_matrix[1][2]);
         vector3 axis_z(temp_matrix[2][0], temp_matrix[2][1], temp_matrix[2][2]);
 
-        vector3 camera_vec_location((float)camera.location.x, (float)camera.location.y, (float)camera.location.z);
+        vector3 camera_vec_location((float)camera.Location.x, (float)camera.Location.y, (float)camera.Location.z);
         vector3 world_vec_location((float)world_location.x, (float)world_location.y, (float)world_location.z);
 
         vector3 vdelta = world_vec_location - camera_vec_location;
@@ -76,7 +77,6 @@ namespace gutil {
         vector2 screen_location(0, 0);
         screen_location.x = screen_centerx + vtransformed.x * (screen_centerx / tanf(real_fov * deg_to_rad)) / vtransformed.z;
         screen_location.y = screen_centery - vtransformed.y * (screen_centery / tanf(real_fov * deg_to_rad)) / vtransformed.z;
-
 
         return screen_location;
     }

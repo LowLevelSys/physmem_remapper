@@ -19,22 +19,22 @@ namespace dbd_esp {
 		for (int i = 0; i < player_state_addresses.Num(); i++) {
 			APlayerState curr_player = g_proc->read<APlayerState>((void*)player_state_addresses[i]);
 
-			if (!curr_player.pawn_private)
+			if (!curr_player.PawnPrivate)
 				continue;
 			
-			APawn curr_pawn = g_proc->read<APawn>((void*)curr_player.pawn_private);
-			if (!curr_pawn.instigator)
+			APawn curr_pawn = g_proc->read<APawn>((void*)curr_player.PawnPrivate);
+			if (!curr_pawn.Instigator)
 				continue;
 
-			APawn curr_instigator = g_proc->read<APawn>((void*)curr_pawn.instigator);
-			if (!curr_instigator.root_component)
+			APawn curr_instigator = g_proc->read<APawn>((void*)curr_pawn.Instigator);
+			if (!curr_instigator.RootComponent)
 				continue;
 
-			std::string player_name = dbd_mem_util::read_fstring((void*)((uint64_t)player_state_addresses[i] + offsetof(APlayerState, player_name_private)));
-			USceneComponent curr_scene_component = g_proc->read<USceneComponent>((void*)curr_instigator.root_component);
+			std::string player_name = dbd_mem_util::read_fstring((void*)((uint64_t)player_state_addresses[i] + offsetof(APlayerState, PlayerNamePrivate)));
+			USceneComponent curr_scene_component = g_proc->read<USceneComponent>((void*)curr_instigator.RootComponent);
 
 			APlayerCameraManager cam = dbd::game_data::camera_manager;
-			vector2 root_comp = gutil::world_to_screen(cam.private_camera_cache.pov, cam.locked_fov, curr_scene_component.relative_location);
+			vector2 root_comp = gutil::world_to_screen(cam.CameraCachePrivate.pov, cam.DefaultFOV, curr_scene_component.relative_location);
 			if (!root_comp.x || !root_comp.y) {
 				log("Failed to project world to screen");
 				continue;
@@ -43,20 +43,18 @@ namespace dbd_esp {
 			overlay::draw_text(root_comp.x, root_comp.y, player_name.c_str(), IM_COL32(255, 255, 255, 255));
 		}
 
-		for (AActor* generator : dbd::game_data::generators) {
-			AActor generator_instance = g_proc->read<AActor>(generator);
-			APawn instigator = g_proc->read<APawn>(generator_instance.instigator);
+		//for (AActor* generator : dbd::game_data::generators) {
+		//	AActor generator_instance = g_proc->read<AActor>(generator);
+		//	USceneComponent curr_scene_component = g_proc->read<USceneComponent>((void*)generator_instance.root_component);
+		//	APlayerCameraManager cam = dbd::game_data::camera_manager;
+		//	vector2 root_comp = gutil::world_to_screen(cam.private_camera_cache.pov, cam.locked_fov, curr_scene_component.relative_location);
+		//	if (!root_comp.x || !root_comp.y) {
+		//		log("Failed to project world to screen");
+		//		continue;
+		//	}
 
-			USceneComponent curr_scene_component = g_proc->read<USceneComponent>((void*)instigator.root_component);
-			APlayerCameraManager cam = dbd::game_data::camera_manager;
-			vector2 root_comp = gutil::world_to_screen(cam.private_camera_cache.pov, cam.locked_fov, curr_scene_component.relative_location);
-			if (!root_comp.x || !root_comp.y) {
-				log("Failed to project world to screen");
-				continue;
-			}
-
-			overlay::draw_text(root_comp.x, root_comp.y, "Generator", IM_COL32(255, 255, 255, 255));
-		}
+		//	overlay::draw_text(root_comp.x, root_comp.y, "Generator", IM_COL32(255, 255, 255, 255));
+		//}
 
 		delete[] player_state_addresses.GetData();
 	}

@@ -33,7 +33,7 @@ namespace dbd {
 
 		namespace misc {
 			inline bool auto_skillcheck = true;
-			inline bool fov_changer = true;
+			inline bool fov_changer = false;
 			inline float fov = 120.f;
 		};
 	};

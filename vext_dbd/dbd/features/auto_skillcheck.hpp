@@ -25,8 +25,8 @@ namespace auto_skillcheck {
 		for (int i = 0; i < player_state_addresses.Num(); i++) {
 			APlayerState curr_player = g_proc->read<APlayerState>((void*)player_state_addresses[i]);
 
-			if (curr_player.pawn_private == dbd::game_data::player_controller.acknowledged_pawn) {
-				ADBDPlayer curr_dbd_player = g_proc->read<ADBDPlayer>((void*)curr_player.pawn_private);
+			if (curr_player.PawnPrivate == dbd::game_data::player_controller.acknowledged_pawn) {
+				ADBDPlayer curr_dbd_player = g_proc->read<ADBDPlayer>((void*)curr_player.PawnPrivate);
 				UPlayerInteractionHandler interaction_handler = g_proc->read<UPlayerInteractionHandler>((void*)curr_dbd_player.interaction_handler);
 				USkillCheck curr_skillcheck = g_proc->read<USkillCheck>((void*)interaction_handler.skillcheck);
 

@@ -76,7 +76,7 @@
     <IntDir>.\intermediate directory\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>..\output directory\</OutDir>
+    <OutDir>.\output directory\</OutDir>
     <IntDir>.\intermediate directory\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
