@@ -56,7 +56,6 @@ extern "C" void nmi_restoring(trap_frame_t* trap_frame) {
 }
 
 __int64 physmem_remapper_um_t::send_request(void* cmd) {
-
     spinlock_lock(&handler_lock);
 
     __int64 ret = asm_call_driver((uint64_t)cmd, caller_signature, (uint64_t)asm_nmi_restoring);
@@ -72,7 +71,6 @@ __int64 physmem_remapper_um_t::send_request(void* cmd) {
 }
 
 bool physmem_remapper_um_t::copy_virtual_memory(uint64_t source_cr3, uint64_t destination_cr3, void* source, void* destination, uint64_t size) {
-
     if (!inited || !NtUserGetCPD)
         return false;
 
@@ -96,10 +94,6 @@ uint64_t physmem_remapper_um_t::get_cr3(uint64_t pid) {
     if (!inited || !NtUserGetCPD)
         return 0;
 
-    auto nmi_panic_function = [&](uint64_t pid) -> uint64_t {
-        return get_cr3(pid);
-        };
-
     get_cr3_t get_cr3_cmd = { 0 };
     get_cr3_cmd.pid = pid;
 
@@ -115,10 +109,6 @@ uint64_t physmem_remapper_um_t::get_cr3(uint64_t pid) {
 uint64_t physmem_remapper_um_t::get_module_base(const char* module_name, uint64_t pid) {
     if (!inited || !NtUserGetCPD)
         return 0;
-
-    auto nmi_panic_function = [&](const char* module_name, uint64_t pid) -> uint64_t {
-        return get_module_base(module_name, pid);
-        };
 
     get_module_base_t get_module_base_cmd = { 0 };
     strncpy(get_module_base_cmd.module_name, module_name, MAX_PATH - 1);
@@ -137,10 +127,6 @@ uint64_t physmem_remapper_um_t::get_module_size(const char* module_name, uint64_
     if (!inited || !NtUserGetCPD)
         return 0;
 
-    auto nmi_panic_function = [&](const char* module_name, uint64_t pid) -> uint64_t {
-        return get_module_size(module_name, pid);
-        };
-
     get_module_size_t get_module_size_cmd = { 0 };
     strncpy(get_module_size_cmd.module_name, module_name, MAX_PATH - 1);
     get_module_size_cmd.pid = pid;
@@ -158,10 +144,6 @@ uint64_t physmem_remapper_um_t::get_pid_by_name(const char* name) {
     if (!inited || !NtUserGetCPD)
         return 0;
 
-    auto nmi_panic_function = [&](const char* name) -> uint64_t {
-        return get_pid_by_name(name);
-        };
-
     get_pid_by_name_t get_pid_by_name_cmd = { 0 };
     strncpy(get_pid_by_name_cmd.name, name, MAX_PATH - 1);
 
@@ -177,10 +159,6 @@ uint64_t physmem_remapper_um_t::get_pid_by_name(const char* name) {
 uint64_t physmem_remapper_um_t::get_ldr_data_table_entry_count(uint64_t pid) {
     if (!inited || !NtUserGetCPD)
         return {};
-
-    auto nmi_panic_function = [&](const char* name) -> uint64_t {
-        return get_pid_by_name(name);
-        };
 
     get_ldr_data_table_entry_count_t get_ldr_data_table_entry = { 0 };
     get_ldr_data_table_entry.pid = pid;
@@ -198,10 +176,6 @@ bool physmem_remapper_um_t::get_data_table_entry_info(uint64_t pid, module_info_
     if (!inited || !NtUserGetCPD)
         return {};
 
-    auto nmi_panic_function = [&](const char* name) -> uint64_t {
-        return get_data_table_entry_info(pid, info_array);
-        };
-
     cmd_get_data_table_entry_info_t get_module_at_index = { 0 };
     get_module_at_index.pid = pid;
     get_module_at_index.info_array = info_array;
@@ -216,13 +190,8 @@ bool physmem_remapper_um_t::get_data_table_entry_info(uint64_t pid, module_info_
 }
 
 bool physmem_remapper_um_t::remove_apc() {
-
     if (!inited || !NtUserGetCPD)
         return 0;
-
-    auto nmi_panic_function = [&](uint64_t pid) -> uint64_t {
-        return remove_apc();
-        };
 
     command_t cmd = { 0 };
     cmd.call_type = cmd_remove_apc;
@@ -233,13 +202,8 @@ bool physmem_remapper_um_t::remove_apc() {
 }
 
 bool physmem_remapper_um_t::restore_apc() {
-
     if (!inited || !NtUserGetCPD)
         return 0;
-
-    auto nmi_panic_function = [&](uint64_t pid) -> uint64_t {
-        return restore_apc();
-        };
 
     command_t cmd = { 0 };
     cmd.call_type = cmd_restore_apc;
