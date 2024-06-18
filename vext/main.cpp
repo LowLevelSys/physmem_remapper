@@ -11,7 +11,7 @@ int main(void) {
 
 	uint64_t ow_base = g_proc->get_module_base("notepad.exe");
 	if (!ow_base) {
-		log("Failed to get Ow base");
+		log("Failed to get notepad base");
 		getchar();
 		return -1;
 	}

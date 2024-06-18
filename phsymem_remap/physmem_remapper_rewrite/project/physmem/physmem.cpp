@@ -169,6 +169,10 @@ namespace physmem {
 		Util
 	*/
 
+	void free_mem_copying_pte_table(void) {
+		memset(page_tables.memcpy_pt_table, 0, 512 * sizeof(pte_64));
+	}
+
 	project_status get_remapping_entry(void* mem, remapped_entry_t*& remapping_entry) {
 		project_status status = status_remapping_entry_found;
 		va_64 target_va = { 0 };

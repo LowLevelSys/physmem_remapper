@@ -7,6 +7,8 @@
 extern "C" uint16_t __readcs(void);
 extern "C" void _cli(void);
 extern "C" void _sti(void);
+extern "C" void __swapgs(void);
+extern "C" KPCR* __getpcr(void);
 
 extern "C" void asm_nmi_handler(void);
 
@@ -24,14 +26,15 @@ namespace interrupts {
 
 	// Exposed API's
 	bool is_initialized(void);
+    void* get_windows_nmi_handler(void);
+
 	segment_descriptor_register_64 get_constructed_idt_ptr(void);
-	void* get_windows_nmi_handler(void);
     project_status remove_apc();
     project_status restore_apc();
 };
 
 /*
-APC
+    APC
 */
 typedef struct
 {

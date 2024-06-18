@@ -1,9 +1,13 @@
+.data
+stack_id qword 0deedh
+
 .code
 
-extern nmi_handler:proc
-extern nmi_shellcode:qword
+extern nmi_restoring:proc
+extern NtUserGetCPD:qword
 
 save_general_regs macro
+	push rsp
     push rax
 	push rbx
 	push rcx
@@ -37,47 +41,33 @@ restore_general_regs macro
 	pop rcx
 	pop rbx
 	pop rax
+	pop rsp
 endm
 
-asm_nmi_handler proc
+asm_nmi_restoring proc
+	
 	save_general_regs
 
 	; Pass a ptr to the struct as the first arg
     mov rcx, rsp
 
 	sub rsp, 40h
-    call nmi_handler
+    call nmi_restoring ; Loads info from the nmi info struct and restores rsp and recursively calls the target function again
 	add rsp, 40h
 
 	restore_general_regs
 
-	; Will basically change idt, cr3 and will jump to the windows nmi handler
-	jmp qword ptr [nmi_shellcode]
-asm_nmi_handler endp
-
-__readcs proc
-	mov rax, cs
+	; the c handler set up the stack for us to be just able to return
 	ret
-__readcs endp
+asm_nmi_restoring endp
 
-_sti proc
-	sti	
-	ret
-_sti endp
+asm_call_driver proc
 
-_cli proc
-	cli
-	ret
-_cli endp	
+	push qword ptr [stack_id]
+	call qword ptr [NtUserGetCPD]
+	add rsp, 8h
 
-__swapgs proc
-	swapgs
 	ret
-__swapgs endp
-
-__getpcr proc
-    mov rax, qword ptr gs:[18h]
-	ret
-__getpcr endp
+asm_call_driver endp
 
 end

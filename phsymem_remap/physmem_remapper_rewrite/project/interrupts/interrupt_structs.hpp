@@ -92,3 +92,5 @@ typedef union {
 
     uint64_t flags;
 } rflags;
+
+#define IA32_STAR 0xC0000081
