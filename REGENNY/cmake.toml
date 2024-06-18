@@ -4,6 +4,7 @@ name = "regenny"
 cmake-before=""" 
 add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
 """
+languages = ["C", "CXX", "ASM_MASM"]
 
 [vcpkg]
 version = "2024.05.24"
@@ -42,6 +43,7 @@ type = "executable"
 sources = [
     "src/**.cpp",
     "src/**.hpp",
+    "src/**.asm",
     "thirdparty/**.cpp",
     "thirdparty/**.hpp",
     "thirdparty/**.h",

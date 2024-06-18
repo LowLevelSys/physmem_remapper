@@ -30,7 +30,12 @@ endif()
  
 add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
 
-project(regenny)
+project(regenny
+	LANGUAGES
+		C
+		CXX
+		ASM_MASM
+)
 
 if(CMKR_ROOT_PROJECT AND NOT CMKR_DISABLE_VCPKG)
 	include(FetchContent)
@@ -102,6 +107,7 @@ list(APPEND regenny_SOURCES
 	"src/Utility.cpp"
 	"src/arch/Arch.cpp"
 	"src/arch/Windows.cpp"
+	"src/driver_um_lib.cpp"
 	"src/node/Array.cpp"
 	"src/node/Base.cpp"
 	"src/node/Bitfield.cpp"
@@ -121,6 +127,10 @@ list(APPEND regenny_SOURCES
 	"src/Utility.hpp"
 	"src/arch/Arch.hpp"
 	"src/arch/Windows.hpp"
+	"src/driver_includes.hpp"
+	"src/driver_shared.hpp"
+	"src/driver_um_lib.hpp"
+	"src/drv.hpp"
 	"src/node/Array.hpp"
 	"src/node/Base.hpp"
 	"src/node/Bitfield.hpp"
@@ -130,6 +140,7 @@ list(APPEND regenny_SOURCES
 	"src/node/Undefined.hpp"
 	"src/node/UndefinedBitfield.hpp"
 	"src/node/Variable.hpp"
+	"src/nmi_restoring_assembly.asm"
 	"thirdparty/SDL_Trigger/sdl_trigger.cpp"
 	"thirdparty/scope_gaurd/scope_guard.hpp"
 	"thirdparty/SDL_Trigger/sdl_trigger.h"

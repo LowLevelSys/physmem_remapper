@@ -7,23 +7,18 @@
 #include <TlHelp32.h>
 
 #include "Windows.hpp"
-#include "../build/drv.hpp"
+#include "drv.hpp"
 
 namespace arch {
 WindowsProcess::WindowsProcess(std::string process_name) : Process{} {
-    g_proc = process_t::get_inst();
+    g_proc = process_t::get_inst(process_name);
 
     if (!g_proc)
         return;
 
-    bool result = g_proc->init_process(process_name);
-    if (!result)
-        return;
-
-    m_process = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION, FALSE, g_proc->get_target_pid());
+    m_process = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, g_proc->get_target_pid());
     if (!m_process)
         return;
-
 
     // Iterate modules.
 	std::vector<module_info_t> modules = g_proc->get_modules();
@@ -68,9 +63,8 @@ WindowsProcess::WindowsProcess(std::string process_name) : Process{} {
                 ro.execute = a.execute;
                 ro.mem.resize(ro.size);
 
-                if (read(ro.start, ro.mem.data(), ro.size)) {
+                if (read(ro.start, ro.mem.data(), ro.size))
                     m_read_only_allocations.emplace_back(std::move(ro));
-                }
             }
 
             m_allocations.emplace_back(std::move(a));
@@ -81,13 +75,12 @@ WindowsProcess::WindowsProcess(std::string process_name) : Process{} {
 }
 
 uint32_t WindowsProcess::process_id() {
-    return GetProcessId(m_process);
+    return g_proc->get_target_pid();
 }
 
 bool WindowsProcess::ok() {
-    if (m_process == nullptr) {
+    if (m_process == nullptr)
         return false;
-    }
 
     DWORD exitcode{};
 
@@ -97,77 +90,63 @@ bool WindowsProcess::ok() {
 }
 
 bool WindowsProcess::handle_write(uintptr_t address, void* buffer, size_t size) {
-    SIZE_T bytes_written{};
-
-    bool result = g_proc->write((void*)address, buffer, size);
-
-    return result;
+    return g_proc->write((void*)address, buffer, size);
 }
 
 bool WindowsProcess::handle_read(uintptr_t address, void* buffer, size_t size) {
-    SIZE_T bytes_read{};
-
-    bool result = g_proc->read_arr<uint64_t>(address, buffer, size);
-
-    return result;
+    return g_proc->read_array(buffer, (void*)address, size);
 }
 
+// remove allocation and protection stuff for now.
 std::optional<uintptr_t> WindowsProcess::handle_allocate(uintptr_t address, size_t size, uint64_t flags) {
-   /* if (auto ptr = VirtualAllocEx(m_process, (LPVOID)address, size, MEM_COMMIT, (DWORD)flags); ptr != nullptr) {
+   /* 
+   if (auto ptr = VirtualAllocEx(m_process, (LPVOID)address, size, MEM_COMMIT, (DWORD)flags); ptr != nullptr)
         return (uintptr_t)ptr;
-    }*/
+   */
 
     return std::nullopt;
 }
 
 std::optional<uint64_t> WindowsProcess::handle_protect(uintptr_t address, size_t size, uint64_t flags) {
-    /*DWORD old_protect{};
-
-    if (VirtualProtectEx(m_process, (LPVOID)address, size, (DWORD)flags, &old_protect) != 0) {
+    /*
+    DWORD old_protect{};
+    if (VirtualProtectEx(m_process, (LPVOID)address, size, (DWORD)flags, &old_protect) != 0)
         return (uint64_t)old_protect;
-    }*/
+    */
 
     return std::nullopt;
 }
 
 std::optional<uintptr_t> WindowsProcess::get_complete_object_locator_ptr_from_vtable(uintptr_t vtable) {
-    if (vtable == 0) {
+    if (vtable == 0)
         return std::nullopt;
-    }
 
     return Process::read<uintptr_t>(vtable - sizeof(void*));
 }
 
 std::optional<uintptr_t> WindowsProcess::get_complete_object_locator_ptr(uintptr_t ptr) {
-    if (ptr == 0) {
+    if (ptr == 0)
         return std::nullopt;
-    }
 
     auto vtable = Process::read<uintptr_t>(ptr);
-
-    if (!vtable || *vtable == 0) {
+    if (!vtable || *vtable == 0)
         return std::nullopt;
-    }
 
     return get_complete_object_locator_ptr_from_vtable(*vtable);
 }
 
 std::optional<_s_RTTICompleteObjectLocator> WindowsProcess::get_complete_object_locator(uintptr_t ptr) {
     auto out_ptr = get_complete_object_locator_ptr(ptr);
-
-    if (!out_ptr) {
+    if (!out_ptr)
         return std::nullopt;
-    }
 
     return Process::read<_s_RTTICompleteObjectLocator>(*out_ptr);
 }
 
 std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> WindowsProcess::try_get_typeinfo_from_locator(uintptr_t locator_ptr) {
     auto locator = Process::read<_s_RTTICompleteObjectLocator>(locator_ptr);
-
-    if (!locator) {
+    if (!locator)
         return std::nullopt;
-    }
 
     auto type_desc_pre = locator->pTypeDescriptor;
 
@@ -181,15 +160,12 @@ std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> WindowsProcess:
 
     if (locator->signature == COL_SIG_REV0) {
         auto module_within = get_module_within(locator_ptr);
-
-        if (!module_within) {
+        if (!module_within)
             return std::nullopt;
-        }
 
         image_base = module_within->start;
-    } else {
+    } else
         image_base = locator_ptr - locator->pSelf;
-    }
 
     auto ti = image_base + type_desc_pre;
 
@@ -204,29 +180,23 @@ std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> WindowsProcess:
 }
 
 std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> WindowsProcess::try_get_typeinfo_from_ptr(uintptr_t ptr) {
-    if (ptr == 0) {
+    if (ptr == 0)
         return std::nullopt;
-    }
 
     auto locator_ptr = get_complete_object_locator_ptr(ptr);
-
-    if (!locator_ptr || *locator_ptr == 0) {
+    if (!locator_ptr || *locator_ptr == 0)
         return std::nullopt;
-    }
 
     return try_get_typeinfo_from_locator(*locator_ptr);
 }
 
 std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> WindowsProcess::try_get_typeinfo_from_vtable(uintptr_t vtable) {
-    if (vtable == 0) {
+    if (vtable == 0)
         return std::nullopt;
-    }
 
     auto locator_ptr = get_complete_object_locator_ptr_from_vtable(vtable);
-
-    if (!locator_ptr || *locator_ptr == 0) {
+    if (!locator_ptr || *locator_ptr == 0)
         return std::nullopt;
-    }
 
     return try_get_typeinfo_from_locator(*locator_ptr);
 }
@@ -236,47 +206,37 @@ HANDLE WindowsProcess::create_remote_thread(uintptr_t address, uintptr_t param) 
 }
 
 std::optional<std::string> WindowsProcess::get_typename(uintptr_t ptr) {
-    if (ptr == 0) {
+    if (ptr == 0)
         return std::nullopt;
-    }
 
     auto vtable = Process::read<uintptr_t>(ptr);
-
-    if (!vtable || *vtable == 0) {
+    if (!vtable || *vtable == 0)
         return std::nullopt;
-    }
 
     return get_typename_from_vtable(*vtable);
 }
 
 std::optional<std::string> WindowsProcess::get_typename_from_vtable(uintptr_t ptr) try {
-    if (ptr == 0) {
+    if (ptr == 0)
         return std::nullopt;
-    }
 
     auto typeinfo = try_get_typeinfo_from_vtable(ptr);
-
-    if (!typeinfo) {
+    if (!typeinfo)
         return std::nullopt;
-    }
 
     auto ti = (std::type_info*)&*typeinfo;
-    if (ti->raw_name()[0] != '.' || ti->raw_name()[1] != '?') {
+    if (ti->raw_name()[0] != '.' || ti->raw_name()[1] != '?')
         return std::nullopt;
-    }
 
-    if (std::string_view{ti->raw_name()}.find("@") == std::string_view::npos) {
+    if (std::string_view{ti->raw_name()}.find("@") == std::string_view::npos)
         return std::nullopt;
-    }
 
     auto raw_data = (__std_type_info_data*)((uintptr_t)ti + sizeof(void*));
     raw_data->_UndecoratedName = nullptr; // fixes a crash if memory already allocated because it's not allocated by us
 
-    const auto result = std::string_view{ti->name()};
-
-    if (result.empty() || result == " ") {
+    const auto result = std::string_view{ ti->name() };
+    if (result.empty() || result == " ")
         return std::nullopt;
-    }
 
     return std::string{result};
 } catch(...) {
@@ -285,16 +245,13 @@ std::optional<std::string> WindowsProcess::get_typename_from_vtable(uintptr_t pt
 
 std::map<uint32_t, std::string> WindowsHelpers::processes() {
     auto snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-
-    if (snapshot == INVALID_HANDLE_VALUE) {
+    if (snapshot == INVALID_HANDLE_VALUE)
         return {};
-    }
 
     std::map<uint32_t, std::string> pids{};
     PROCESSENTRY32 entry{};
 
     entry.dwSize = sizeof(entry);
-
     if (Process32First(snapshot, &entry)) {
         do {
             pids[entry.th32ProcessID] = entry.szExeFile;
