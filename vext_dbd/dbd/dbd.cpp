@@ -7,6 +7,8 @@
 
 #include "../overlay/overlay.hpp"
 
+std::once_flag obtainedObjectClasses;
+
 namespace dbd {
 
 	/*
@@ -25,6 +27,77 @@ namespace dbd {
 
 		return game_data::usable_game_data;
 	}
+
+	static std::vector<UObject*> uobjects;
+
+	// This is complete cancer, I'm sorry... lol...
+
+	static void clear_game_data() {
+		game_data::generators.clear();
+		game_data::searchables.clear();
+		game_data::totems.clear();
+		game_data::hatches.clear();
+		game_data::pallets.clear();
+		game_data::windows.clear();
+		game_data::collectables.clear();
+		game_data::breakables.clear();
+	}
+
+	static void initialize_object_classes() {
+		uobjects = game_data::uobjects.GetAllObjects();
+		for (auto& cls : game_data::objectClasses) {
+			for (auto& object : uobjects) {
+				if (!object || object->GetComparisonIndex() != cls.first) continue;
+				cls.second = (UClass*)object;
+				break;
+			}
+		}
+	}
+
+	static void update_actor_classes(AActor* actor) {
+		if (actor->IsA(game_data::objectClasses[COMPARISON_IDS::GENERATOR]))
+			game_data::generators.push_back(actor);
+		else if (actor->IsA(game_data::objectClasses[COMPARISON_IDS::SEARCHABLE]))
+			game_data::searchables.push_back(actor);
+		else if (actor->IsA(game_data::objectClasses[COMPARISON_IDS::TOTEM]))
+			game_data::totems.push_back(actor);
+		else if (actor->IsA(game_data::objectClasses[COMPARISON_IDS::HATCH]))
+			game_data::hatches.push_back(actor);
+		else if (actor->IsA(game_data::objectClasses[COMPARISON_IDS::PALLET]))
+			game_data::pallets.push_back(actor);
+		else if (actor->IsA(game_data::objectClasses[COMPARISON_IDS::WINDOW]))
+			game_data::windows.push_back(actor);
+		else if (actor->IsA(game_data::objectClasses[COMPARISON_IDS::COLLECTABLE]))
+			game_data::collectables.push_back(actor);
+		else if (actor->IsA(game_data::objectClasses[COMPARISON_IDS::ESCAPE_DOOR]))
+			game_data::escape_doors.push_back(actor);
+		else if (actor->IsA(game_data::objectClasses[COMPARISON_IDS::BREAKABLE_BASE]))
+			game_data::breakables.push_back(actor);
+
+		game_data::all.push_back(actor);
+	}
+
+	static void update_objects() {
+		if (!game_data::uworld_data.persistent_level)
+			clear_game_data();
+
+		std::call_once(obtainedObjectClasses, initialize_object_classes);
+
+		ULevel level_instance = g_proc->read<ULevel>(game_data::uworld_data.persistent_level);
+
+		std::vector<AActor*> actors(level_instance.actors.Count);
+		g_proc->read_array(actors.data(), (void*)(uint64_t(level_instance.actors.Data)), static_cast<uint64_t>(level_instance.actors.Count * sizeof(AActor*)));
+
+		for (auto& actor : actors) {
+			if (!actor || std::find(game_data::all.begin(), game_data::all.end(), actor) != game_data::all.end()) continue;
+			update_actor_classes(actor);
+		}
+	}
+
+	struct vInt {
+		int x;
+		int y;
+	};
 
 	bool update_base_game_data(void) {
 		if (!game_base)
@@ -59,42 +132,10 @@ namespace dbd {
 			return false;
 
 		game_data::uobjects = g_proc->read<TUObjectArray>((void*)(game_base + offsets::OFFSET_GOBJECTS));
-
-		//// Doesn't seem to work quite properly... wip... seems like we're either not finding the correct generator class, or our comparison isn't correct, OR maybe the generator isn't in the persistent level? it should be though...?
-		//UObject* default_generator = game_data::uobjects.FindObject("DeadByDaylight.DBDOutlineComponent");
-		//UObject generator = g_proc->read<UObject>(default_generator);
-		//UClass* outline_class = (generator.Class);
-
-		//uint64_t level_list = g_proc->read<uint64_t>(game_data::uworld_data.levels.Data);
-		//for (int j = 0; j < game_data::uworld_data.levels.Count; j++) {
-		//	ULevel* level = (ULevel*)(level_list + j * 0x8);
-		//	ULevel level_instance = g_proc->read<ULevel>(level);
-		//	uint64_t actor_list = g_proc->read<uint64_t>(level_instance.actors.Data);
-		//	for (int i = 0; i < level_instance.actors.Count; i++) {
-		//		AActor* actor = (AActor*)(actor_list + static_cast<unsigned long long>(i) * 0x8);
-		//		AActor actor_instance = g_proc->read<AActor>(actor);
-
-
-		//		std::string full_actor_name = actor->GetFullName();
-		//		if (actor->IsA(outline_class))
-		//			log("Actor (%05d) : %s", i, full_actor_name.c_str());
-
-		//		if (actor_instance.InstanceComponents.Count < 0 || actor_instance.InstanceComponents.Count > actor_instance.InstanceComponents.Max)
-		//			continue;
-
-		//		uint64_t instance_components = g_proc->read<uint64_t>(actor_instance.InstanceComponents.Data);
-		//		for (int i = 0; i < actor_instance.InstanceComponents.Count; i++) {
-		//			UActorComponent* component_ptr = (UActorComponent*)(instance_components + i * 0x8);
-		//			UActorComponent component = g_proc->read<UActorComponent>(component_ptr);
-
-		//			std::string componentName = component.Name.GetName();
-		//			if (component_ptr->IsA(outline_class)) {
-		//				UDBDOutlineComponent outline = g_proc->read<UDBDOutlineComponent>(component_ptr);
-		//				log("outline: %s", component_ptr->GetFullName());
-		//			}
-		//		}
-		//	}
-		//}
+		//game_data::uobjects.Log(); // Debug print all object names...
+		
+		// The below is just all super cancerous, but it works for now.
+		update_objects();
 
 		game_data::camera_manager = g_proc->read<APlayerCameraManager>((void*)game_data::player_controller.camera_manager);
 

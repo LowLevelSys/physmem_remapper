@@ -90,11 +90,11 @@ struct vector3 {
 		return { x -= ape.x, y -= ape.y, z -= ape.z };
 	}
 
-	float length() {
+	float length() const {
 		return sqrt((x * x) + (y * y) + (z * z));
 	}
 
-	float length2D() {
+	float length2D() const {
 		return sqrt((x * x) + (y * y));
 	}
 
@@ -102,12 +102,23 @@ struct vector3 {
 		return (*this - ape).length();
 	}
 
-	float dist2D(vector3 ape){
+	float dist2D(vector3 ape) {
 		return (*this - ape).length2D();
 	}
 
-	float dot(vector3& v) {
+	float dot(vector3& v) const {
 		return x * v.x + y * v.y + z * v.z;
+	}
+
+	float normalize() {
+		float length = this->length();
+		if (!length)
+			this->x = this->y = this->z = 1.f;
+		else {
+			this->x /= length;
+			this->y /= length;
+			this->z /= length;
+		}
 	}
 
 	vector3() : x(0.f), y(0.f), z(0.f) {};
@@ -118,7 +129,7 @@ struct vmatrix {
 	vmatrix() {
 		for (int i = 0; i < 3; i++)
 			for (int j = 0; j < 4; j++)
-				m_flMatVal[i][j] = {};
+				m_flMatVal[i][j] = 0.f;
 	}
 	vmatrix(
 		float m00, float m01, float m02, float m03,
@@ -138,6 +149,14 @@ struct vmatrix {
 
 	float* Base() { return &m_flMatVal[0][0]; }
 	const float* Base() const { return &m_flMatVal[0][0]; }
-
+	void Print() const {
+		for (int i = 0; i < 3; i++) {
+			for (int j = 0; j < 4; j++) {
+				printf("%f ", this->m_flMatVal[i][j]);
+			}
+			printf("\n");
+		}
+		printf("\n");
+	}
 	float m_flMatVal[3][4];
 };
