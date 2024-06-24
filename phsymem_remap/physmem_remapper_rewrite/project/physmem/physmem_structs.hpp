@@ -216,7 +216,10 @@ enum restorable_until {
     nothing_removeable,    // You can free nothing as there is another mapping in the remapped pte table
 };
 
+#pragma pack(push, 1)
 struct constructed_page_tables {
+    remapped_entry_t remapping_list[REMAPPING_COUNT];
+
     // We copy the top layer of pml4's and insert a new entry for memory copying util
     pml4e_64* pml4_table;
 
@@ -244,6 +247,5 @@ struct constructed_page_tables {
     bool is_pdpt_table_occupied[TABLE_COUNT];
     bool is_pd_table_occupied[TABLE_COUNT];
     bool is_pt_table_occupied[TABLE_COUNT];
-
-    remapped_entry_t remapping_list[REMAPPING_COUNT];
 };
+#pragma pack(pop)

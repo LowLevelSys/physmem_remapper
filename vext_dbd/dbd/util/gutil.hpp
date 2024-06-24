@@ -64,21 +64,11 @@ namespace gutil {
         vector3 axis_y(temp_matrix[1][0], temp_matrix[1][1], temp_matrix[1][2]);
         vector3 axis_z(temp_matrix[2][0], temp_matrix[2][1], temp_matrix[2][2]);
 
-        log("axis_x: %.3f %.3f %.3f", axis_x.x, axis_x.y, axis_x.z);
-        log("axis_y: %.3f %.3f %.3f", axis_y.x, axis_y.y, axis_y.z);
-        log("axis_z: %.3f %.3f %.3f", axis_z.x, axis_z.y, axis_z.z);
-
         vector3 camera_vec_location(camera.Location.x, camera.Location.y, camera.Location.z);
         vector3 world_vec_location(world_location.x, world_location.y, world_location.z);
 
-        log("camera_vec_location: %.3f %.3f %.3f", camera_vec_location.x, camera_vec_location.y, camera_vec_location.z);
-        log("world_vec_location: %.3f %.3f %.3f", world_vec_location.x, world_vec_location.y, world_vec_location.z);
-
         vector3 vdelta = world_vec_location - camera_vec_location;
         vector3 vtransformed(vdelta.dot(axis_y), vdelta.dot(axis_z), vdelta.dot(axis_x));
-
-        log("vdelta: %.3f %.3f %.3f", vdelta.x, vdelta.y, vdelta.z);
-        log("vtransformed: %.3f %.3f %.3f\n", vtransformed.x, vtransformed.y, vtransformed.z);
 
         // Avoid division by zero
         if (vtransformed.z < 1.0f)
@@ -88,8 +78,6 @@ namespace gutil {
         vector2 screen_location(0, 0);
         screen_location.x = screen_centerx + vtransformed.x * (screen_centerx / tanf((fov * 0.5f) * deg_to_rad)) / vtransformed.z;
         screen_location.y = screen_centery - vtransformed.y * (screen_centery / tanf((fov * 0.5f) * deg_to_rad)) / vtransformed.z;
-
-        log("screen_location: %.2f %.2f", screen_location.x, screen_location.y);
 
         return screen_location;
     }

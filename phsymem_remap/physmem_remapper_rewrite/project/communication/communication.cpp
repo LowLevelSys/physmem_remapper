@@ -96,39 +96,31 @@ namespace communication {
         return status;
     }
 
-    project_status ensure_driver_mapping(void* driver_base, uint64_t driver_size) {
+    project_status setup_cr3_mappings(void* driver_base, uint64_t driver_size) {
         project_status status = status_success;
 
         // First unset the global flag of the driver pages to avoid it staying in the tlb
         status = physmem::unset_global_flag_for_range(driver_base, driver_size, physmem::get_system_cr3().flags);
         if (status != status_success) {
-            project_log_error("Failed to unset the global flag on one of the drivers pages");
+            project_log_error("Failed to unset the global flag on one of the drivers pages with status %d", status);
             return status;
         }
 
         // Then ensure the driver mapping in our cr3
         status = physmem::ensure_memory_mapping_for_range(driver_base, driver_size, physmem::get_system_cr3().flags);
         if (status != status_success) {
-            project_log_error("Failed to ensure driver mapping");
+            project_log_error("Failed to ensure driver mapping with status %d", status);
             project_log_error("If you remove it from physical memory now and call it, you WILL bsod");
             return status;
         }
-
-        _cli();
-        uint64_t old_cr3 = __readcr3();
-        __writecr3(physmem::get_constructed_cr3().flags);
-
+        
+        // Partially hide the shellcode
         status = physmem::overwrite_virtual_address_mapping(enter_constructed_space_shown, enter_constructed_space_executed,
                                                             physmem::get_system_cr3().flags, physmem::get_system_cr3().flags);
         if (status != status_success) {
-            __writecr3(old_cr3);
-            _sti();
-            project_log_error("Failed to ensure driver mapping");
+            project_log_error("Failed to hide shellcode with status %d", status);
             return status;
         }
-
-        __writecr3(old_cr3);
-        _sti();
 
         return status;
     }
@@ -184,15 +176,13 @@ namespace communication {
         if (status != status_success)
             goto cleanup;
 
-        status = ensure_driver_mapping(driver_base, driver_size);
+        status = setup_cr3_mappings(driver_base, driver_size);
         if (status != status_success)
             goto cleanup;
 
-        shellcode::log_shellcode_addresses();
-
-        status = init_data_ptr_hook();
-        if (status != status_success)
-            goto cleanup;
+       status = init_data_ptr_hook();
+       if (status != status_success)
+           goto cleanup;
 
     cleanup:
         return status;

@@ -22,7 +22,7 @@ namespace physmem {
 	cr3 constructed_cr3 = { 0 };
 	cr3 kernel_cr3 = { 0 };
 
-	constructed_page_tables page_tables = { 0 };
+	constructed_page_tables page_tables;
 	bool initialized = false;
 
 	/*
@@ -41,6 +41,8 @@ namespace physmem {
 	project_status allocate_page_tables(void) {
 		PHYSICAL_ADDRESS max_addr = { 0 };
 		max_addr.QuadPart = MAXULONG64;
+
+		crt::memset(&page_tables, 0, sizeof(page_tables));
 
 		page_tables.pml4_table = (pml4e_64*)allocate_zero_table(max_addr);
 		if (!page_tables.pml4_table)
@@ -170,7 +172,7 @@ namespace physmem {
 	*/
 
 	void free_mem_copying_pte_table(void) {
-		memset(page_tables.memcpy_pt_table, 0, 512 * sizeof(pte_64));
+		crt::memset(page_tables.memcpy_pt_table, 0, 512 * sizeof(pte_64));
 	}
 
 	project_status get_remapping_entry(void* mem, remapped_entry_t*& remapping_entry) {
@@ -264,8 +266,6 @@ namespace physmem {
 	}
 
 	project_status add_remapping_entry(remapped_entry_t new_entry) {
-		project_status status = status_success;
-
 		for (uint32_t i = 0; i < REMAPPING_COUNT; i++) {
 			remapped_entry_t* curr_entry = &page_tables.remapping_list[i];
 
@@ -275,18 +275,15 @@ namespace physmem {
 			crt::memcpy(curr_entry, &new_entry, sizeof(remapped_entry_t));
 			curr_entry->used = true;
 
-			break;
+			return status_success;
 		}
 
-		status = status_remapping_list_full;
-		return status;
+		return status_remapping_list_full;
 	}
 
 	project_status remove_remapping_entry(remapped_entry_t* remapping_entry) {
 		if (!remapping_entry)
 			return status_invalid_parameter;
-
-		project_status status = status_success;
 
 		for (uint32_t i = 0; i < REMAPPING_COUNT; i++) {
 			remapped_entry_t* curr_entry = &page_tables.remapping_list[i];
@@ -295,14 +292,10 @@ namespace physmem {
 				continue;
 
 			crt::memset(curr_entry, 0, sizeof(remapped_entry_t));
-
-			status = status_success;
-			return status;
+			return status_success;
 		}
 
-		status = status_remapping_entry_not_found;
-		return status;
-
+		return status_remapping_entry_not_found;
 	}
 
 	project_status get_max_remapping_level(remapped_entry_t* remapping_entry, uint64_t target_address, usable_until& usable_level) {
@@ -393,9 +386,9 @@ namespace physmem {
 		if (!physical_address || !(physical_address >> 12))
 			return status_invalid_parameter;
 
-		if (__readcr3() != constructed_cr3.flags) {
+		if (__readcr3() != constructed_cr3.flags)
 			return status_wrong_context;
-		}
+		
 
 		uint32_t pt_idx = pt_helpers::find_free_pt_index(page_tables.memcpy_pt_table);
 		if (!pt_helpers::is_index_valid(pt_idx))
@@ -427,6 +420,7 @@ namespace physmem {
 		generated_va = (void*)generated_address.flags;
 
 		__invlpg(generated_va);
+		_mm_mfence();
 
 		return status_success;
 	}
@@ -445,6 +439,7 @@ namespace physmem {
 		pte.flags = 0;
 
 		__invlpg(mapped_page);
+		_mm_mfence();
 	}
 
 	void safely_unmap_4kb_page(void* mapped_page) {
@@ -624,9 +619,9 @@ namespace physmem {
 		}
 
 		physical_address = (mapped_pte_entry->page_frame_number << 12) + va.offset_4kb;
-		if (!physical_address) {
+		if (!physical_address)
 			status = status_invalid_return_value;
-		}
+		
 
 		goto cleanup;
 
@@ -643,12 +638,11 @@ namespace physmem {
 		if (!initialized)
 			return status_not_initialized;
 
-		if (!ensured_size ||!mem ||!mem_cr3_u64)
+		if (!ensured_size || !mem || !mem_cr3_u64)
 			return status_invalid_parameter;
 
-		if (__readcr3() != constructed_cr3.flags) {
+		if (__readcr3() != constructed_cr3.flags)
 			return status_wrong_context;
-		}
 
 		va_64 mem_va = { 0 };
 		cr3 mem_cr3 = { 0 };
@@ -711,7 +705,7 @@ namespace physmem {
 			new_entry.pdpt_table.large_page = true;
 			new_entry.pdpt_table.table = my_pdpt_table;
 
-			add_remapping_entry(new_entry);
+			status = add_remapping_entry(new_entry);
 
 			*ensured_size = 0x40000000 - mem_va.offset_1gb;
 
@@ -748,8 +742,8 @@ namespace physmem {
 			crt::memcpy(my_pdpt_table, mapped_pdpt_table, sizeof(pdpte_64) * 512);
 			crt::memcpy(&my_pml4_table[mem_va.pml4e_idx], &mapped_pml4_table[mem_va.pml4e_idx], sizeof(pml4e_64));
 
-			my_pml4_table[mem_va.pml4e_idx].page_frame_number = pdpt_phys >> 12;
 			my_pdpt_table[mem_va.pdpte_idx].page_frame_number = pd_phys >> 12;
+			my_pml4_table[mem_va.pml4e_idx].page_frame_number = pdpt_phys >> 12;
 
 			// Create a new remapping entry
 			new_entry.used = true;
@@ -761,7 +755,7 @@ namespace physmem {
 			new_entry.pd_table.large_page = true;
 			new_entry.pd_table.table = my_pde_table;
 
-			add_remapping_entry(new_entry);
+			status = add_remapping_entry(new_entry);
 
 			*ensured_size = 0x200000 - mem_va.offset_2mb;
 
@@ -807,10 +801,10 @@ namespace physmem {
 		crt::memcpy(my_pdpt_table, mapped_pdpt_table, sizeof(pdpte_64) * 512);
 		crt::memcpy(&my_pml4_table[mem_va.pml4e_idx], &mapped_pml4_table[mem_va.pml4e_idx], sizeof(pml4e_64));
 
-		my_pml4_table[mem_va.pml4e_idx].page_frame_number = pdpt_phys >> 12;
-		my_pdpt_table[mem_va.pdpte_idx].page_frame_number = pd_phys >> 12;
 		my_pde_table[mem_va.pde_idx].page_frame_number = pt_phys >> 12;
-
+		my_pdpt_table[mem_va.pdpte_idx].page_frame_number = pd_phys >> 12;
+		my_pml4_table[mem_va.pml4e_idx].page_frame_number = pdpt_phys >> 12;
+	
 		// Create a new remapping entry
 		new_entry.used = true;
 		new_entry.remapped_va = mem_va;
@@ -823,12 +817,11 @@ namespace physmem {
 
 		new_entry.pt_table = my_pte_table;
 
-		add_remapping_entry(new_entry);
+		status = add_remapping_entry(new_entry);
 
 		*ensured_size = 0x1000 - mem_va.offset_4kb;
 
 	cleanup:
-
 		safely_unmap_4kb_page(mapped_pml4_table);
 		safely_unmap_4kb_page(mapped_pdpt_table);
 		safely_unmap_4kb_page(mapped_pde_table);
@@ -852,19 +845,18 @@ namespace physmem {
 		if (!initialized)
 			return status_not_initialized;
 
-		if (!ensured_size)
+		if (!ensured_size || !mem || !mem_cr3_u64 || !remapping_entry)
 			return status_invalid_parameter;
 
-		if (__readcr3() != constructed_cr3.flags) {
+		if (__readcr3() != constructed_cr3.flags)
 			return status_wrong_context;
-		}
 
+		project_status status = status_success;
 		va_64 mem_va = { 0 };
 		cr3 mem_cr3 = { 0 };
 
 		mem_va.flags = (uint64_t)mem;
 		mem_cr3.flags = mem_cr3_u64;
-		project_status status = status_success;
 
 		// Pointers to mapped system tables
 		pml4e_64* mapped_pml4_table = 0;
@@ -872,25 +864,15 @@ namespace physmem {
 		pde_64* mapped_pde_table = 0;
 		pte_64* mapped_pte_table = 0;
 
-		// Pointers to my tables
-		pml4e_64* my_pml4_table = 0;
+		// Pointers to our tables
 		pdpte_64* my_pdpt_table = 0;
 		pde_64* my_pde_table = 0;
 		pte_64* my_pte_table = 0;
-
-		// Physical addresses of my page tables
-		uint64_t pd_phys = 0;
-		uint64_t pt_phys = 0;
-
-		// A new entry for remapping
-		remapped_entry_t new_entry = { 0 };
 
 		usable_until max_usable = non_valid;
 		status = get_max_remapping_level(remapping_entry, (uint64_t)mem, max_usable);
 		if (status != status_success)
 			goto cleanup;
-
-		my_pml4_table = page_tables.pml4_table;
 
 		status = map_4kb_page(mem_cr3.address_of_page_directory << 12, (void*&)mapped_pml4_table, 0);
 		if (status != status_success)
@@ -911,22 +893,31 @@ namespace physmem {
 					goto cleanup;
 				}
 
-				my_pdpt_table[mem_va.pdpte_idx].flags = mapped_pdpt_table[mem_va.pdpte_idx].flags;
 
+				// Remember the order to change mappings (pt, pd, pdpt, pml4). If you don't do it in this order you will bsod sometimes
+				crt::memcpy(&my_pdpt_table[mem_va.pdpte_idx], &mapped_pdpt_table[mem_va.pdpte_idx], sizeof(pdpte_1gb_64));
+
+
+				remapped_entry_t new_entry;
 				new_entry.used = true;
 				new_entry.remapped_va = mem_va;
 
 				new_entry.pdpt_table.large_page = true;
 				new_entry.pdpt_table.table = remapping_entry->pdpt_table.table;
 
-				add_remapping_entry(new_entry);
+				status = add_remapping_entry(new_entry);
 
 				*ensured_size = 0x40000000 - mem_va.offset_1gb;
 
 				goto cleanup;
 			}
-			case non_valid: {
+			default: {
+				_sti();
+				__writecr3(kernel_cr3.flags);
+				project_log_info("WIA WIA WIA");
 				status = status_non_valid_usable_until_level;
+				__writecr3(constructed_cr3.flags);
+				_cli();
 				goto cleanup;
 			}
 			}
@@ -951,14 +942,17 @@ namespace physmem {
 					goto cleanup;
 				}
 
+
+				uint64_t pd_phys;
 				status = translate_to_physical_address(kernel_cr3.flags, my_pde_table, pd_phys);
 				if (status != status_success)
 					goto cleanup;
 
+				// Remember the order to change mappings (pt, pd, pdpt, pml4). If you don't do it in this order you will bsod sometimes
+				crt::memcpy(my_pde_table, mapped_pde_table, sizeof(pde_2mb_64) * 512);
 				my_pdpt_table[mem_va.pdpte_idx].page_frame_number = pd_phys >> 12;
 
-				crt::memcpy(my_pde_table, mapped_pde_table, sizeof(pde_2mb_64) * 512);
-
+				remapped_entry_t new_entry;
 				new_entry.used = true;
 				new_entry.remapped_va = mem_va;
 
@@ -968,7 +962,7 @@ namespace physmem {
 				new_entry.pd_table.large_page = true;
 				new_entry.pd_table.table = my_pde_table;
 
-				add_remapping_entry(new_entry);
+				status = add_remapping_entry(new_entry);
 
 				*ensured_size = 0x200000 - mem_va.offset_2mb;
 
@@ -982,8 +976,10 @@ namespace physmem {
 					goto cleanup;
 				}
 
-				my_2mb_pde_table[mem_va.pde_idx].flags = mapped_pde_table[mem_va.pde_idx].flags;
+				// Remember the order to change mappings (pt, pd, pdpt, pml4). If you don't do it in this order you will bsod sometimes
+				crt::memcpy(&my_2mb_pde_table[mem_va.pde_idx], &mapped_pde_table[mem_va.pde_idx], sizeof(pde_2mb_64)); 
 
+				remapped_entry_t new_entry;
 				new_entry.used = true;
 				new_entry.remapped_va = mem_va;
 
@@ -993,14 +989,19 @@ namespace physmem {
 				new_entry.pd_table.large_page = true;
 				new_entry.pd_table.table = remapping_entry->pd_table.table;
 
-				add_remapping_entry(new_entry);
+				status = add_remapping_entry(new_entry);
 
 				*ensured_size = 0x200000 - mem_va.offset_2mb;
 
 				goto cleanup;
 			}
-			case non_valid: {
+			default: {
+				_sti();
+				__writecr3(kernel_cr3.flags);
+				project_log_info("WIA WIA WIA");
 				status = status_non_valid_usable_until_level;
+				__writecr3(constructed_cr3.flags);
+				_cli();
 				goto cleanup;
 			}
 			}
@@ -1017,35 +1018,36 @@ namespace physmem {
 				status = status_address_already_remapped;
 				goto cleanup;
 			}
-
 			my_pde_table = pt_manager::get_free_pd_table(&page_tables);
 			if (!my_pde_table) {
 				status = status_invalid_my_page_table;
 				goto cleanup;
 			}
-
-			status = translate_to_physical_address(kernel_cr3.flags, my_pde_table, pd_phys);
-			if (status != status_success)
-				goto cleanup;
-
-			my_pdpt_table[mem_va.pdpte_idx].page_frame_number = pd_phys >> 12;
-
-			crt::memcpy(my_pde_table, mapped_pde_table, sizeof(pde_2mb_64) * 512);
-
 			my_pte_table = pt_manager::get_free_pt_table(&page_tables);
 			if (!my_pte_table) {
 				status = status_invalid_my_page_table;
 				goto cleanup;
 			}
 
-			status = translate_to_physical_address(kernel_cr3.flags, my_pte_table, pt_phys);
+			uint64_t pd_phys = 0;
+			status = translate_to_physical_address(constructed_cr3.flags, my_pde_table, pd_phys);
 			if (status != status_success)
 				goto cleanup;
 
-			my_pde_table[mem_va.pde_idx].page_frame_number = pt_phys >> 12;
+			uint64_t pt_phys = 0;
+			status = translate_to_physical_address(constructed_cr3.flags, my_pte_table, pt_phys);
+			if (status != status_success)
+				goto cleanup;
 
+
+			// Remember the order to change mappings (pt, pd, pdpt, pml4). If you don't do it in this order you will bsod sometimes
 			crt::memcpy(my_pte_table, mapped_pte_table, sizeof(pte_64) * 512);
+			crt::memcpy(my_pde_table, mapped_pde_table, sizeof(pde_2mb_64) * 512);
+			my_pde_table[mem_va.pde_idx].page_frame_number = pt_phys >> 12;
+			my_pdpt_table[mem_va.pdpte_idx].page_frame_number = pd_phys >> 12;
+	
 
+			remapped_entry_t new_entry;
 			new_entry.used = true;
 			new_entry.remapped_va = mem_va;
 
@@ -1057,7 +1059,7 @@ namespace physmem {
 
 			new_entry.pt_table = my_pte_table;
 
-			add_remapping_entry(new_entry);
+			status = add_remapping_entry(new_entry);
 
 			*ensured_size = 0x1000 - mem_va.offset_4kb;
 
@@ -1076,14 +1078,18 @@ namespace physmem {
 				goto cleanup;
 			}
 
-			status = translate_to_physical_address(kernel_cr3.flags, my_pte_table, pt_phys);
+			uint64_t pt_phys = 0;
+			status = translate_to_physical_address(constructed_cr3.flags, my_pte_table, pt_phys);
 			if (status != status_success)
 				goto cleanup;
 
+
+			// Remember the order to change mappings (pt, pd, pdpt, pml4). If you don't do it in this order you will bsod sometimes
+			crt::memcpy(my_pte_table, mapped_pte_table, sizeof(pte_64) * 512);
 			my_pde_table[mem_va.pde_idx].page_frame_number = pt_phys >> 12;
 
-			crt::memcpy(my_pte_table, mapped_pte_table, sizeof(pte_64) * 512);
 
+			remapped_entry_t new_entry;
 			new_entry.used = true;
 			new_entry.remapped_va = mem_va;
 
@@ -1095,7 +1101,7 @@ namespace physmem {
 
 			new_entry.pt_table = my_pte_table;
 
-			add_remapping_entry(new_entry);
+			status = add_remapping_entry(new_entry);
 
 			*ensured_size = 0x1000 - mem_va.offset_4kb;
 
@@ -1108,8 +1114,11 @@ namespace physmem {
 				goto cleanup;
 			}
 
-			my_pte_table[mem_va.pte_idx].flags = mapped_pte_table[mem_va.pte_idx].flags;
 
+			crt::memcpy(&my_pte_table[mem_va.pte_idx], &mapped_pte_table[mem_va.pte_idx], sizeof(pte_64));
+
+
+			remapped_entry_t new_entry;
 			new_entry.used = true;
 			new_entry.remapped_va = mem_va;
 
@@ -1121,14 +1130,19 @@ namespace physmem {
 
 			new_entry.pt_table = remapping_entry->pt_table;
 
-			add_remapping_entry(new_entry);
+			status = add_remapping_entry(new_entry);
 
 			*ensured_size = 0x1000 - mem_va.offset_4kb;
 
 			goto cleanup;
 		}
-		case non_valid: {
+		default: {
+			_sti();
+			__writecr3(kernel_cr3.flags);
+			project_log_info("WIA WIA WIA");
 			status = status_non_valid_usable_until_level;
+			__writecr3(constructed_cr3.flags);
+			_cli();
 			goto cleanup;
 		}
 		}
@@ -1149,9 +1163,8 @@ namespace physmem {
 		}
 		else {
 			__invlpg(mem);
+			return status;
 		}
-
-		return status;
 	}
 
 	project_status ensure_memory_mapping(void* mem, uint64_t mem_cr3_u64, uint64_t* ensured_size = 0) {
@@ -1257,7 +1270,7 @@ namespace physmem {
 	}
 
 	/*
-		Exposed API's
+		Exposed general API's
 	*/
 
 	bool is_initialized(void) {
@@ -1271,6 +1284,10 @@ namespace physmem {
 	cr3 get_system_cr3(void) {
 		return kernel_cr3;
 	}
+
+	/*
+		Exposed runtime API's
+	*/
 
 	project_status copy_physical_memory(uint64_t destination_physical, uint64_t source_physical, uint64_t size) {
 		if (!initialized)
@@ -1478,13 +1495,19 @@ namespace physmem {
 		return status;
 	}
 
+	/*
+		Exposed setup API's
+	*/
+
 	project_status overwrite_virtual_address_mapping(void* target_address, void* new_memory, uint64_t target_address_cr3_u64, uint64_t new_mem_cr3_u64) {
 		if (PAGE_ALIGN(target_address) != target_address ||
 			PAGE_ALIGN(new_memory) != new_memory)
 			return status_non_aligned;
 
-		if (__readcr3() != constructed_cr3.flags)
-			return status_wrong_context;
+		_cli();
+		uint64_t old_cr3 = __readcr3();
+		__writecr3(constructed_cr3.flags);
+		_mm_mfence();
 
 		project_status status = status_success;
 
@@ -1584,10 +1607,19 @@ namespace physmem {
 		safely_unmap_4kb_page(my_pde_table);
 		safely_unmap_4kb_page(my_pte_table);
 
+		_mm_mfence();
+		__writecr3(old_cr3);
+		_sti();
+
 		return status;
 	}
 
 	project_status restore_virtual_address_mapping(void* target_address, uint64_t mem_cr3_u64) {
+		_cli();
+		uint64_t old_cr3 = __readcr3();
+		__writecr3(constructed_cr3.flags);
+		_mm_mfence();
+
 		project_status status = status_success;
 		remapped_entry_t* remapping_entry = 0;
 		restorable_until restorable_level;
@@ -1729,9 +1761,11 @@ namespace physmem {
 		safely_unmap_4kb_page(mapped_pml4_table);
 		safely_unmap_4kb_page(mapped_pdpt_table);
 		safely_unmap_4kb_page(mapped_pde_table);
-
 		__invlpg(target_address);
 
+		_mm_mfence();
+		__writecr3(old_cr3);
+		_sti();
 		return status;
 	}
 
@@ -1742,6 +1776,7 @@ namespace physmem {
 		_cli();
 		uint64_t old_cr3 = __readcr3();
 		__writecr3(constructed_cr3.flags);
+		_mm_mfence();
 
 		while (copied_bytes < size) {
 			void* current_target = (void*)((uint64_t)target_address + copied_bytes);
@@ -1749,6 +1784,7 @@ namespace physmem {
 
 			status = ensure_memory_mapping(current_target, mem_cr3_u64, &ensured_size);
 			if (status != status_success) {
+				_mm_mfence();
 				__writecr3(old_cr3);
 				_sti();
 				return status;
@@ -1757,6 +1793,7 @@ namespace physmem {
 			copied_bytes += ensured_size;
 		}
 
+		_mm_mfence();
 		__writecr3(old_cr3);
 		_sti();
 		return status;
@@ -1769,6 +1806,7 @@ namespace physmem {
 		_cli();
 		uint64_t old_cr3 = __readcr3();
 		__writecr3(constructed_cr3.flags);
+		_mm_mfence();
 
 		while (covered_bytes < size) {
 			void* current_target = (void*)((uint64_t)target_address + covered_bytes);
@@ -1776,6 +1814,7 @@ namespace physmem {
 
 			status = unset_global_flag(current_target, mem_cr3_u64, &ensured_size);
 			if (status != status_success) {
+				_mm_mfence();
 				__writecr3(old_cr3);
 				_sti();
 				return status;
@@ -1784,129 +1823,9 @@ namespace physmem {
 			covered_bytes += ensured_size;
 		}
 
+		_mm_mfence();
 		__writecr3(old_cr3);
 		_sti();
-		return status;
-	}
-
-	/*
-		Exposed tests
-	*/
-
-	project_status stress_test_memory_copy(void) {
-		uint64_t test_size = PAGE_SIZE * 10;
-		PHYSICAL_ADDRESS max_addr = { 0 };
-		project_status status = status_success;
-		uint64_t curr_cr3 = 0;
-
-		max_addr.QuadPart = MAXULONG64;
-
-		void* pool = ExAllocatePool(NonPagedPool, test_size);
-		void* contiguous_mem = MmAllocateContiguousMemory(test_size, max_addr);
-
-		if (!pool || !contiguous_mem)
-			return status_memory_allocation_failed;
-
-		_cli();
-		curr_cr3 = __readcr3();
-		__writecr3(constructed_cr3.flags);
-
-		for (int i = 0; i < stress_test_count; i++) {
-			memset(contiguous_mem, i, test_size);
-			crt::memcpy(pool, contiguous_mem, test_size);
-
-			status = copy_virtual_memory(contiguous_mem, pool, test_size, __readcr3(), __readcr3());
-			if (status != status_success) {
-				_sti();
-				__writecr3(curr_cr3);
-				goto cleanup;
-			}
-
-			if (crt::memcmp(pool, contiguous_mem, test_size) != 0) {
-				status = status_data_mismatch;
-				_sti();
-				__writecr3(curr_cr3);
-				goto cleanup;
-			}
-		}
-
-		status = status_success;
-		_sti();
-		__writecr3(curr_cr3);
-
-	cleanup:
-
-		if (pool) ExFreePool(pool);
-		if (contiguous_mem) MmFreeContiguousMemory(contiguous_mem);
-
-		if (status == status_success) {
-			project_log_info("Memory copying stress test finished successfully");
-		}
-
-		return status;
-	}
-
-	project_status stress_test_memory_remapping(void) {
-		project_status status = status_success;
-		PHYSICAL_ADDRESS max_addr = { 0 };
-		max_addr.QuadPart = MAXULONG64;
-		void* mema = 0;
-		void* memb = 0;
-		uint64_t curr_cr3 = 0;
-
-		mema = MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
-		memb = MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
-		if (!mema || !memb) {
-			status = status_memory_allocation_failed;
-			goto cleanup;
-		}
-
-		crt::memset(mema, 0xa, PAGE_SIZE);
-		crt::memset(memb, 0xb, PAGE_SIZE);
-
-		_cli();
-		curr_cr3 = __readcr3();
-		__writecr3(constructed_cr3.flags);
-
-		status = overwrite_virtual_address_mapping(mema, memb, kernel_cr3.flags, kernel_cr3.flags);
-		if (status != status_success)
-			goto cleanup;
-
-		if (crt::memcmp(mema, memb, PAGE_SIZE) == 0) {
-			_sti();
-			project_log_info("Memory remapping stress test finished successfully");
-			_cli();
-		}
-		else {
-			status = status_data_mismatch;
-			goto cleanup;
-		}
-
-		// Restore system mapping and read again, it should be
-		// different now
-		status = restore_virtual_address_mapping(mema, kernel_cr3.flags);
-		if (status != status_success)
-			goto cleanup;
-
-		if (crt::memcmp(mema, memb, PAGE_SIZE) != 0) {
-			_sti();
-			project_log_info("Memory remapping restoring stress test finished successfully");
-			_cli();
-		}
-		else {
-			status = status_data_mismatch;
-			goto cleanup;
-		}
-
-	cleanup:
-		_sti();
-		if (curr_cr3) {
-			__writecr3(curr_cr3);
-		}
-
-		if (mema) MmFreeContiguousMemory(mema);
-		if (memb) MmFreeContiguousMemory(memb);
-
 		return status;
 	}
 };

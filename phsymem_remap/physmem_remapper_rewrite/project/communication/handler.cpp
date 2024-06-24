@@ -165,18 +165,12 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
     } break;
 
     case cmd_remove_apc: {
-        if (!interrupts::is_initialized())
-            break;
-
         status = interrupts::remove_apc();
         if (status != status_success)
             break;
     } break;
 
     case cmd_restore_apc: {
-        if (!interrupts::is_initialized())
-            break;
-
         status = interrupts::restore_apc();
         if (status != status_success)
             break;

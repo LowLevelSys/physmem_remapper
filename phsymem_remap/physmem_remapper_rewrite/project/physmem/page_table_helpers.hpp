@@ -116,7 +116,7 @@ namespace pt_manager {
 
         for (uint32_t i = 0; i < TABLE_COUNT; i++) {
             if (table->pt_table[i] == pt_table) {
-                table->is_pd_table_occupied[i] = false;
+                table->is_pt_table_occupied[i] = false;
                 crt::memset(pt_table, 0, 512 * sizeof(pte_64));
                 return;
             }
