@@ -47,7 +47,7 @@ extern "C" void nmi_restoring(trap_frame_t* trap_frame) {
         }
 
         trap_frame->rax = nmi_occured;
-
+        
         // Restore rsp
         trap_frame->rsp = (uint64_t)stack_ptr + 0x8; // Point top of rsp to a ret address
 
@@ -87,7 +87,7 @@ bool physmem_remapper_um_t::copy_virtual_memory(uint64_t source_cr3, uint64_t de
     cmd.sub_command_ptr = &copy_mem_cmd;
 
     send_request(&cmd);
-
+   
     return cmd.status;
 }
 

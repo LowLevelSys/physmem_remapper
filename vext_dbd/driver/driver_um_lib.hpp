@@ -16,6 +16,7 @@ extern "C" __int64  __fastcall asm_call_driver(uint64_t hwnd, uint32_t flags, UL
 
 class physmem_remapper_um_t {
 private:
+
     static physmem_remapper_um_t* instance;
 
     bool inited = false;
@@ -31,13 +32,12 @@ public:
     bool get_data_table_entry_info(uint64_t pid, module_info_t* info_array);
     bool remove_apc();
     bool restore_apc();
+    void* get_eprocess(uint64_t pid);
 
     static physmem_remapper_um_t* init_physmem_remapper_lib(void) {
-
-        if (instance) {
-            log("Already inited");
+        if (instance)
             return instance;
-        }
+
 
         auto temp = new physmem_remapper_um_t;
         memset(temp, 0, sizeof(physmem_remapper_um_t));

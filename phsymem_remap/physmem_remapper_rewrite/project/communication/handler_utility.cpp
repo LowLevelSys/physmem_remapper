@@ -37,6 +37,40 @@ namespace handler_utility {
                 return pid;
             }
 
+            PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry) + FLINK_OFFSET);
+            curr_entry = (PEPROCESS)((uintptr_t)list->Flink - FLINK_OFFSET);
+        } while (curr_entry != sys_process);
+
+        return 0;
+    }
+
+    void* get_eprocess(uint64_t target_pid) {
+        PEPROCESS sys_process = PsInitialSystemProcess;
+        PEPROCESS curr_entry = sys_process;
+
+        // Easy way for system pid
+        if (target_pid == SYSTEM_PID)
+            return sys_process;
+
+        do {
+            uint32_t active_threads;
+
+            crt::memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
+
+            if (!active_threads) {
+                PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry) + FLINK_OFFSET);
+                curr_entry = (PEPROCESS)((uintptr_t)list->Flink - FLINK_OFFSET);
+                continue;
+            }
+            
+            uint64_t curr_pid;
+            crt::memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + PID_OFFSET), sizeof(curr_pid));
+
+            // Check whether we found our process
+            if (curr_pid == target_pid) {
+                return curr_entry;
+            }
+
             PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+FLINK_OFFSET);
             curr_entry = (PEPROCESS)((uintptr_t)list->Flink - FLINK_OFFSET);
         } while (curr_entry != sys_process);

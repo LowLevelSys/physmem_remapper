@@ -35,9 +35,9 @@ public:
     void* get_eprocess(uint64_t pid);
 
     static physmem_remapper_um_t* init_physmem_remapper_lib(void) {
-        if (instance)
+        if (instance) 
             return instance;
-
+        
 
         auto temp = new physmem_remapper_um_t;
         memset(temp, 0, sizeof(physmem_remapper_um_t));

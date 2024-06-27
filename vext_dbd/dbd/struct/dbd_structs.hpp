@@ -11,11 +11,12 @@ namespace dbd {
 
     namespace offsets {
         // Global
-        constexpr auto OFFSET_GOBJECTS = 0xF1A9E80; 
-        constexpr auto OFFSET_GWORLD = 0xf34ce80;
-        constexpr auto OFFSET_GNAMES = 0xF0E75C0;
+        constexpr auto OFFSET_GOBJECTS = 0x0F1ABF00;
+        constexpr auto OFFSET_GWORLD = 0x0F34EF50;
+        constexpr auto OFFSET_GNAMES = 0x0F0E9640;
     };
 }
+
 
 struct FVector;
 struct FRotator;
@@ -152,33 +153,10 @@ struct FVector {
 };
 
 struct FRotator {
-    double                                        pitch;                                             // 0x0000(0x0008)(Edit, BlueprintVisible, ZeroConstructor, SaveGame, IsPlainOldData, NoDestructor, HasGetValueTypeHash, NativeAccessSpecifierPublic)
-    double                                        yaw;                                               // 0x0008(0x0008)(Edit, BlueprintVisible, ZeroConstructor, SaveGame, IsPlainOldData, NoDestructor, HasGetValueTypeHash, NativeAccessSpecifierPublic)
-    double                                        roll;                                              // 0x0010(0x0008)(Edit, BlueprintVisible, ZeroConstructor, SaveGame, IsPlainOldData, NoDestructor, HasGetValueTypeHash, NativeAccessSpecifierPublic)
+    double pitch;
+    double yaw;
+    double roll;
 };
-
-struct FPlane : FVector
-{
-    double W;
-};
-
-struct FMatrix
-{
-    struct FPlane XPlane;
-    struct FPlane YPlane;
-    struct FPlane ZPlane;
-    struct FPlane WPlane;
-
-    void Print() const {
-        // print matrix
-        log("%.2f %.2f %.2f %.2f", XPlane.x, XPlane.y, XPlane.z, XPlane.W);
-        log("%.2f %.2f %.2f %.2f", YPlane.x, YPlane.y, YPlane.z, YPlane.W);
-        log("%.2f %.2f %.2f %.2f", ZPlane.x, ZPlane.y, ZPlane.z, ZPlane.W);
-        log("%.2f %.2f %.2f %.2f", WPlane.x, WPlane.y, WPlane.z, WPlane.W);
-    }
-};
-
-
 //
 //struct FName {
 //    int32_t                                         ComparisonIndex;                                   // 0x0000(0x0004)(NOT AUTO-GENERATED PROPERTY)
@@ -223,7 +201,7 @@ struct FNameEntry {
     std::string String() const {
         if (Header.bIsWide) { return std::string(); }
 
-        if (Header.Len > 0)
+        if (Header.Len <= 512)
             return { Name.AnsiName, Header.Len };
         return std::string();
     }
@@ -239,10 +217,7 @@ struct FNamePool
     FNameEntry GetEntry(FNameEntryHandle handle) const
     {
         uint64_t Block = g_proc->read<uint64_t>((void*)(dbd::game_base + dbd::offsets::OFFSET_GNAMES + 0x10 + static_cast<unsigned long long>(handle.Block) * 0x8));
-        if(!Block)
-            return FNameEntry();
-
-        FNameEntry* entry_ptr = (FNameEntry*)((void*)(Block + uint64_t(handle.Offset * 0x4)));
+        FNameEntry* entry_ptr = (FNameEntry*)((void*)(Block + static_cast<uint64_t>(4) * handle.Offset));
         if (entry_ptr) {
             FNameEntry entry = g_proc->read<FNameEntry>(entry_ptr);
             return entry;
@@ -250,37 +225,6 @@ struct FNamePool
         return FNameEntry();
     }
 };
-
-static std::string get_object_names(int32_t key) {
-    uint32_t Chunk = key >> 16;
-    USHORT Name = static_cast<USHORT>(key);
-    auto FNamePool = dbd::game_base + dbd::offsets::OFFSET_GNAMES; // gnames offset
-
-    std::uintptr_t PtrChunk = g_proc->read<uintptr_t>((void*)(FNamePool + (Chunk + 2) * 8));
-    if (!PtrChunk)
-        return "";
-
-    std::uintptr_t CurStructName = PtrChunk + (Name * 0x2);
-    if (!CurStructName)
-        return "";
-
-    USHORT nameLength = g_proc->read<USHORT>((void*)CurStructName) >> 6;
-
-    if (nameLength <= 0)
-        return "";
-
-    // Dynamically allocate memory using std::vector
-    std::vector<char> buff(nameLength);
-
-    // Read the name into the buffer
-    g_proc->read_array(buff.data(), (void*)(CurStructName + 0x2), nameLength);
-
-    std::string name(buff.data(), nameLength);
-
-    // No need to clean up, as std::vector handles memory automatically
-
-    return name;
-}
 
 struct FName {
     uint32_t comparison_index; // 0x0
@@ -291,14 +235,12 @@ struct FName {
     {
         FNamePool* fNamePool = (FNamePool*)(dbd::game_base + dbd::offsets::OFFSET_GNAMES);
         FNameEntry entry = fNamePool->GetEntry(comparison_index);
-        if (!entry.comparison_id)
-            return std::string();
 
         std::string name = entry.String();
 
         // This doesn't fucking work???
-        if (Index > 0)
-            name += '_' + std::to_string(Number);
+        //if (Index > 0)
+        //    name += '_' + std::to_string(Number);
 
         uint64_t pos = name.rfind('/');
 
@@ -395,8 +337,8 @@ struct FString : TArray<wchar_t>
 */
 
 struct FMinimalViewInfo {
-    struct FVector                                Location;                                          // 0x0000(0x0018)(Edit, BlueprintVisible, ZeroConstructor, IsPlainOldData, NoDestructor, HasGetValueTypeHash, NativeAccessSpecifierPublic)
-    struct FRotator                               Rotation;                                          // 0x0018(0x0018)(Edit, BlueprintVisible, ZeroConstructor, IsPlainOldData, NoDestructor, NativeAccessSpecifierPublic)
+    FVector Location;
+    FRotator Rotation;
     float                                         FOV;                                               // 0x0030(0x0004)(Edit, BlueprintVisible, ZeroConstructor, IsPlainOldData, NoDestructor, HasGetValueTypeHash, NativeAccessSpecifierPublic)
     float                                         DesiredFOV;                                        // 0x0034(0x0004)(ZeroConstructor, Transient, IsPlainOldData, NoDestructor, HasGetValueTypeHash, NativeAccessSpecifierPublic)
     float                                         OrthoWidth;                                        // 0x0038(0x0004)(Edit, BlueprintVisible, ZeroConstructor, IsPlainOldData, NoDestructor, HasGetValueTypeHash, NativeAccessSpecifierPublic)
@@ -406,14 +348,14 @@ struct FMinimalViewInfo {
     float                                         AspectRatio;                                       // 0x0048(0x0004)(Edit, BlueprintVisible, ZeroConstructor, IsPlainOldData, NoDestructor, HasGetValueTypeHash, NativeAccessSpecifierPublic)
     uint8_t                                       bConstrainAspectRatio : 1;                         // 0x004C(0x0001)(BitIndex: 0x00, PropSize: 0x0001 (Edit, BlueprintVisible, NoDestructor, HasGetValueTypeHash, NativeAccessSpecifierPublic))
     uint8_t                                       bUseFieldOfViewForLOD : 1;                         // 0x004C(0x0001)(BitIndex: 0x01, PropSize: 0x0001 (Edit, BlueprintVisible, NoDestructor, AdvancedDisplay, HasGetValueTypeHash, NativeAccessSpecifierPublic))
-    uint8_t                                       Pad_CB[0x3];                                       // 0x004D(0x0003)(Fixing Size After Last Property [ Dumper-7 ])
+    uint8_t                                         Pad_CB[0x3];                                       // 0x004D(0x0003)(Fixing Size After Last Property [ Dumper-7 ])
     uint8_t                                       ProjectionMode;                                    // 0x0050(0x0001)(Edit, BlueprintVisible, ZeroConstructor, IsPlainOldData, NoDestructor, HasGetValueTypeHash, NativeAccessSpecifierPublic)
-    uint8_t                                       Pad_CC[0x3];                                       // 0x0051(0x0003)(Fixing Size After Last Property [ Dumper-7 ])
+    uint8_t                                         Pad_CC[0x3];                                       // 0x0051(0x0003)(Fixing Size After Last Property [ Dumper-7 ])
     float                                         PostProcessBlendWeight;                            // 0x0054(0x0004)(BlueprintVisible, ZeroConstructor, IsPlainOldData, NoDestructor, HasGetValueTypeHash, NativeAccessSpecifierPublic)
-    uint8_t                                       Pad_CD[0x8];                                       // 0x0058(0x0008)(Fixing Size After Last Property [ Dumper-7 ])
+    uint8_t                                         Pad_CD[0x8];                                       // 0x0058(0x0008)(Fixing Size After Last Property [ Dumper-7 ])
     uint8_t                                       PostProcessSettings[0x6E0];                               // 0x0060(0x06E0)(BlueprintVisible, NativeAccessSpecifierPublic)
     uint8_t                                       OffCenterProjectionOffset[0x10];                         // 0x0740(0x0010)(Edit, BlueprintVisible, ZeroConstructor, DisableEditOnTemplate, Transient, EditConst, IsPlainOldData, NoDestructor, HasGetValueTypeHash, NativeAccessSpecifierPublic)
-    uint8_t                                       Pad_CE[0x70];                                      // 0x0750(0x0070)(Fixing Struct Size After Last Property [ Dumper-7 ])
+    uint8_t                                         Pad_CE[0x70];                                      // 0x0750(0x0070)(Fixing Struct Size After Last Property [ Dumper-7 ])
 };
 
 struct USceneComponent {
@@ -425,34 +367,32 @@ struct USceneComponent {
 };
 
 struct UObject {
-    void*                                         VTable;                                            // 0x0000(0x0008)(NOT AUTO-GENERATED PROPERTY)
+    void* VTable;                                            // 0x0000(0x0008)(NOT AUTO-GENERATED PROPERTY)
     EObjectFlags                                  Flags;                                             // 0x0008(0x0004)(NOT AUTO-GENERATED PROPERTY)
     int32_t                                       Index;                                             // 0x000C(0x0004)(NOT AUTO-GENERATED PROPERTY)
-    class UClass*                                 Class;                                             // 0x0010(0x0008)(NOT AUTO-GENERATED PROPERTY)
+    class UClass* Class;                                             // 0x0010(0x0008)(NOT AUTO-GENERATED PROPERTY)
     class FName                                   Name;                                              // 0x0018(0x000C)(NOT AUTO-GENERATED PROPERTY)
     uint8_t                                       Pad_37[0x4];                                       // 0x0024(0x0004)(Fixing Size After Last Property [ Dumper-7 ])
-    class UObject*                                Outer;                                             // 0x0028(0x0008)(NOT AUTO-GENERATED PROPERTY)
+    class UObject* Outer;                                             // 0x0028(0x0008)(NOT AUTO-GENERATED PROPERTY)
 
-    inline bool IsA(struct UClass* cmp) const;
-    inline std::string GetOuterName(UObject* outer);
+    inline bool IsA(void* cmp) const;
     inline std::string GetFullName();
     inline std::string GetName();
-    inline uint32_t GetComparisonIndex();
 };
 
 struct UField : UObject
 {
-    struct UField*                                  Next;                                              // 0x0030(0x0008)(NOT AUTO-GENERATED PROPERTY)
+    struct UField* Next;                                              // 0x0030(0x0008)(NOT AUTO-GENERATED PROPERTY)
 };
 
 struct UStruct : UField
 {
     uint8_t                                         Pad_3C[0x10];                                      // 0x0038(0x0010)(Fixing Size After Last Property [ Dumper-7 ])
-    struct UStruct*                                 Super;                                             // 0x0048(0x0008)(NOT AUTO-GENERATED PROPERTY)
-    struct UField*                                  Children;                                          // 0x0050(0x0008)(NOT AUTO-GENERATED PROPERTY)
-    struct FField*                                  ChildProperties;                                   // 0x0058(0x0008)(NOT AUTO-GENERATED PROPERTY)
+    struct UStruct* Super;                                             // 0x0048(0x0008)(NOT AUTO-GENERATED PROPERTY)
+    struct UField* Children;                                          // 0x0050(0x0008)(NOT AUTO-GENERATED PROPERTY)
+    struct FField* ChildProperties;                                   // 0x0058(0x0008)(NOT AUTO-GENERATED PROPERTY)
     int32_t                                         Size;                                              // 0x0060(0x0004)(NOT AUTO-GENERATED PROPERTY)
-    int32_t                                         MinAlignment;                                      // 0x0064(0x0004)(NOT AUTO-GENERATED PROPERTY)
+    int32_t                                         MinAlignemnt;                                      // 0x0064(0x0004)(NOT AUTO-GENERATED PROPERTY)
     uint8_t                                         Pad_3D[0x50];                                      // 0x0068(0x0050)(Fixing Struct Size After Last Property [ Dumper-7 ])
 };
 
@@ -461,102 +401,56 @@ struct UClass : UStruct
     uint8_t                                         Pad_42[0x28];                                      // 0x00B8(0x0028)(Fixing Size After Last Property [ Dumper-7 ])
     enum struct EClassCastFlags                     CastFlags;                                         // 0x00E0(0x0008)(NOT AUTO-GENERATED PROPERTY)
     uint8_t                                         Pad_43[0x38];                                      // 0x00E8(0x0038)(Fixing Size After Last Property [ Dumper-7 ])
-    struct UObject*                                 DefaultObject;                                     // 0x0120(0x0008)(NOT AUTO-GENERATED PROPERTY)
+    struct UObject* DefaultObject;                                     // 0x0120(0x0008)(NOT AUTO-GENERATED PROPERTY)
     uint8_t                                         Pad_44[0x108];                                     // 0x0128(0x0108)(Fixing Struct Size After Last Property [ Dumper-7 ])
-    
-
-    bool IsSubclassOf(const UStruct* Base) const
-    {
-        if (!Base)
-            return false;
-
-        for (const UStruct* super = (UStruct*)(uint64_t(this)); super; super = g_proc->read<UClass*>((void*)(uint64_t(super) + offsetof(UStruct, Super)))) {
-            if (super == Base)
-                return true;
-        }
-
-        return false;
-    }
-
 };
 
 // untested
-inline bool UObject::IsA(UClass* cmp) const {
-    UClass* super = g_proc->read<UClass*>((void*)(uint64_t(this) + offsetof(UObject, Class)));
-    return super->IsSubclassOf(cmp);
+inline bool UObject::IsA(void* cmp) const {
+    for (UClass* super = (UClass*)(uint64_t(this) + offsetof(UObject, Class)); super; super = g_proc->read<UClass*>(super + offsetof(UClass, Super)))
+        if (super == cmp) return true;
+    return false;
 }
 
 inline std::string UObject::GetName() {
-    FName name = g_proc->read<FName>((void*)(uint64_t(this) + offsetof(UObject, Name)));
-    return this ? name.GetName() : "None";
+    return this ? Name.GetName() : "None";
 }
 
-inline uint32_t UObject::GetComparisonIndex() {
-    FName name = g_proc->read<FName>((void*)(uint64_t(this) + offsetof(UObject, Name)));
-    return name.comparison_index;
-}
-
-inline std::string UObject::GetOuterName(UObject* outer) {
-    if (!outer || uint64_t(outer) > 0x7FFFFFFFFFFF)
-        return "";
-
-    std::string outerName = outer->GetName();
-    if (outerName.empty() || outerName == "None")
-        return "";
-
-    UObject* nextOuter = g_proc->read<UObject*>((void*)(uint64_t(outer) + offsetof(UObject, Outer)));
-    std::string nextOuterName = GetOuterName(nextOuter);
-
-    return nextOuterName.empty() ? outerName : outerName + "." + nextOuterName;
-}
-
+// Semi-Functional?
 inline std::string UObject::GetFullName() {
     UClass* class_ptr = (UClass*)(uint64_t(this) + offsetof(UObject, Class));
-    std::string Name;
-
-    if (class_ptr)
+    if (this && class_ptr)
     {
+        std::string Temp;
+
         UObject* outer = g_proc->read<UObject*>((void*)(uint64_t(this) + offsetof(UObject, Outer)));
-        std::string outerName = GetOuterName(outer);
+        while (outer) {
+            UObject out = g_proc->read<UObject>(outer);
+            std::string outerName = out.GetName();
+            if (!outerName.empty() && outerName != "None")
+                Temp = outerName + "." + Temp;
+            outer = g_proc->read<UObject*>(outer + offsetof(UObject, Outer));
+        }
 
-        UClass* cls = g_proc->read<UClass*>(class_ptr);
-        std::string Name = cls->GetName() + " " + (outerName.empty() ? this->GetName() : outerName + "." + this->GetName());
+        UClass cls = g_proc->read<UClass>(class_ptr);
+        std::string Name = cls.GetName();
+        if (Name != "None" && !Name.empty()) {
+            Name += " ";
+            Name += Temp;
+        }
+        else {
+            Name = Temp;
+        }
 
-        Name = std::regex_replace(Name, std::regex("^ +| +$|( ) +"), "$1"); // Remove leading and trailing spaces...
+
+        UObject object = g_proc->read<UObject>((void*)(uint64_t(this)));
+        Name += object.GetName();
 
         return Name;
     }
 
     return "None";
 }
-//
-//inline std::string UObject::GetFullName() {
-//    UClass* class_ptr = (UClass*)(uint64_t(this) + offsetof(UObject, Class));
-//    std::string Name;
-//
-//    if (class_ptr)
-//    {
-//        std::string Temp;
-//        for (UObject* currentOuter = g_proc->read<UObject*>((void*)(uint64_t(this) + offsetof(UObject, Outer))); currentOuter; currentOuter = g_proc->read<UObject*>((void*)(uint64_t(currentOuter) + offsetof(UObject, Outer)))) {
-//            if (uint64_t(currentOuter) > 0x7FFFFFFFFFFF)
-//                break;
-//
-//            std::string outerName = currentOuter->GetName();
-//            if(!outerName.empty() && outerName != "None")
-//                Temp = outerName + "." + Temp;
-//        }
-//        
-//        UClass* cls = g_proc->read<UClass*>(class_ptr);
-//        Name = cls->GetName();
-//        Name += " ";
-//        Name += Temp;
-//        Name += this->GetName();
-//
-//        return Name;
-//    }
-//
-//    return "None";
-//}
 
 struct FUObjectItem final
 {
@@ -565,7 +459,6 @@ public:
     uint8_t                                         Pad_0[0x10];                                       // 0x0008(0x0010)(Fixing Struct Size After Last Property [ Dumper-7 ])
 };
 
-static std::unordered_map<uint32_t, UObject*> cache;
 class TUObjectArray
 {
 public:
@@ -600,74 +493,43 @@ public:
         return reinterpret_cast<FUObjectItem**>(DecryptPtr(Objects));
     }
 
-    bool IsValidIndex(uint32_t Index) const
+
+    UObject* GetObjectPtr(uint32_t id) const
     {
-        return Index < Num() && Index >= 0;
-    
-    }
-
-    std::vector<UObject*> GetAllObjects() const
-    {
-        std::vector<UObject*> allObjects;
-        allObjects.reserve(MaxElements); // Reserve space for efficiency
-
-        for (uint32_t Index = 0; Index < std::min<uint32_t>(MaxElements, NumChunks * ElementsPerChunk); Index++)
-        {
-            const uint64_t chunkIndex = Index / ElementsPerChunk;
-            const uint32_t withinChunkIndex = Index % ElementsPerChunk;
-
-            FUObjectItem* chunk = g_proc->read<FUObjectItem*>((void*)(Objects + chunkIndex * 0x8));
-            if (!chunk)
-                continue;
-
-            UObject* item = g_proc->read<UObject*>(chunk + withinChunkIndex);
-            if (item)
-                allObjects.emplace_back(item);
+        if (id >= NumElements) {
+            //log("id >= NumElements : %i >= %i", id, NumElements);
+            return nullptr;
         }
-        return allObjects;
-    }
 
-    UObject* GetObjectPtr(uint32_t Index) const
-    {
-        const uint64_t chunkIndex = Index / ElementsPerChunk;
-        const uint32_t withinChunkIndex = Index % ElementsPerChunk;
-        if(!IsValidIndex(Index))
+        uint64_t chunkIndex = id / ElementsPerChunk;
+        if (chunkIndex >= NumChunks) {
+            //log("chunkIndex >= NumChunks : %i >= %i", chunkIndex, NumChunks);
             return nullptr;
+        }
 
-        if (chunkIndex > NumChunks)
+        BYTE* chunk = g_proc->read<BYTE*>(Objects + chunkIndex * 0x8);
+        if (!chunk) {
+            //log("!chunk");
             return nullptr;
+        }
 
-        if (Index > MaxElements)
-            return nullptr;
-
-        FUObjectItem* chunk = g_proc->read<FUObjectItem*>((void*)(Objects + chunkIndex * 0x8));
-        if (!chunk)
-            return nullptr;
-
+        uint32_t withinChunkIndex = id % ElementsPerChunk * 24;
         UObject* item = g_proc->read<UObject*>(chunk + withinChunkIndex);
-
         return item;
     }
 
-    void Log() const {
-        std::vector objects = GetAllObjects();
-        for (const auto& object : objects)
-        {
-            std::string name = object->GetFullName();
-            log("Object: %s", name.c_str());
-        }
-    }
-
-    inline struct UObject* FindObject(const std::string& name) const
+    inline struct UObject* FindObject(const char* name) const
     {
-        for (int i = 0; i < NumElements; i++)
+        for (uint32_t i = 0u; i < NumElements; i++)
         {
             UObject* object = GetObjectPtr(i);
+            std::string object_name = object->GetFullName();//GetNameById();
 
-            if (!object)
-                continue;
+            //// debug logging
+            //if(object_name.find("Generator") != std::string::npos)
+            //    log("[%i] %s", i, object_name.c_str());
 
-            if (object->GetFullName() == name)
+            if (object && object_name == name)
                 return object;
         }
         return nullptr;
@@ -730,11 +592,11 @@ struct APawn : AActor {
     uint8_t                                         RemoteViewPitch;                                   // 0x02B2(0x0001)(Net, ZeroConstructor, IsPlainOldData, NoDestructor, HasGetValueTypeHash, NativeAccessSpecifierPublic)
     uint8_t                                         Pad_538[0x5];                                      // 0x02B3(0x0005)(Fixing Size After Last Property [ Dumper-7 ])
     uint8_t                                         AIControllerClass[0x8];                            // 0x02B8(0x0008)(Edit, BlueprintVisible, ZeroConstructor, NoDestructor, UObjectWrapper, HasGetValueTypeHash, NativeAccessSpecifierPublic)
-    class APlayerState*                             PlayerState;                                       // 0x02C0(0x0008)(BlueprintVisible, BlueprintReadOnly, Net, ZeroConstructor, RepNotify, NoDestructor, UObjectWrapper, HasGetValueTypeHash, NativeAccessSpecifierPrivate)
+    class APlayerState* PlayerState;                                       // 0x02C0(0x0008)(BlueprintVisible, BlueprintReadOnly, Net, ZeroConstructor, RepNotify, NoDestructor, UObjectWrapper, HasGetValueTypeHash, NativeAccessSpecifierPrivate)
     uint8_t                                         Pad_539[0x8];                                      // 0x02C8(0x0008)(Fixing Size After Last Property [ Dumper-7 ])
-    class AController*                              LastHitBy;                                         // 0x02D0(0x0008)(BlueprintVisible, BlueprintReadOnly, ZeroConstructor, Transient, NoDestructor, UObjectWrapper, HasGetValueTypeHash, NativeAccessSpecifierPublic)
-    class AController*                              Controller;                                        // 0x02D8(0x0008)(Net, ZeroConstructor, RepNotify, NoDestructor, UObjectWrapper, HasGetValueTypeHash, NativeAccessSpecifierPublic)
-    class AController*                              PreviousController;                                // 0x02E0(0x0008)(ZeroConstructor, Transient, NoDestructor, UObjectWrapper, HasGetValueTypeHash, NativeAccessSpecifierPublic)
+    class AController* LastHitBy;                                         // 0x02D0(0x0008)(BlueprintVisible, BlueprintReadOnly, ZeroConstructor, Transient, NoDestructor, UObjectWrapper, HasGetValueTypeHash, NativeAccessSpecifierPublic)
+    class AController* Controller;                                        // 0x02D8(0x0008)(Net, ZeroConstructor, RepNotify, NoDestructor, UObjectWrapper, HasGetValueTypeHash, NativeAccessSpecifierPublic)
+    class AController* PreviousController;                                // 0x02E0(0x0008)(ZeroConstructor, Transient, NoDestructor, UObjectWrapper, HasGetValueTypeHash, NativeAccessSpecifierPublic)
     uint8_t                                         Pad_53A[0x4];                                      // 0x02E8(0x0004)(Fixing Size After Last Property [ Dumper-7 ])
     uint8_t                                         ReceiveControllerChangedDelegate;                  // 0x02EC(0x0001)(InstancedReference, BlueprintAssignable, NoDestructor, NativeAccessSpecifierPublic)
     uint8_t                                         ReceiveRestartedDelegate;                          // 0x02ED(0x0001)(InstancedReference, BlueprintAssignable, NoDestructor, NativeAccessSpecifierPublic)
@@ -767,16 +629,16 @@ struct FCameraCacheEntry {
 struct FTViewTarget final
 {
 public:
-    class AActor*                                   Target;                                            // 0x0000(0x0008)(Edit, BlueprintVisible, ZeroConstructor, NoDestructor, UObjectWrapper, HasGetValueTypeHash, NativeAccessSpecifierPublic)
+    class AActor* Target;                                            // 0x0000(0x0008)(Edit, BlueprintVisible, ZeroConstructor, NoDestructor, UObjectWrapper, HasGetValueTypeHash, NativeAccessSpecifierPublic)
     uint8_t                                         Pad_169[0x8];                                      // 0x0008(0x0008)(Fixing Size After Last Property [ Dumper-7 ])
-    struct FMinimalViewInfo                         POV;                                               // 0x0010(0x07C0)(Edit, BlueprintVisible, NativeAccessSpecifierPublic)
-    struct APlayerState*                            PlayerState;                                       // 0x07D0(0x0008)(Edit, BlueprintVisible, ZeroConstructor, NoDestructor, Protected, UObjectWrapper, HasGetValueTypeHash, NativeAccessSpecifierProtected)
+    struct FMinimalViewInfo                       POV;                                               // 0x0010(0x07C0)(Edit, BlueprintVisible, NativeAccessSpecifierPublic)
+    struct APlayerState* PlayerState;                                       // 0x07D0(0x0008)(Edit, BlueprintVisible, ZeroConstructor, NoDestructor, Protected, UObjectWrapper, HasGetValueTypeHash, NativeAccessSpecifierProtected)
     uint8_t                                         Pad_16A[0x8];                                      // 0x07D8(0x0008)(Fixing Struct Size After Last Property [ Dumper-7 ])
 };
 
 struct APlayerCameraManager : AActor {
-    struct APlayerController*                     PCOwner;                                           // 0x02A0(0x0008)(ZeroConstructor, Transient, NoDestructor, UObjectWrapper, HasGetValueTypeHash, NativeAccessSpecifierPublic)
-    struct USceneComponent*                       TransformComponent;                                // 0x02A8(0x0008)(Edit, BlueprintVisible, ExportObject, BlueprintReadOnly, ZeroConstructor, EditConst, InstancedReference, NoDestructor, UObjectWrapper, HasGetValueTypeHash, NativeAccessSpecifierPrivate)
+    struct APlayerController* PCOwner;                                           // 0x02A0(0x0008)(ZeroConstructor, Transient, NoDestructor, UObjectWrapper, HasGetValueTypeHash, NativeAccessSpecifierPublic)
+    struct USceneComponent* TransformComponent;                                // 0x02A8(0x0008)(Edit, BlueprintVisible, ExportObject, BlueprintReadOnly, ZeroConstructor, EditConst, InstancedReference, NoDestructor, UObjectWrapper, HasGetValueTypeHash, NativeAccessSpecifierPrivate)
     uint8_t                                         Pad_791[0xC];                                      // 0x02B0(0x000C)(Fixing Size After Last Property [ Dumper-7 ])
     float                                         DefaultFOV;                                        // 0x02BC(0x0004)(Edit, BlueprintVisible, ZeroConstructor, IsPlainOldData, NoDestructor, HasGetValueTypeHash, NativeAccessSpecifierPublic)
     float                                         LockedFOV;                                      // 0x02C0(0x0004)(Fixing Size After Last Property [ Dumper-7 ])
@@ -815,7 +677,7 @@ struct AController : AActor
 
 struct APlayerController : AController {
     uint8_t                                         Pad_720[0x8];
-    UPlayer* player; 
+    UPlayer* player;
     APawn* acknowledged_pawn;
     char padding_1[0x8];
     APlayerCameraManager* camera_manager;
@@ -827,10 +689,10 @@ struct UPlayer : UObject {
 };
 
 struct USkillCheck {
-    char padding_0[0x151];
+    float padding_0[0x151 / sizeof(float)];
     bool is_displayed;
     float current_progress;
-    char padding_1[0x4C];
+    float padding_1[0x4C / sizeof(float)];
     float bonus_zone;
 };
 
@@ -955,30 +817,17 @@ struct UGameInstance {
 };
 
 struct AGameStateBase {
-	char padding_0[0x2b8];
+    char padding_0[0x2b8];
     TArray<APlayerState*> player_array;
 };
 
-struct FIntVector {
-    int x = 0, y = 0;
-};
-
 struct UWorld : UObject {
-    uint8_t Pad_30[0x8]; // 0x30
-    struct ULevel* persistent_level; // 0x38
-    uint8_t Pad_40[0x128]; // 0x40
-    AGameStateBase* game_state; // 0x168
-    char padding_170[0x10]; // 0x170
+    uint8_t Pad_30[0x8];
+    struct ULevel* persistent_level;
+    uint8_t Pad_40[0x128];
+    AGameStateBase* game_state;
+    char padding_1[0x10];
     TArray<ULevel*> levels; // 0x180
-    char padding_2[0x38]; // 0x190
-    UGameInstance* owning_game_instance; // 0x1C8
-    char padding_1D0[0x4E8];
-    double TimeSeconds; // 0x6b8
-    double UnpausedTimeSeconds; // 0x6c0
-    double RealTimeSeconds; // 0x6c8
-    double AudioTimeSeconds; // 0x6d0
-    float DeltaRealTimeSeconds; // 0x6d8
-    float DeltaTimeSeconds; // 0x6dc
-    double PauseDelay; // 0x6e0
-    FIntVector OriginLocation; // 0x6e8
+    char padding_2[0x32];
+    UGameInstance* owning_game_instance;
 };
