@@ -9,8 +9,8 @@ int main(void) {
 		return -1;
 	}
 
-	uint64_t ow_base = g_proc->get_module_base("notepad.exe");
-	if (!ow_base) {
+	uint64_t mod_base = g_proc->get_module_base("notepad.exe");
+	if (!mod_base) {
 		log("Failed to get notepad base");
 		getchar();
 		return -1;
@@ -20,7 +20,7 @@ int main(void) {
 	uint64_t result = 0;
 
 	for (;; iteration++) {
-		result = g_proc->read<uint64_t>((void*)(ow_base));
+		result = g_proc->read<uint64_t>((void*)(mod_base));
 		log("[%d] result %llx", iteration, result);
 	}
 

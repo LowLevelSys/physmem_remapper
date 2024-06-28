@@ -25,6 +25,16 @@ inline void extract_proc_name(EnumerateProcessData* proc_data) {
 	std::char_traits<RC_UnicodeChar>::copy(proc_data->Name, name_start, std::char_traits<RC_UnicodeChar>::length(name_start) + 1);
 }
 
+inline void print_utf16_string(const RC_UnicodeChar* name) {
+	std::u16string utf16_str(name);
+
+	std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
+	std::string utf8_str = convert.to_bytes(utf16_str);
+
+	log("%s", utf8_str.c_str());
+}
+
+
 namespace driver_data {
 	inline std::vector<per_process_struct> process_vector;
 	inline physmem_remapper_um_t* physmem_instance = 0;
@@ -147,6 +157,8 @@ namespace driver_data {
 		if (pid == 0 || pid == 4)
 			return false;
 		
+		proc_data->Id = pid;
+
 		// Copy the path
 		uint64_t user_cr3;
 		if (!physmem_instance->copy_virtual_memory(kernel_cr3, owner_cr3, (void*)((uintptr_t)curr_eproc + DIRECTORY_TABLE_BASE_OFFSET), &user_cr3, sizeof(user_cr3))) {
@@ -194,6 +206,9 @@ namespace driver_data {
 		per_process_struct process_entry;
 		process_entry.target_pid = proc_data->Id;
 		process_entry.target_cr3 = user_cr3;
+
+		print_utf16_string(proc_data->Name);
+		log("Cr3 %p\n", process_entry.target_cr3);
 
 		process_vector.push_back(process_entry);
 

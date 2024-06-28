@@ -59,7 +59,11 @@ extern "C" __declspec(dllexport) bool RC_CallConv ReadRemoteMemory(RC_Pointer pi
 	void* src_addr = reinterpret_cast<void*>(reinterpret_cast<uint64_t>(address) + offset);
 	void* dest_addr = reinterpret_cast<void*>(reinterpret_cast<uint64_t>(buffer) + offset);
 	
-	return driver_data::physmem_instance->copy_virtual_memory(target_cr3, driver_data::owner_cr3, src_addr, dest_addr, size);
+	// NOTE!: Pid = 0 for some reason
+
+	bool result = driver_data::physmem_instance->copy_virtual_memory(target_cr3, driver_data::owner_cr3, src_addr, dest_addr, size);
+
+	return result;
 }
 
 extern "C" __declspec(dllexport) bool RC_CallConv WriteRemoteMemory(RC_Pointer handle, RC_Pointer address, RC_Pointer buffer, int offset, int size) {
@@ -81,13 +85,23 @@ extern "C" __declspec(dllexport) bool RC_CallConv WriteRemoteMemory(RC_Pointer h
 	void* src_addr = reinterpret_cast<void*>(reinterpret_cast<uint64_t>(buffer) + offset);
 	void* dest_addr = reinterpret_cast<void*>(reinterpret_cast<uint64_t>(address) + offset);
 
-	return driver_data::physmem_instance->copy_virtual_memory(driver_data::owner_cr3, target_cr3, src_addr, dest_addr, size);
+	bool result = driver_data::physmem_instance->copy_virtual_memory(driver_data::owner_cr3, target_cr3, src_addr, dest_addr, size);
+
+	return result;
 }
 
 
 // We use pid as a handle as we don't need it and it is usefuly in ReadRemoteMemory and WriteRemoteMemory
 extern "C" __declspec(dllexport) RC_Pointer RC_CallConv OpenRemoteProcess(RC_Pointer id, ProcessAccess desiredAccess) {
+	log("Using PID %p as a handle", id);
 	return id;
+}
+
+extern "C" __declspec(dllexport) bool RC_CallConv IsProcessValid(RC_Pointer handle) {
+	if (handle)
+		return true;
+
+	return false;
 }
 
 
@@ -96,9 +110,6 @@ extern "C" __declspec(dllexport) RC_Pointer RC_CallConv OpenRemoteProcess(RC_Poi
 	To do: Add debugger support via a hv
 */
 
-extern "C" __declspec(dllexport) bool RC_CallConv IsProcessValid(RC_Pointer handle) {
-	return true;
-}
 extern "C" __declspec(dllexport) void RC_CallConv CloseRemoteProcess(RC_Pointer handle) {
 }
 extern "C" __declspec(dllexport) void RC_CallConv ControlRemoteProcess(RC_Pointer handle, ControlRemoteProcessAction action) {
