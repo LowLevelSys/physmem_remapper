@@ -30,15 +30,13 @@ namespace auto_skillcheck {
 				UPlayerInteractionHandler interaction_handler = g_proc->read<UPlayerInteractionHandler>((void*)curr_dbd_player.interaction_handler);
 				USkillCheck curr_skillcheck = g_proc->read<USkillCheck>((void*)interaction_handler.skillcheck);
 
-				log("Skillcheck at %p", (void*)interaction_handler.skillcheck);
-
 				if (!curr_skillcheck.is_displayed)
 					break;
 
 				if (is_mirror_skillcheck(curr_skillcheck.current_progress))
 					break;
 
-				if (curr_skillcheck.current_progress < curr_skillcheck.bonus_zone)
+				if (curr_skillcheck.current_progress < curr_skillcheck.success_zone_start)
 					break;
 
 				INPUT Input = { 0 };

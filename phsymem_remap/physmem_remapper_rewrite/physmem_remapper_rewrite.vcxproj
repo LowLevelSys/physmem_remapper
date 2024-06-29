@@ -53,13 +53,13 @@
     </ClCompile>
     <ClCompile>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <Optimization>Disabled</Optimization>
-      <WholeProgramOptimization>false</WholeProgramOptimization>
+      <Optimization>MaxSpeed</Optimization>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
       <DisableSpecificWarnings>4201;4996;%(DisableSpecificWarnings)</DisableSpecificWarnings>
       <FloatingPointExceptions>false</FloatingPointExceptions>
       <InlineFunctionExpansion>Default</InlineFunctionExpansion>
       <ExceptionHandling>false</ExceptionHandling>
-      <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
+      <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <ControlFlowGuard>false</ControlFlowGuard>
       <OmitFramePointers>false</OmitFramePointers>

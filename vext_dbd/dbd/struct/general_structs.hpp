@@ -125,38 +125,19 @@ struct vector3 {
 	vector3(float x, float y, float z) : x(x), y(y), z(z) {};
 };
 
-struct vmatrix {
-	vmatrix() {
-		for (int i = 0; i < 3; i++)
-			for (int j = 0; j < 4; j++)
-				m_flMatVal[i][j] = 0.f;
-	}
-	vmatrix(
-		float m00, float m01, float m02, float m03,
-		float m10, float m11, float m12, float m13,
-		float m20, float m21, float m22, float m23) {
-		m_flMatVal[0][0] = m00;	m_flMatVal[0][1] = m01; m_flMatVal[0][2] = m02; m_flMatVal[0][3] = m03;
-		m_flMatVal[1][0] = m10;	m_flMatVal[1][1] = m11; m_flMatVal[1][2] = m12; m_flMatVal[1][3] = m13;
-		m_flMatVal[2][0] = m20;	m_flMatVal[2][1] = m21; m_flMatVal[2][2] = m22; m_flMatVal[2][3] = m23;
-	}
+struct vmatrix
+{
+public:
+	float matrix[4][4];
 
-	float* operator[](int i) {
-		return m_flMatVal[i];
-	}
-	const float* operator[](int i) const {
-		return m_flMatVal[i];
-	}
+	vector3 transform(const vector3 vector) const
+	{
+		vector3 transformed;
 
-	float* Base() { return &m_flMatVal[0][0]; }
-	const float* Base() const { return &m_flMatVal[0][0]; }
-	void Print() const {
-		for (int i = 0; i < 3; i++) {
-			for (int j = 0; j < 4; j++) {
-				printf("%f ", this->m_flMatVal[i][j]);
-			}
-			printf("\n");
-		}
-		printf("\n");
+		transformed.x = vector.y * matrix[0][1] + vector.x * matrix[0][0] + vector.z * matrix[0][2] + matrix[0][3];
+		transformed.y = vector.y * matrix[1][1] + vector.x * matrix[1][0] + vector.z * matrix[1][2] + matrix[1][3];
+		transformed.z = vector.y * matrix[3][1] + vector.x * matrix[3][0] + vector.z * matrix[3][2] + matrix[3][3];
+
+		return transformed;
 	}
-	float m_flMatVal[3][4];
 };

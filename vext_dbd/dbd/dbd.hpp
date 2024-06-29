@@ -12,7 +12,6 @@ namespace dbd {
 		*/
 		inline bool usable_game_data;
 
-		inline std::vector<AActor*> generators;
 		inline uint64_t uworld;
 		inline TUObjectArray uobjects;
 		inline UWorld uworld_data;
@@ -22,11 +21,22 @@ namespace dbd {
 		inline APlayerController player_controller;
 		inline APlayerCameraManager camera_manager;
 
+		inline UObject* agenerator_class;
+		inline UObject* aescape_door_class;
+		inline UObject* asearchable_class;
+		inline UObject* atotem_class;
+		inline UObject* ahatch_class;
+		inline UObject* apallet_class;
+		inline UObject* awindow_class;
+		inline UObject* acollectable_class;
+		inline UObject* abreakable_class;
 	};
 
 	namespace settings {
 		namespace esp {
 			inline bool draw_player_esp = true;
+
+			inline bool draw_entity_esp = true;
 
 			inline bool draw_name_esp = true;
 		};

@@ -139,6 +139,9 @@
       <AdditionalIncludeDirectories>$(DXSDK_DIR)</AdditionalIncludeDirectories>
       <Optimization>Disabled</Optimization>
       <WholeProgramOptimization>false</WholeProgramOptimization>
+      <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
+      <OmitFramePointers>false</OmitFramePointers>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -164,7 +167,8 @@
   <ItemGroup>
     <ClInclude Include="dbd\dbd.hpp" />
     <ClInclude Include="dbd\features\auto_skillcheck.hpp" />
-    <ClInclude Include="dbd\features\esp.hpp" />
+    <ClInclude Include="dbd\features\entitiy.hpp" />
+    <ClInclude Include="dbd\features\player.hpp" />
     <ClInclude Include="dbd\features\fov_changer.hpp" />
     <ClInclude Include="dbd\struct\dbd_structs.hpp" />
     <ClInclude Include="dbd\struct\general_structs.hpp" />

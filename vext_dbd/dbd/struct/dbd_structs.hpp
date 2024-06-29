@@ -157,12 +157,6 @@ struct FRotator {
     double yaw;
     double roll;
 };
-//
-//struct FName {
-//    int32_t                                         ComparisonIndex;                                   // 0x0000(0x0004)(NOT AUTO-GENERATED PROPERTY)
-//    int32_t                                         Number;                                            // 0x0004(0x0004)(NOT AUTO-GENERATED PROPERTY)
-//    int32_t                                         DisplayIndex;                                      // 0x0008(0x0004)(NOT AUTO-GENERATED PROPERTY)
-//};
 
 struct FNameEntryHandle {
     uint32_t Block = 0;
@@ -376,8 +370,10 @@ struct UObject {
     class UObject* Outer;                                             // 0x0028(0x0008)(NOT AUTO-GENERATED PROPERTY)
 
     inline bool IsA(void* cmp) const;
+    inline std::string GetOuterName(UObject* outer);
     inline std::string GetFullName();
     inline std::string GetName();
+    inline uint32_t GetComparisonIndex();
 };
 
 struct UField : UObject
@@ -403,48 +399,65 @@ struct UClass : UStruct
     uint8_t                                         Pad_43[0x38];                                      // 0x00E8(0x0038)(Fixing Size After Last Property [ Dumper-7 ])
     struct UObject* DefaultObject;                                     // 0x0120(0x0008)(NOT AUTO-GENERATED PROPERTY)
     uint8_t                                         Pad_44[0x108];                                     // 0x0128(0x0108)(Fixing Struct Size After Last Property [ Dumper-7 ])
+
+
+    bool IsSubclassOf(const void* Base) const
+    {
+        if (!Base)
+            return false;
+
+        for (const UStruct* super = (UStruct*)(uint64_t(this)); super; super = g_proc->read<UClass*>((void*)(uint64_t(super) + offsetof(UStruct, Super)))) {
+            if (super == Base)
+                return true;
+        }
+
+        return false;
+    }
+
 };
 
-// untested
 inline bool UObject::IsA(void* cmp) const {
-    for (UClass* super = (UClass*)(uint64_t(this) + offsetof(UObject, Class)); super; super = g_proc->read<UClass*>(super + offsetof(UClass, Super)))
-        if (super == cmp) return true;
-    return false;
+    UClass* super = g_proc->read<UClass*>((void*)(uint64_t(this) + offsetof(UObject, Class)));
+    return super->IsSubclassOf(cmp);
 }
 
 inline std::string UObject::GetName() {
-    return this ? Name.GetName() : "None";
+    FName name = g_proc->read<FName>((void*)(uint64_t(this) + offsetof(UObject, Name)));
+    return this ? name.GetName() : "None";
 }
 
-// Semi-Functional?
+inline uint32_t UObject::GetComparisonIndex() {
+    FName name = g_proc->read<FName>((void*)(uint64_t(this) + offsetof(UObject, Name)));
+    return name.comparison_index;
+}
+
+inline std::string UObject::GetOuterName(UObject* outer) {
+    if (!outer || uint64_t(outer) > 0x7FFFFFFFFFFF)
+        return "";
+
+    std::string outerName = outer->GetName();
+    if (outerName.empty() || outerName == "None")
+        return "";
+
+    UObject* nextOuter = g_proc->read<UObject*>((void*)(uint64_t(outer) + offsetof(UObject, Outer)));
+    std::string nextOuterName = GetOuterName(nextOuter);
+
+    return nextOuterName.empty() ? outerName : outerName + "." + nextOuterName;
+}
+
 inline std::string UObject::GetFullName() {
     UClass* class_ptr = (UClass*)(uint64_t(this) + offsetof(UObject, Class));
-    if (this && class_ptr)
+    std::string Name;
+
+    if (class_ptr)
     {
-        std::string Temp;
-
         UObject* outer = g_proc->read<UObject*>((void*)(uint64_t(this) + offsetof(UObject, Outer)));
-        while (outer) {
-            UObject out = g_proc->read<UObject>(outer);
-            std::string outerName = out.GetName();
-            if (!outerName.empty() && outerName != "None")
-                Temp = outerName + "." + Temp;
-            outer = g_proc->read<UObject*>(outer + offsetof(UObject, Outer));
-        }
+        std::string outerName = GetOuterName(outer);
 
-        UClass cls = g_proc->read<UClass>(class_ptr);
-        std::string Name = cls.GetName();
-        if (Name != "None" && !Name.empty()) {
-            Name += " ";
-            Name += Temp;
-        }
-        else {
-            Name = Temp;
-        }
+        UClass* cls = g_proc->read<UClass*>(class_ptr);
+        std::string Name = cls->GetName() + " " + (outerName.empty() ? this->GetName() : outerName + "." + this->GetName());
 
-
-        UObject object = g_proc->read<UObject>((void*)(uint64_t(this)));
-        Name += object.GetName();
+        Name = std::regex_replace(Name, std::regex("^ +| +$|( ) +"), "$1"); // Remove leading and trailing spaces...
 
         return Name;
     }
@@ -457,83 +470,6 @@ struct FUObjectItem final
 public:
     struct UObject* Object;                                            // 0x0000(0x0008)(NOT AUTO-GENERATED PROPERTY)
     uint8_t                                         Pad_0[0x10];                                       // 0x0008(0x0010)(Fixing Struct Size After Last Property [ Dumper-7 ])
-};
-
-class TUObjectArray
-{
-public:
-    enum
-    {
-        ElementsPerChunk = 0x10000,
-    };
-
-private:
-    static inline auto DecryptPtr = [](void* ObjPtr) -> uint8_t*
-        {
-            return reinterpret_cast<uint8_t*>(ObjPtr);
-        };
-
-public:
-
-    FUObjectItem** Objects;
-    BYTE* PreAllocatedObjects;
-    uint32_t MaxElements;
-    uint32_t NumElements;
-    uint32_t MaxChunks;
-    uint32_t NumChunks;
-
-public:
-    inline int32_t Num() const
-    {
-        return NumElements;
-    }
-
-    inline FUObjectItem** GetDecrytedObjPtr() const
-    {
-        return reinterpret_cast<FUObjectItem**>(DecryptPtr(Objects));
-    }
-
-
-    UObject* GetObjectPtr(uint32_t id) const
-    {
-        if (id >= NumElements) {
-            //log("id >= NumElements : %i >= %i", id, NumElements);
-            return nullptr;
-        }
-
-        uint64_t chunkIndex = id / ElementsPerChunk;
-        if (chunkIndex >= NumChunks) {
-            //log("chunkIndex >= NumChunks : %i >= %i", chunkIndex, NumChunks);
-            return nullptr;
-        }
-
-        BYTE* chunk = g_proc->read<BYTE*>(Objects + chunkIndex * 0x8);
-        if (!chunk) {
-            //log("!chunk");
-            return nullptr;
-        }
-
-        uint32_t withinChunkIndex = id % ElementsPerChunk * 24;
-        UObject* item = g_proc->read<UObject*>(chunk + withinChunkIndex);
-        return item;
-    }
-
-    inline struct UObject* FindObject(const char* name) const
-    {
-        for (uint32_t i = 0u; i < NumElements; i++)
-        {
-            UObject* object = GetObjectPtr(i);
-            std::string object_name = object->GetFullName();//GetNameById();
-
-            //// debug logging
-            //if(object_name.find("Generator") != std::string::npos)
-            //    log("[%i] %s", i, object_name.c_str());
-
-            if (object && object_name == name)
-                return object;
-        }
-        return nullptr;
-    }
 };
 
 struct UActorComponent : public UObject
@@ -654,8 +590,6 @@ struct APlayerCameraManager : AActor {
     struct FCameraCacheEntry                      CameraCachePrivate;                               // 0x22D0(0x07D0)(Transient, NativeAccessSpecifierPrivate)
 };
 
-const int a = offsetof(APlayerCameraManager, CameraCachePrivate);
-
 struct AController : AActor
 {
     uint8_t                                         Pad_6BD[0x8];                                      // 0x02A0(0x0008)(Fixing Size After Last Property [ Dumper-7 ])
@@ -689,11 +623,12 @@ struct UPlayer : UObject {
 };
 
 struct USkillCheck {
-    float padding_0[0x151 / sizeof(float)];
+    char padding_0[0x151];
     bool is_displayed;
     float current_progress;
-    float padding_1[0x4C / sizeof(float)];
-    float bonus_zone;
+    char padding_1[0x3F];
+    float success_zone_start;
+    float success_zone_end;
 };
 
 struct UPlayerInteractionHandler {
@@ -805,6 +740,105 @@ public:
     uint8_t                                         Pad_31D1[0x10];                                    // 0x0418(0x0010)(Fixing Size After Last Property [ Dumper-7 ])
     struct UBaseOutlineRenderStrategy* _renderingStrategy;                                // 0x0428(0x0008)(ZeroConstructor, Transient, NoDestructor, HasGetValueTypeHash, NativeAccessSpecifierPrivate)
     uint8_t                                         Pad_31D2[0x10];                                    // 0x0430(0x0010)(Fixing Struct Size After Last Property [ Dumper-7 ])
+};
+
+class TUObjectArray
+{
+public:
+    enum
+    {
+        ElementsPerChunk = 0x10000,
+    };
+
+private:
+    static inline auto DecryptPtr = [](void* ObjPtr) -> uint8_t* {
+            return reinterpret_cast<uint8_t*>(ObjPtr);
+        };
+
+public:
+
+    FUObjectItem** Objects;
+    BYTE* PreAllocatedObjects;
+    uint32_t MaxElements;
+    uint32_t NumElements;
+    uint32_t MaxChunks;
+    uint32_t NumChunks;
+
+public:
+    inline int32_t Num() const {
+        return NumElements;
+    }
+
+    inline FUObjectItem** GetDecrytedObjPtr() const {
+        return reinterpret_cast<FUObjectItem**>(DecryptPtr(Objects));
+    }
+
+    bool IsValidIndex(uint32_t Index) const {
+        return Index < Num() && Index >= 0;
+
+    }
+
+    std::vector<UObject*> GetAllObjects() const {
+        std::vector<UObject*> allObjects;
+        allObjects.reserve(MaxElements); // Reserve space for efficiency
+
+        for (uint32_t Index = 0; Index < std::min<uint32_t>(MaxElements, NumChunks * ElementsPerChunk); Index++) {
+            const uint64_t chunkIndex = Index / ElementsPerChunk;
+            const uint32_t withinChunkIndex = Index % ElementsPerChunk;
+
+            FUObjectItem* chunk = g_proc->read<FUObjectItem*>((void*)(Objects + chunkIndex * 0x8));
+            if (!chunk)
+                continue;
+
+            UObject* item = g_proc->read<UObject*>(chunk + withinChunkIndex);
+            if (item)
+                allObjects.emplace_back(item);
+        }
+        return allObjects;
+    }
+
+    UObject* GetObjectPtr(uint32_t Index) const {
+        const uint64_t chunkIndex = Index / ElementsPerChunk;
+        const uint32_t withinChunkIndex = Index % ElementsPerChunk;
+        if (!IsValidIndex(Index))
+            return nullptr;
+
+        if (chunkIndex > NumChunks)
+            return nullptr;
+
+        if (Index > MaxElements)
+            return nullptr;
+
+        FUObjectItem* chunk = g_proc->read<FUObjectItem*>((void*)(Objects + chunkIndex * 0x8));
+        if (!chunk)
+            return nullptr;
+
+        UObject* item = g_proc->read<UObject*>(chunk + withinChunkIndex);
+
+        return item;
+    }
+
+    void Log() const {
+        std::vector objects = GetAllObjects();
+        for (const auto& object : objects) {
+            std::string name = object->GetFullName();
+            log("Object: %s", name.c_str());
+        }
+    }
+
+    inline struct UObject* FindObject(const std::string& name) const {
+        for (int i = 0; i < NumElements; i++) {
+            UObject* object = GetObjectPtr(i);
+
+            if (!object)
+                continue;
+
+            if (object->GetFullName() == name)
+                return object;
+        }
+
+        return nullptr;
+    }
 };
 
 /*

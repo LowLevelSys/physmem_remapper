@@ -7,7 +7,7 @@
 #include "../dbd.hpp"
 
 
-namespace dbd_esp {
+namespace player {
 	inline void draw_player_esp(void) {
 		TArray<APlayerState*> player_state_addresses = dbd_mem_util::read_tarray<APlayerState*>((void*)((uint64_t)dbd::game_data::uworld_data.game_state + offsetof(AGameStateBase, player_array)));
 

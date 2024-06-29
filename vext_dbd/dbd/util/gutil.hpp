@@ -6,78 +6,79 @@ namespace gutil {
     inline long screen_centerx = 0;
     inline long screen_centery = 0;
 
-    static vmatrix create_matrix(FRotator rot, vector3 origin) {
-        constexpr double deg_to_rad = static_cast<float>(3.14159265358979323846) / 180.f;
+	static vmatrix CreateMatrix(vector3 rot, vector3 origin) {
+		const float DEG_TO_RAD = static_cast<float>(3.14159265358979323846) / 180.f;
+		const float radPitch = rot.x * DEG_TO_RAD;
+		const float radYaw = rot.y * DEG_TO_RAD;
+		const float radRoll = rot.z * DEG_TO_RAD;
 
-        double rad_pitch = rot.pitch * deg_to_rad;
-        double rad_yaw = rot.yaw * deg_to_rad;
-        double rad_roll = rot.roll * deg_to_rad;
+		const float SP = sinf(radPitch);
+		const float CP = cosf(radPitch);
+		const float SY = sinf(radYaw);
+		const float CY = cosf(radYaw);
+		const float SR = sinf(radRoll);
+		const float CR = cosf(radRoll);
 
-        double SP = sinf((float)rad_pitch);
-        double CP = cosf((float)rad_pitch);
-        double SY = sinf((float)rad_yaw);
-        double CY = cosf((float)rad_yaw);
-        double SR = sinf((float)rad_roll);
-        double CR = cosf((float)rad_roll);
+		vmatrix matrix;
+		matrix.matrix[0][0] = CP * CY;
+		matrix.matrix[0][1] = CP * SY;
+		matrix.matrix[0][2] = SP;
+		matrix.matrix[0][3] = 0.f;
 
-        vmatrix matrix;
+		matrix.matrix[1][0] = SR * SP * CY - CR * SY;
+		matrix.matrix[1][1] = SR * SP * SY + CR * CY;
+		matrix.matrix[1][2] = -SR * CP;
+		matrix.matrix[1][3] = 0.f;
 
-        matrix[0][0] = (float)CP * (float)CY;
-        matrix[0][1] = (float)CP * (float)SY;
-        matrix[0][2] = (float)SP;
-        matrix[0][3] = 0.f;
+		matrix.matrix[2][0] = -(CR * SP * CY + SR * SY);
+		matrix.matrix[2][1] = CY * SR - CR * SP * SY;
+		matrix.matrix[2][2] = CR * CP;
+		matrix.matrix[2][3] = 0.f;
 
-        matrix[1][0] = (float)SR * (float)SP * (float)CY - (float)CR * (float)SY;
-        matrix[1][1] = (float)SR * (float)SP * (float)SY + (float)CR * (float)CY;
-        matrix[1][2] = -(float)SR * (float)CP;
-        matrix[1][3] = 0.f;
+		matrix.matrix[3][0] = origin.x;
+		matrix.matrix[3][1] = origin.y;
+		matrix.matrix[3][2] = origin.z;
+		matrix.matrix[3][3] = 1.f;
 
-        matrix[2][0] = -((float)CR * (float)SP * (float)CY + (float)SR * (float)SY);
-        matrix[2][1] = (float)CY * (float)SR - (float)CR * (float)SP * (float)SY;
-        matrix[2][2] = (float)CR * (float)CP;
-        matrix[2][3] = 0.f;
+		return matrix;
+	}
 
-        matrix[3][0] = origin.x;
-        matrix[3][1] = origin.y;
-        matrix[3][2] = origin.z;
-        matrix[3][3] = 1.f;
-
-        return matrix;
-    }
+	float dot(vector3 left, vector3 right) {
+		return (left.x * right.x) + (left.y * right.y) + (left.z * right.z);
+	}
 
     vector2 world_to_screen(FMinimalViewInfo camera, float real_fov, FVector world_location) {
-        // Initialize screen center coordinates if not set
-        if (screen_centerx == 0 || screen_centery == 0) {
-            screen_centerx = GetSystemMetrics(SM_CXSCREEN) / 2;
-            screen_centery = GetSystemMetrics(SM_CYSCREEN) / 2;
-        }
+		if (!screen_centerx || !screen_centery) {
+			screen_centerx = GetSystemMetrics(SM_CXSCREEN) / 2;
+			screen_centery = GetSystemMetrics(SM_CYSCREEN) / 2;
+		}
+        vector3 Screenlocation(0, 0, 0);
+        vector3 rot = vector3(camera.Rotation.pitch, camera.Rotation.yaw, camera.Rotation.roll);
+        vector3 campos = vector3(camera.Location.x, camera.Location.y, camera.Location.z);
+		vector3 world = vector3(world_location.x, world_location.y, world_location.z);
 
-        // Create a transformation matrix from the camera rotation
-        vmatrix temp_matrix{};
-        temp_matrix = create_matrix(camera.Rotation, vector3());
+        const vmatrix tempMatrix = CreateMatrix(rot, vector3(0, 0, 0));
 
-        vector3 axis_x(temp_matrix[0][0], temp_matrix[0][1], temp_matrix[0][2]);
-        vector3 axis_y(temp_matrix[1][0], temp_matrix[1][1], temp_matrix[1][2]);
-        vector3 axis_z(temp_matrix[2][0], temp_matrix[2][1], temp_matrix[2][2]);
+        vector3 vAxisX(tempMatrix.matrix[0][0], tempMatrix.matrix[0][1], tempMatrix.matrix[0][2]);
+        vector3 vAxisY(tempMatrix.matrix[1][0], tempMatrix.matrix[1][1], tempMatrix.matrix[1][2]);
+        vector3 vAxisZ(tempMatrix.matrix[2][0], tempMatrix.matrix[2][1], tempMatrix.matrix[2][2]);
 
-        vector3 camera_vec_location((float)camera.Location.x, (float)camera.Location.y, (float)camera.Location.z);
-        vector3 world_vec_location((float)world_location.x, (float)world_location.y, (float)world_location.z);
+        vector3 vDelta = world - campos;
 
-        vector3 vdelta = world_vec_location - camera_vec_location;
-        vector3 vtransformed(vdelta.dot(axis_y), vdelta.dot(axis_z), vdelta.dot(axis_x));
+        vector3 vTransformed = vector3(dot(vDelta, vAxisY), dot(vDelta, vAxisZ), dot(vDelta, vAxisX));
 
-        // Avoid division by zero
-        if (vtransformed.z < 1.0f)
-            vtransformed.z = 1.0f;
+        if (vTransformed.z < 1.f)
+            vTransformed.z = 1.f;
 
+        const float FOV_DEG_TO_RAD = static_cast<float>(3.14159265358979323846) / 360.f;
 
-        const float deg_to_rad = static_cast<float>(3.14159265358979323846) / 360.0f;
+		if (real_fov) {
+			camera.FOV = real_fov;
+		}
 
-        // Calculate the screen position
-        vector2 screen_location(0, 0);
-        screen_location.x = screen_centerx + vtransformed.x * (screen_centerx / tanf(real_fov * deg_to_rad)) / vtransformed.z;
-        screen_location.y = screen_centery - vtransformed.y * (screen_centery / tanf(real_fov * deg_to_rad)) / vtransformed.z;
+        Screenlocation.x = screen_centerx + vTransformed.x * (screen_centerx / tanf(camera.FOV * FOV_DEG_TO_RAD)) / vTransformed.z;
+		Screenlocation.y = screen_centery - vTransformed.y * (screen_centerx / tanf(camera.FOV * FOV_DEG_TO_RAD)) / vTransformed.z;
 
-        return screen_location;
+        return vector2(Screenlocation.x, Screenlocation.y);
     }
 }
