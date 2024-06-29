@@ -93,9 +93,6 @@
     <ClInclude Include="project\crt.hpp">
       <Filter>project</Filter>
     </ClInclude>
-    <ClInclude Include="project\spinlock.hpp">
-      <Filter>project</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="project\interrupts\interrupts_asm.asm">

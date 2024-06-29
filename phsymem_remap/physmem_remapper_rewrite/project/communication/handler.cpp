@@ -4,7 +4,6 @@
 
 #include "../project_api.hpp"
 #include "../project_utility.hpp"
-#include "../spinlock.hpp"
 
 namespace handler_utility {
     uint64_t get_pid(const char* target_process_name);
@@ -33,13 +32,10 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
     project_status status = status_success;
     command_t cmd;
 
-    spinlock_lock(&handler_lock);
- 
     status = physmem::copy_memory_to_constructed_cr3(&cmd, (void*)hwnd, sizeof(command_t), shellcode::get_current_user_cr3());
-    if (status != status_success) {
-        spinlock_unlock(&handler_lock);
+    if (status != status_success)
         return 0;
-    }
+    
 
     switch (cmd.call_type) {
     case cmd_get_pid_by_name: {
@@ -206,7 +202,5 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
 
     // Copy back th main cmd
     physmem::copy_memory_from_constructed_cr3((void*)hwnd, &cmd, sizeof(command_t), shellcode::get_current_user_cr3());
-
-    spinlock_unlock(&handler_lock);
     return 0;
 }
