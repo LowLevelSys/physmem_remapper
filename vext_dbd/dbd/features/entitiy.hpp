@@ -84,7 +84,7 @@ namespace entity {
 				USceneComponent curr_scene_component = g_proc->read<USceneComponent>(actor.RootComponent);
 
 				APlayerCameraManager cam = dbd::game_data::camera_manager;
-				vector2 root_comp = gutil::world_to_screen(cam.CameraCachePrivate.pov, cam.DefaultFOV, curr_scene_component.relative_location);
+				vector2 root_comp = gutil::world_to_screen(&cam.CameraCachePrivate.pov, cam.DefaultFOV, curr_scene_component.relative_location);
 				if (!root_comp.x || !root_comp.y) {
 					log("Failed to project world to screen");
 					continue;

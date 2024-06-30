@@ -47,14 +47,14 @@ namespace gutil {
 		return (left.x * right.x) + (left.y * right.y) + (left.z * right.z);
 	}
 
-    vector2 world_to_screen(FMinimalViewInfo camera, float real_fov, FVector world_location) {
+    vector2 world_to_screen(FMinimalViewInfo* camera, float real_fov, FVector world_location) {
 		if (!screen_centerx || !screen_centery) {
 			screen_centerx = GetSystemMetrics(SM_CXSCREEN) / 2;
 			screen_centery = GetSystemMetrics(SM_CYSCREEN) / 2;
 		}
         vector3 Screenlocation(0, 0, 0);
-        vector3 rot = vector3(camera.Rotation.pitch, camera.Rotation.yaw, camera.Rotation.roll);
-        vector3 campos = vector3(camera.Location.x, camera.Location.y, camera.Location.z);
+        vector3 rot = vector3(camera->Rotation.pitch, camera->Rotation.yaw, camera->Rotation.roll);
+        vector3 campos = vector3(camera->Location.x, camera->Location.y, camera->Location.z);
 		vector3 world = vector3(world_location.x, world_location.y, world_location.z);
 
         const vmatrix tempMatrix = CreateMatrix(rot, vector3(0, 0, 0));
@@ -73,11 +73,11 @@ namespace gutil {
         const float FOV_DEG_TO_RAD = static_cast<float>(3.14159265358979323846) / 360.f;
 
 		if (real_fov) {
-			camera.FOV = real_fov;
+			camera->FOV = real_fov;
 		}
 
-        Screenlocation.x = screen_centerx + vTransformed.x * (screen_centerx / tanf(camera.FOV * FOV_DEG_TO_RAD)) / vTransformed.z;
-		Screenlocation.y = screen_centery - vTransformed.y * (screen_centerx / tanf(camera.FOV * FOV_DEG_TO_RAD)) / vTransformed.z;
+        Screenlocation.x = screen_centerx + vTransformed.x * (screen_centerx / tanf(camera->FOV * FOV_DEG_TO_RAD)) / vTransformed.z;
+		Screenlocation.y = screen_centery - vTransformed.y * (screen_centerx / tanf(camera->FOV * FOV_DEG_TO_RAD)) / vTransformed.z;
 
         return vector2(Screenlocation.x, Screenlocation.y);
     }

@@ -22,6 +22,10 @@ namespace player {
 			if (!curr_player.PawnPrivate)
 				continue;
 
+			// Ignore our player
+			if ((void*)curr_player.PawnPrivate == dbd::game_data::local_player.player_controller)
+				continue;
+
 			APawn curr_pawn = g_proc->read<APawn>((void*)curr_player.PawnPrivate);
 			if (!curr_pawn.Instigator)
 				continue;
@@ -32,9 +36,20 @@ namespace player {
 
 			std::string player_name = dbd_mem_util::read_fstring((void*)((uint64_t)player_state_addresses[i] + offsetof(APlayerState, PlayerNamePrivate)));
 			USceneComponent curr_scene_component = g_proc->read<USceneComponent>((void*)curr_instigator.RootComponent);
-
 			APlayerCameraManager cam = dbd::game_data::camera_manager;
-			vector2 root_comp = gutil::world_to_screen(cam.CameraCachePrivate.pov, cam.DefaultFOV, curr_scene_component.relative_location);
+			FVector* cam_loc = &cam.CameraCachePrivate.pov.Location;
+
+			vector3 cam_pos = { (float)cam_loc->x, (float)cam_loc->y, (float)cam_loc->z };
+			vector3 player_pos = { (float)curr_scene_component.relative_location.x, (float)curr_scene_component.relative_location.y, (float)curr_scene_component.relative_location.z };
+			float distance = (cam_pos.distTo(player_pos) / 39.62f) - 6;
+
+			if (distance < 0)
+				continue;
+
+			std::string dist_string = "-[" + std::to_string((int)distance) + "m]";
+			player_name += dist_string;
+
+			vector2 root_comp = gutil::world_to_screen(&cam.CameraCachePrivate.pov, cam.DefaultFOV, curr_scene_component.relative_location);
 			if (!root_comp.x || !root_comp.y) {
 				log("Failed to project world to screen");
 				continue;
