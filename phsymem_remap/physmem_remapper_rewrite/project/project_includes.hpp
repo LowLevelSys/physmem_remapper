@@ -43,7 +43,6 @@ enum project_status {
 	status_wrong_context,
 	status_non_valid_usable_until_level,
 	status_not_present,
-	status_too_many_cores,
 
 	/*
 		Interrupts

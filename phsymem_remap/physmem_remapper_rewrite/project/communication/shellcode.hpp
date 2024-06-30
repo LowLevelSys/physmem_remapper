@@ -70,7 +70,13 @@ namespace shellcode {
 			// Change to constructed Cr3
 			0x48, 0xB8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // mov rax, imm64 (constructed cr3 value)
 			0x48, 0x0F, 0x22, 0xD8,                                     // mov cr3, rax
-			0x0F, 0xAE, 0xF0											// mfence
+
+			// Flush the TLB via write to Cr4 (clear PGE bit)
+			0x0F, 0x20, 0xE0,                                           // mov rax, cr4
+			0x48, 0x25, 0x7F, 0xFF, 0xFF, 0xFF,                         // and rax, 0xFFFFFFFFFFFFFF7F (clear PGE bit)
+			0x0F, 0x22, 0xE0,                                           // mov cr4, rax
+			0x48, 0x0D, 0x80, 0x00, 0x00, 0x00,                         // or rax, 0x80 (set PGE bit back)
+			0x0F, 0x22, 0xE0,                                           // mov cr4, rax
 		};
 
 		static const uint8_t nmi_panic_shellcode[] = {
@@ -191,13 +197,17 @@ namespace shellcode {
 			// Change to constructed Cr3
 			0x48, 0xB8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // mov rax, imm64 (constructed cr3 value)
 			0x48, 0x0F, 0x22, 0xD8,                                     // mov cr3, rax
-			0x0F, 0xAE, 0xF0											// mfence
+
+			// Flush the TLB via write to Cr4 (clear PGE bit)
+			0x0F, 0x20, 0xE0,                                           // mov rax, cr4
+			0x48, 0x25, 0x7F, 0xFF, 0xFF, 0xFF,                         // and rax, 0xFFFFFFFFFFFFFF7F (clear PGE bit)
+			0x0F, 0x22, 0xE0,                                           // mov cr4, rax
+			0x48, 0x0D, 0x80, 0x00, 0x00, 0x00,                         // or rax, 0x80 (set PGE bit back)
+			0x0F, 0x22, 0xE0,                                           // mov cr4, rax
 		};
 
-		// Won't be executed
 		static const uint8_t return_shellcode[] = {
-			0x90,														// lock nop (only here to act as a buffer for the lock)
-			0xC3														// ret
+			0xC3
 		};
 
 		*(void**)((uint8_t*)start_place_holder_shellcode + 15) = orig_data_ptr_value;
@@ -257,12 +267,15 @@ namespace shellcode {
 			0x48, 0x83, 0xC0, 0x00,                                     // add rax, offsetof(info_page_t, user_cr3_storage)
 			0x48, 0x8B, 0x00,                                           // mov rax, [rax]
 			0x0F, 0x22, 0xD8,                                           // mov cr3, rax
-			0x0F, 0xAE, 0xF0											// mfence
+			0x0F, 0x20, 0xE0,                                           // mov rax, cr4
+			0x48, 0x25, 0x7F, 0xFF, 0xFF, 0xFF,                         // and rax, 0xFFFFFFFFFFFFFF7F (clear PGE bit)
+			0x0F, 0x22, 0xE0,                                           // mov cr4, rax
+			0x48, 0x0D, 0x80, 0x00, 0x00, 0x00,                         // or rax, 0x80 (set PGE bit back)
+			0x0F, 0x22, 0xE0,                                           // mov cr4, rax
 		};
 
 		static const uint8_t return_shellcode[] = {
-			0x90,														// lock nop (only here to act as a buffer for the lock)
-			0xC3														// ret
+			0xC3
 		};
 
 		*(uint8_t*)((uint8_t*)calculate_base_shellcode + 23) = sizeof(info_page_t);
@@ -323,7 +336,11 @@ namespace shellcode {
 			0x48, 0x83, 0xC0, 0x00,                                     // add rax, offsetof(info_page_t, user_cr3_storage)
 			0x48, 0x8B, 0x00,                                           // mov rax, [rax]
 			0x0F, 0x22, 0xD8,                                           // mov cr3, rax
-			0x0F, 0xAE, 0xF0											// mfence
+			0x0F, 0x20, 0xE0,                                           // mov rax, cr4
+			0x48, 0x25, 0x7F, 0xFF, 0xFF, 0xFF,                         // and rax, 0xFFFFFFFFFFFFFF7F (clear PGE bit)
+			0x0F, 0x22, 0xE0,                                           // mov cr4, rax
+			0x48, 0x0D, 0x80, 0x00, 0x00, 0x00,                         // or rax, 0x80 (set PGE bit back)
+			0x0F, 0x22, 0xE0,                                           // mov cr4, rax
 		};
 
 		static const uint8_t jump_windows_handler[] = {
@@ -376,11 +393,11 @@ namespace shellcode {
 			goto cleanup;
 		}
 
-		crt::memset(enter_constructed_space_executed, 0, PAGE_SIZE);
-		crt::memset(enter_constructed_space_shown, 0, PAGE_SIZE);
-		crt::memset(exit_constructed_space, 0, PAGE_SIZE);
-		crt::memset(nmi_shellcode, 0, PAGE_SIZE);
-		crt::memset(info_page, 0, PAGE_SIZE);
+		memset(enter_constructed_space_executed, 0, PAGE_SIZE);
+		memset(enter_constructed_space_shown, 0, PAGE_SIZE);
+		memset(exit_constructed_space, 0, PAGE_SIZE);
+		memset(nmi_shellcode, 0, PAGE_SIZE);
+		memset(info_page, 0, PAGE_SIZE);
 
 
 		/*

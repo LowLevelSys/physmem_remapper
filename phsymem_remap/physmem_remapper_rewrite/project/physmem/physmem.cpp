@@ -81,70 +81,62 @@ namespace physmem {
 	}
 
 	project_status construct_my_page_tables(void) {
+		page_tables.memcpy_pml4e_idx = pt_helpers::find_free_pml4e_index(page_tables.pml4_table);
 
-		uint64_t processor_count = KeQueryActiveProcessorCount(0);
-		if (processor_count >= TABLE_COUNT)
-			return status_too_many_cores;
+		if (!pt_helpers::is_index_valid(page_tables.memcpy_pml4e_idx))
+			return status_invalid_page_table_index;
 
-		// Setup page tables for each core
-		for (size_t i = 0; i < processor_count; i++) {
-			page_tables.per_cpu_info[i].memcpy_pml4e_idx = pt_helpers::find_free_pml4e_index(page_tables.pml4_table);
+		pml4e_64* memcpy_pml4_table = page_tables.pml4_table;
+		pdpte_64* memcpy_pdpt_table = pt_manager::get_free_pdpt_table(&page_tables);
+		pdpte_1gb_64* memcpy_pdpt_1gb_table = (pdpte_1gb_64*)memcpy_pdpt_table;
+		pde_64* memcpy_pd_table = pt_manager::get_free_pd_table(&page_tables);
+		pde_2mb_64* memcpy_pd_2mb_table = (pde_2mb_64*)memcpy_pd_table;
+		pte_64* memcpy_pt_table = pt_manager::get_free_pt_table(&page_tables);
 
-			if (!pt_helpers::is_index_valid(page_tables.per_cpu_info[i].memcpy_pml4e_idx))
-				return status_invalid_page_table_index;
+		if (!memcpy_pdpt_table || !memcpy_pd_table || !memcpy_pt_table)
+			return status_no_available_page_tables;
 
-			pml4e_64* memcpy_pml4_table = page_tables.pml4_table;
-			pdpte_64* memcpy_pdpt_table = pt_manager::get_free_pdpt_table(&page_tables);
-			pdpte_1gb_64* memcpy_pdpt_1gb_table = (pdpte_1gb_64*)memcpy_pdpt_table;
-			pde_64* memcpy_pd_table = pt_manager::get_free_pd_table(&page_tables);
-			pde_2mb_64* memcpy_pd_2mb_table = (pde_2mb_64*)memcpy_pd_table;
-			pte_64* memcpy_pt_table = pt_manager::get_free_pt_table(&page_tables);
+		uint64_t pdpt_pfn = win_get_physical_address(memcpy_pdpt_table) >> 12;
+		uint64_t pd_pfn = win_get_physical_address(memcpy_pd_table) >> 12;
+		uint64_t pt_pfn = win_get_physical_address(memcpy_pt_table) >> 12;
 
-			if (!memcpy_pdpt_table || !memcpy_pd_table || !memcpy_pt_table)
-				return status_no_available_page_tables;
+		if (!pdpt_pfn || !pd_pfn || !pt_pfn)
+			return status_no_available_page_tables;
 
-			uint64_t pdpt_pfn = win_get_physical_address(memcpy_pdpt_table) >> 12;
-			uint64_t pd_pfn = win_get_physical_address(memcpy_pd_table) >> 12;
-			uint64_t pt_pfn = win_get_physical_address(memcpy_pt_table) >> 12;
+		// Pml4
+		pml4e_64& free_pml4_slot = memcpy_pml4_table[page_tables.memcpy_pml4e_idx];
+		free_pml4_slot.present = true;
+		free_pml4_slot.write = true;
+		free_pml4_slot.page_frame_number = pdpt_pfn;
 
-			if (!pdpt_pfn || !pd_pfn || !pt_pfn)
-				return status_no_available_page_tables;
+		// Pdpt
+		uint32_t pdpt_idx = pt_helpers::find_free_pdpt_index(memcpy_pdpt_table);
+		if (!pt_helpers::is_index_valid(pdpt_idx))
+			return status_invalid_page_table_index;
 
-			// Pml4
-			pml4e_64& free_pml4_slot = memcpy_pml4_table[page_tables.per_cpu_info[i].memcpy_pml4e_idx];
-			free_pml4_slot.present = true;
-			free_pml4_slot.write = true;
-			free_pml4_slot.page_frame_number = pdpt_pfn;
+		pdpte_64& free_pdpt_slot = memcpy_pdpt_table[pdpt_idx];
+		free_pdpt_slot.present = true;
+		free_pdpt_slot.write = true;
+		free_pdpt_slot.page_frame_number = pd_pfn;
 
-			// Pdpt
-			uint32_t pdpt_idx = pt_helpers::find_free_pdpt_index(memcpy_pdpt_table);
-			if (!pt_helpers::is_index_valid(pdpt_idx))
-				return status_invalid_page_table_index;
+		// Pd
+		uint32_t pd_idx = pt_helpers::find_free_pd_index(memcpy_pd_table);
+		if (!pt_helpers::is_index_valid(pd_idx))
+			return status_invalid_page_table_index;
 
-			pdpte_64& free_pdpt_slot = memcpy_pdpt_table[pdpt_idx];
-			free_pdpt_slot.present = true;
-			free_pdpt_slot.write = true;
-			free_pdpt_slot.page_frame_number = pd_pfn;
+		pde_64& free_pd_slot = memcpy_pd_table[pdpt_idx];
+		free_pd_slot.present = true;
+		free_pd_slot.write = true;
+		free_pd_slot.page_frame_number = pt_pfn;
 
-			// Pd
-			uint32_t pd_idx = pt_helpers::find_free_pd_index(memcpy_pd_table);
-			if (!pt_helpers::is_index_valid(pd_idx))
-				return status_invalid_page_table_index;
+		// Safe the addresses of the tables used for memory copying
+		page_tables.memcpy_pdpt_1gb_table = memcpy_pdpt_1gb_table;
+		page_tables.memcpy_pd_2mb_table = memcpy_pd_2mb_table;
+		page_tables.memcpy_pt_table = memcpy_pt_table;
 
-			pde_64& free_pd_slot = memcpy_pd_table[pdpt_idx];
-			free_pd_slot.present = true;
-			free_pd_slot.write = true;
-			free_pd_slot.page_frame_number = pt_pfn;
-
-			// Safe the addresses of the tables used for memory copying
-			page_tables.per_cpu_info[i].memcpy_pdpt_1gb_table = memcpy_pdpt_1gb_table;
-			page_tables.per_cpu_info[i].memcpy_pd_2mb_table = memcpy_pd_2mb_table;
-			page_tables.per_cpu_info[i].memcpy_pt_table = memcpy_pt_table;
-
-			// Safe the indexes of the memcpy tables that are used
-			page_tables.per_cpu_info[i].memcpy_pdpt_idx = pdpt_idx;
-			page_tables.per_cpu_info[i].memcpy_pd_idx = pd_idx;
-		}
+		// Safe the indexes of the memcpy tables that are used
+		page_tables.memcpy_pdpt_idx = pdpt_idx;
+		page_tables.memcpy_pd_idx = pd_idx;
 
 		return status_success;
 	}
@@ -180,7 +172,7 @@ namespace physmem {
 	*/
 
 	void free_mem_copying_pte_table(void) {
-		crt::memset(page_tables.per_cpu_info[get_proc_number()].memcpy_pt_table, 0, 512 * sizeof(pte_64));
+		crt::memset(page_tables.memcpy_pt_table, 0, 512 * sizeof(pte_64));
 	}
 
 	project_status get_remapping_entry(void* mem, remapped_entry_t*& remapping_entry) {
@@ -398,11 +390,11 @@ namespace physmem {
 			return status_wrong_context;
 		
 
-		uint32_t pt_idx = pt_helpers::find_free_pt_index(page_tables.per_cpu_info[get_proc_number()].memcpy_pt_table);
+		uint32_t pt_idx = pt_helpers::find_free_pt_index(page_tables.memcpy_pt_table);
 		if (!pt_helpers::is_index_valid(pt_idx))
 			return status_invalid_page_table_index;
 
-		pte_64& pte = page_tables.per_cpu_info[get_proc_number()].memcpy_pt_table[pt_idx];
+		pte_64& pte = page_tables.memcpy_pt_table[pt_idx];
 		pte.flags = 0;
 
 		pte.present = true;
@@ -411,9 +403,9 @@ namespace physmem {
 
 		va_64 generated_address = { 0 };
 
-		generated_address.pml4e_idx = page_tables.per_cpu_info[get_proc_number()].memcpy_pml4e_idx;
-		generated_address.pdpte_idx = page_tables.per_cpu_info[get_proc_number()].memcpy_pdpt_idx;
-		generated_address.pde_idx = page_tables.per_cpu_info[get_proc_number()].memcpy_pd_idx;
+		generated_address.pml4e_idx = page_tables.memcpy_pml4e_idx;
+		generated_address.pdpte_idx = page_tables.memcpy_pdpt_idx;
+		generated_address.pde_idx = page_tables.memcpy_pd_idx;
 		generated_address.pte_idx = pt_idx;
 
 		// Then we always page align the physical address to the nearest 4kb boundary and calculate a page offset
@@ -443,7 +435,7 @@ namespace physmem {
 		va_64 va = { 0 };
 		va.flags = (uint64_t)mapped_page;
 
-		pte_64& pte = page_tables.per_cpu_info[get_proc_number()].memcpy_pt_table[va.pte_idx];
+		pte_64& pte = page_tables.memcpy_pt_table[va.pte_idx];
 		pte.flags = 0;
 
 		__invlpg(mapped_page);

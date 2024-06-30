@@ -2,6 +2,7 @@
 #include "interrupts.hpp"
 
 #include "../communication/shellcode.hpp"
+#include "../spinlock.hpp"
 #include "../physmem/physmem.hpp"
 
 namespace interrupts {
@@ -81,6 +82,8 @@ namespace interrupts {
 		// Finally remove all mappings that the current driver called used up
 		// in order to avoid the pte table filling up
 		physmem::free_mem_copying_pte_table();
+
+		spinlock_unlock(&handler_lock);
 	}
 
 	/*

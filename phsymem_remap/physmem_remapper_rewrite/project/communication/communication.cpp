@@ -106,13 +106,6 @@ namespace communication {
             return status;
         }
 
-        // Then unset the global flag for the entry that points to the "real" shellcode in our cr3 which will be enter_constructed_space_shown
-        status = physmem::unset_global_flag_for_range(enter_constructed_space_shown, PAGE_SIZE, physmem::get_system_cr3().flags);
-        if (status != status_success) {
-            project_log_error("Failed to unset the global flag for exexcuted shellcode %d", status);
-            return status;
-        }
-
         // Then ensure the driver mapping in our cr3
         status = physmem::ensure_memory_mapping_for_range(driver_base, driver_size, physmem::get_system_cr3().flags);
         if (status != status_success) {
