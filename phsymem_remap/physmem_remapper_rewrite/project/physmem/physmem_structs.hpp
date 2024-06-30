@@ -1,7 +1,7 @@
 #pragma once
 #include "../project_includes.hpp"
 
-constexpr uint64_t TABLE_COUNT = 50;
+constexpr uint64_t TABLE_COUNT = 250;
 constexpr uint64_t REMAPPING_COUNT = 50;
 
 typedef union {
@@ -216,7 +216,17 @@ enum restorable_until {
     nothing_removeable,    // You can free nothing as there is another mapping in the remapped pte table
 };
 
-#pragma pack(push, 1)
+struct per_processor_page_table_info {
+    // memcpy slots
+    pdpte_1gb_64* memcpy_pdpt_1gb_table;
+    pde_2mb_64* memcpy_pd_2mb_table;
+    pte_64* memcpy_pt_table;
+
+    uint32_t memcpy_pml4e_idx;
+    uint32_t memcpy_pdpt_idx;
+    uint32_t memcpy_pd_idx;
+};
+
 struct constructed_page_tables {
     remapped_entry_t remapping_list[REMAPPING_COUNT];
 
@@ -235,17 +245,9 @@ struct constructed_page_tables {
 
     pte_64* pt_table[TABLE_COUNT];
 
-    // memcpy slots
-    pdpte_1gb_64* memcpy_pdpt_1gb_table;
-    pde_2mb_64* memcpy_pd_2mb_table;
-    pte_64* memcpy_pt_table;
-
-    uint32_t memcpy_pml4e_idx;
-    uint32_t memcpy_pdpt_idx;
-    uint32_t memcpy_pd_idx;
-
     bool is_pdpt_table_occupied[TABLE_COUNT];
     bool is_pd_table_occupied[TABLE_COUNT];
     bool is_pt_table_occupied[TABLE_COUNT];
+
+    per_processor_page_table_info per_cpu_info[TABLE_COUNT];
 };
-#pragma pack(pop)

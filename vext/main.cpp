@@ -16,13 +16,12 @@ int main(void) {
 		return -1;
 	}
 
-	uint64_t iteration = 0;
-	uint64_t result = 0;
-
-	for (;; iteration++) {
-		result = g_proc->read<uint64_t>((void*)(mod_base));
-		log("[%d] result %llx", iteration, result);
+	while (true) {
+		g_proc->speed_test();
+		Sleep(1000);
 	}
+
+	getchar();
 
 	return 0;
 }

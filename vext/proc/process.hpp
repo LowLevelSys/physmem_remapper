@@ -42,15 +42,11 @@ private:
 			return false;
 		}
 
-		log("Owner pid: [%p]", (void*)owner_pid);
-
 		owner_cr3 = physmem_instance->get_cr3(owner_pid);
 		if (!owner_cr3) {
 			log("Failed to get cr3 of owner process");
 			return false;
 		}
-
-		log("Owner cr3: [%p]", (void*)owner_cr3);
 
 		target_pid = physmem_instance->get_pid_by_name(process_name.c_str());
 		if (!target_pid) {
@@ -58,17 +54,12 @@ private:
 			return false;
 		}
 
-
-		log("%s pid: [%p]", process_name.c_str(), (void*)target_pid);
-
 		// Then get the cr3
 		target_cr3 = physmem_instance->get_cr3(target_pid);
 		if (!target_cr3) {
 			log("Failed to get cr3 of target process: %s", process_name.c_str());
 			return false;
 		}
-
-		log("%s cr3: [%p]", process_name.c_str(), (void*)target_cr3);
 
 		target_module_count = physmem_instance->get_ldr_data_table_entry_count(target_pid);
 		if (!target_module_count) {
@@ -85,26 +76,14 @@ private:
 		// Ensure that the memory is present (mark pte as present)
 		memset(target_modules, 0, sizeof(module_info_t) * target_module_count);
 
-		log("%s module count: [%llu]", process_name.c_str(), target_module_count);
-		log_new_line();
-		log_new_line();
-
 		if (!physmem_instance->get_data_table_entry_info(target_pid, target_modules)) {
 			log("Failed getting data table entry info");
 			return false;
 		}
 
-		log("Logging modules: ");
-		log_new_line();
-
-		// last one is not valid
-		for (uint64_t i = 0; i < target_module_count - 1; i++) {
-			log("%s loaded at: [%p] with size [%p]", target_modules[i].name, (void*)target_modules[i].base, (void*)target_modules[i].size);
-		}
 
 		return true;
 	}
-
 
 public:
 
@@ -128,6 +107,40 @@ public:
 		}
 
 		return process_instance;
+	}
+
+	void speed_test(void) {
+		std::chrono::steady_clock::time_point start_time, end_time;
+		double elapsed_seconds;
+		start_time = std::chrono::steady_clock::now();
+
+		char buffer[0x1000];
+
+		uint64_t mod_base = process_instance->get_module_base("notepad.exe");
+
+		for (uint64_t iteration = 0; iteration < 1000; iteration++) {
+			physmem_instance->copy_virtual_memory(target_cr3, owner_cr3, (void*)mod_base, &buffer, 0x1000);
+		}
+
+		end_time = std::chrono::steady_clock::now();
+		elapsed_seconds = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time).count();
+		double reads_per_second = 1000.0 / elapsed_seconds;
+
+		log("PAGE_SIZE Read");
+		log("Took %f seconds to read PAGE_SIZE bytes 1000 times -> %f reads per second", elapsed_seconds, reads_per_second);
+
+		start_time = std::chrono::steady_clock::now();
+		for (uint64_t iteration = 0; iteration < 1000; iteration++) {
+			physmem_instance->copy_virtual_memory(target_cr3, owner_cr3, (void*)mod_base, &buffer, 4);
+		}
+
+		end_time = std::chrono::steady_clock::now();
+		elapsed_seconds = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time).count();
+	    reads_per_second = 1000.0 / elapsed_seconds;
+
+		log("4 Byte Read");
+		log("Took %f seconds to read 4 bytes 1000 times -> %f reads per second\n", elapsed_seconds, reads_per_second);
+
 	}
 
 	template <typename t>

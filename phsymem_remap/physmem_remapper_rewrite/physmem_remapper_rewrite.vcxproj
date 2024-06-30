@@ -93,7 +93,6 @@
     <ClInclude Include="project\project_api.hpp" />
     <ClInclude Include="project\project_includes.hpp" />
     <ClInclude Include="project\project_utility.hpp" />
-    <ClInclude Include="project\spinlock.hpp" />
     <ClInclude Include="project\stack\stack_manager.hpp" />
     <ClInclude Include="project\windows_structs.hpp" />
   </ItemGroup>
