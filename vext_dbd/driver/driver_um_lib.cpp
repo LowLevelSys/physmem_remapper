@@ -156,7 +156,6 @@ bool physmem_remapper_um_t::get_data_table_entry_info(uint64_t pid, module_info_
 }
 
 bool physmem_remapper_um_t::remove_apc() {
-
     if (!inited || !NtUserGetCPD)
         return 0;
 
@@ -169,7 +168,6 @@ bool physmem_remapper_um_t::remove_apc() {
 }
 
 bool physmem_remapper_um_t::restore_apc() {
-
     if (!inited || !NtUserGetCPD)
         return 0;
 
@@ -179,4 +177,20 @@ bool physmem_remapper_um_t::restore_apc() {
     send_request(&cmd);
 
     return cmd.status;
+}
+
+void* physmem_remapper_um_t::get_eprocess(uint64_t pid) {
+    if (!inited || !NtUserGetCPD)
+        return 0;
+
+    cmd_get_eprocess sub_cmd;
+    sub_cmd.pid = pid;
+
+    command_t cmd = { 0 };
+    cmd.call_type = cmd_get_eproc;
+    cmd.sub_command_ptr = &sub_cmd;
+
+    send_request(&cmd);
+
+    return sub_cmd.eproc;
 }

@@ -80,6 +80,12 @@ struct cmd_get_data_table_entry_info_t {
     _Out_ module_info_t* info_array;
 };
 
+struct cmd_get_eprocess {
+    _In_ uint64_t pid;
+
+    _Out_ void* eproc;
+};
+
 enum call_types_t : uint32_t {
     cmd_get_pid_by_name,
     cmd_get_cr3,
@@ -92,7 +98,9 @@ enum call_types_t : uint32_t {
     cmd_copy_virtual_memory,
 
     cmd_remove_apc,
-    cmd_restore_apc
+    cmd_restore_apc,
+
+    cmd_get_eproc
 };
 
 struct command_t {
