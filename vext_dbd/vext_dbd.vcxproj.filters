@@ -127,9 +127,6 @@
     <ClInclude Include="overlay\overlay.hpp">
       <Filter>Source Files\overlay</Filter>
     </ClInclude>
-    <ClInclude Include="dbd\features\player.hpp">
-      <Filter>Source Files\dbd\features\player</Filter>
-    </ClInclude>
     <ClInclude Include="dbd\features\entitiy.hpp">
       <Filter>Source Files\dbd\features\entity</Filter>
     </ClInclude>
@@ -137,6 +134,9 @@
       <Filter>Source Files\dbd\features\player</Filter>
     </ClInclude>
     <ClInclude Include="dbd\features\fov_changer.hpp">
+      <Filter>Source Files\dbd\features\player</Filter>
+    </ClInclude>
+    <ClInclude Include="dbd\features\player.hpp">
       <Filter>Source Files\dbd\features\player</Filter>
     </ClInclude>
   </ItemGroup>

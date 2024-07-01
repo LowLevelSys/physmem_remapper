@@ -10,13 +10,12 @@
 namespace player {
 	inline void draw_player_esp(void) {
 		TArray<APlayerState*> player_state_addresses = dbd_mem_util::read_tarray<APlayerState*>((void*)((uint64_t)dbd::game_data::uworld_data.game_state + offsetof(AGameStateBase, player_array)));
-
-		if (player_state_addresses.Num() == 0) {
+		if (player_state_addresses.num() == 0) {
 			log("No players found in the game state.");
 			return;
 		}
 
-		for (int i = 0; i < player_state_addresses.Num(); i++) {
+		for (int i = 0; i < player_state_addresses.num(); i++) {
 			APlayerState curr_player = g_proc->read<APlayerState>((void*)player_state_addresses[i]);
 
 			if (!curr_player.PawnPrivate)
@@ -54,10 +53,24 @@ namespace player {
 				log("Failed to project world to screen");
 				continue;
 			}
-
 			overlay::draw_text(root_comp.x, root_comp.y, player_name.c_str(), IM_COL32(255, 255, 255, 255));
+
+			/*
+			TArray<UActorComponent*> actor_comps = dbd_mem_util::read_tarray<UActorComponent*>((void*)((uint64_t)curr_pawn.Instigator + offsetof(AActor, OwnedActorComponents)));
+			for (int j = 0; j < actor_comps.num(); j++) {
+				std::string component_name = actor_comps[j]->GetName().c_str();
+
+				if (gutil::contains(component_name, "DBDOutline")) {
+					//float generator_color[4] = { 0.f, 1.f, 0.f, 0.8f }; // Green
+					//g_proc->write_array((void*)((uint64_t)actor_comps[j] + 0x2FC), generator_color, sizeof(generator_color));
+					log("%s Outline component at %p", player_name.c_str(), actor_comps[j]);
+					continue;
+				}
+			}
+			delete[] actor_comps.get_data();
+			*/
 		}
 
-		delete[] player_state_addresses.GetData();
+		delete[] player_state_addresses.get_data();
 	}
 };

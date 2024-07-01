@@ -64,6 +64,10 @@ namespace interrupts {
 		curr_user_rflags.reserved3 = 0;
 		curr_user_rflags.reserved4 = 0;
 		curr_user_rflags.read_as_1 = 1;
+		curr_user_rflags.nested_task_flag = 0;
+		curr_user_rflags.io_privilege_level = 3;
+		curr_user_rflags.resume_flag = 0;
+		curr_user_rflags.alignment_check_flag = 0;
 
 		// RPL is forced to 3
 		uint16_t sysret_cs = (uint16_t)(((star_msr >> 48) + 16) | 3);  // (STAR[63:48] + 16) | 3

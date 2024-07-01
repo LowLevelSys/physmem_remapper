@@ -28,6 +28,41 @@ namespace dbd {
 		return game_data::usable_game_data;
 	}
 
+	void update_actor_caches(void) {
+		TArray<ULevel*> world_levels = dbd_mem_util::read_tarray<ULevel*>((void*)((uint64_t)dbd::game_data::uworld + offsetof(UWorld, levels)));
+		if (world_levels.num() == 0) {
+			log("No levels found in UWorld");
+			return;
+		}
+
+		std::unordered_set<AActor*> curr_actors;
+		for (int i = 0; i < world_levels.num(); i++) {
+			if (!world_levels[i])
+				continue;
+
+			TArray<AActor*> level_actors = dbd_mem_util::read_tarray<AActor*>((void*)((uint64_t)world_levels[i] + offsetof(ULevel, actors)));
+			for (int j = 0; j < level_actors.num(); j++) {
+				if (!level_actors[i])
+					continue;
+
+				curr_actors.insert(level_actors[j]);
+			}
+		}
+
+		for (auto it = game_data::cached_actors.begin(); it != game_data::cached_actors.end();) {
+			if (curr_actors.find(*it) == curr_actors.end()) {
+				it = game_data::cached_actors.erase(it);
+			}
+			else {
+				++it;
+			}
+		}
+
+		for (AActor* actor : curr_actors) {
+			game_data::cached_actors.insert(actor);
+		}
+	}
+
 	bool update_base_game_data(void) {
 		if (!game_base)
 			return false;
@@ -41,7 +76,7 @@ namespace dbd {
 			return false;
 
 		game_data::uobjects = g_proc->read<TUObjectArray>((void*)(game_base + offsets::OFFSET_GOBJECTS));
-		if (!game_data::uobjects.Num())
+		if (!game_data::uobjects.num())
 			return false;
 
 		game_data::uworld_data = g_proc->read<UWorld>((void*)game_data::uworld);
@@ -70,46 +105,7 @@ namespace dbd {
 
 		game_data::camera_manager = g_proc->read<APlayerCameraManager>((void*)game_data::player_controller.camera_manager);
 
-		/*
-			Get Class addresses if they haven't been gotten already
-		*/
-
-		/*
-		if (game_data::agenerator_class)
-			return true;
-
-		game_data::agenerator_class = game_data::uobjects.FindObject("Class DeadByDaylight.Generator");
-		game_data::aescape_door_class = game_data::uobjects.FindObject("Class DeadByDaylight.EscapeDoor");
-		game_data::asearchable_class = game_data::uobjects.FindObject("Class DeadByDaylight.Searchable");
-		game_data::atotem_class = game_data::uobjects.FindObject("Class DeadByDaylight.Totem");
-		game_data::ahatch_class = game_data::uobjects.FindObject("Class DeadByDaylight.Hatch");
-		game_data::apallet_class = game_data::uobjects.FindObject("Class DeadByDaylight.Pallet");
-		game_data::awindow_class = game_data::uobjects.FindObject("Class DeadByDaylight.Window");
-		game_data::acollectable_class = game_data::uobjects.FindObject("Class DeadByDaylight.Collectable");
-		game_data::abreakable_class = game_data::uobjects.FindObject("Class DeadByDaylight.BreakableBase");
-
-		if (!game_data::agenerator_class ||
-			!game_data::aescape_door_class ||
-			!game_data::asearchable_class ||
-			!game_data::atotem_class ||
-			!game_data::ahatch_class ||
-			!game_data::apallet_class ||
-			!game_data::awindow_class ||
-			!game_data::acollectable_class ||
-			!game_data::abreakable_class) {
-			log("Failed to get AClasses");
-			return false;  // At least one pointer is null
-		}
-		log("Generator Class Address: 0x%p", static_cast<void*>(game_data::agenerator_class));
-		log("EscapeDoor Class Address: 0x%p", static_cast<void*>(game_data::aescape_door_class));
-		log("Searchable Class Address: 0x%p", static_cast<void*>(game_data::asearchable_class));
-		log("Totem Class Address: 0x%p", static_cast<void*>(game_data::atotem_class));
-		log("Hatch Class Address: 0x%p", static_cast<void*>(game_data::ahatch_class));
-		log("Pallet Class Address: 0x%p", static_cast<void*>(game_data::apallet_class));
-		log("Window Class Address: 0x%p", static_cast<void*>(game_data::awindow_class));
-		log("Collectable Class Address: 0x%p", static_cast<void*>(game_data::acollectable_class));
-		log("Breakable Class Address: 0x%p", static_cast<void*>(game_data::abreakable_class));
-		*/
+		update_actor_caches();
 
 		return true;
 	}
@@ -128,7 +124,6 @@ namespace dbd {
 			// Update and validate game data
 			update_base_game_data();
 			if (!validate_game_data()) {
-				Sleep(10);
 				continue;
 			}
 
@@ -149,8 +144,6 @@ namespace dbd {
 			}
 			overlay::end_frame();
 			overlay::render();
-
-			Sleep(10);
 		}
 
 		overlay::cleanup();

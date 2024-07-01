@@ -81,4 +81,8 @@ namespace gutil {
 
         return vector2(Screenlocation.x, Screenlocation.y);
     }
+
+	inline bool contains(const std::string& haystack, const std::string& needle) {
+		return haystack.find(needle) != std::string::npos;
+	}
 }

@@ -3,6 +3,9 @@
 #include "../proc/process.hpp"
 #include "struct/dbd_structs.hpp"
 
+#include <unordered_set>
+#include <unordered_map>
+
 namespace dbd {
 	inline bool is_inited = false;
 
@@ -21,15 +24,7 @@ namespace dbd {
 		inline APlayerController player_controller;
 		inline APlayerCameraManager camera_manager;
 
-		inline UObject* agenerator_class;
-		inline UObject* aescape_door_class;
-		inline UObject* asearchable_class;
-		inline UObject* atotem_class;
-		inline UObject* ahatch_class;
-		inline UObject* apallet_class;
-		inline UObject* awindow_class;
-		inline UObject* acollectable_class;
-		inline UObject* abreakable_class;
+		inline std::unordered_set<AActor*> cached_actors;
 	};
 
 	namespace settings {
@@ -47,7 +42,6 @@ namespace dbd {
 			inline float fov = 120.f;
 		};
 	};
-
 
 	// Initialization
 	bool init_cheat(void);

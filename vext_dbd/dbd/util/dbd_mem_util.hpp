@@ -9,17 +9,17 @@ namespace dbd_mem_util {
     inline std::string read_fstring(void* fstring_address) {
         FString player_name_fstring = g_proc->read<FString>(fstring_address);
 
-        if (player_name_fstring.IsValid() && player_name_fstring.Num() > 0) {
-            uint64_t name_size = player_name_fstring.Num() * sizeof(wchar_t);
-            wchar_t* player_name_data = new wchar_t[player_name_fstring.Num() + 1];  // +1 for null terminator
+        if (player_name_fstring.is_valid() && player_name_fstring.num() > 0) {
+            uint64_t name_size = player_name_fstring.num() * sizeof(wchar_t);
+            wchar_t* player_name_data = new wchar_t[player_name_fstring.num() + 1];  // +1 for null terminator
 
-            if (!g_proc->read_array(player_name_data, player_name_fstring.GetData(), name_size)) {
+            if (!g_proc->read_array(player_name_data, player_name_fstring.get_data(), name_size)) {
                 log("Failed to read player name data.");
                 delete[] player_name_data;
                 return "";
             }
 
-            player_name_data[player_name_fstring.Num()] = L'\0';
+            player_name_data[player_name_fstring.num()] = L'\0';
 
             std::wstring player_name_wstr(player_name_data);
             delete[] player_name_data;
@@ -57,9 +57,13 @@ namespace dbd_mem_util {
 
         t* content = new t[local_array.Count];
 
-        // Populate the array 
-        for (int i = 0; i < local_array.Count; i++)
-            content[i] = g_proc->read<t>((void*)((uint64_t)remote_tarray.GetData() + (i * sizeof(t))));
+        if (!g_proc->read_array(content, remote_tarray.Data, local_array.Count * sizeof(t))) {
+            delete[] content;
+            local_array.Count = 0;
+            local_array.Max = 0;
+            local_array.Data = nullptr;
+            return local_array;
+        }
 
         local_array.Data = content;
 
