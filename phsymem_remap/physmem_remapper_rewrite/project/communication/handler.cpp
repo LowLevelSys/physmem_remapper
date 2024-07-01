@@ -41,21 +41,6 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
     }
 
     switch (cmd.call_type) {
-    case cmd_copy_virtual_memory: {
-        copy_virtual_memory_t sub_cmd;
-
-        status = physmem::copy_memory_to_constructed_cr3(&sub_cmd, cmd.sub_command_ptr, sizeof(sub_cmd), shellcode::get_current_user_cr3());
-        if (status != status_success)
-            break;
-
-        status = physmem::copy_virtual_memory(sub_cmd.destination, sub_cmd.source, sub_cmd.size, sub_cmd.destination_cr3, sub_cmd.source_cr3);
-        if (status != status_success)
-            break;
-
-        status = physmem::copy_memory_from_constructed_cr3(cmd.sub_command_ptr, &sub_cmd, sizeof(sub_cmd), shellcode::get_current_user_cr3());
-        if (status != status_success)
-            break;
-    } break;
     case cmd_get_pid_by_name: {
         get_pid_by_name_t sub_cmd;
         status = physmem::copy_memory_to_constructed_cr3(&sub_cmd, cmd.sub_command_ptr, sizeof(sub_cmd), shellcode::get_current_user_cr3());
@@ -155,6 +140,22 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
             break;
 
         status = handler_utility::get_data_table_entry_info(sub_cmd.pid, sub_cmd.info_array, shellcode::get_current_user_cr3());
+        if (status != status_success)
+            break;
+
+        status = physmem::copy_memory_from_constructed_cr3(cmd.sub_command_ptr, &sub_cmd, sizeof(sub_cmd), shellcode::get_current_user_cr3());
+        if (status != status_success)
+            break;
+    } break;
+
+    case cmd_copy_virtual_memory: {
+        copy_virtual_memory_t sub_cmd;
+
+        status = physmem::copy_memory_to_constructed_cr3(&sub_cmd, cmd.sub_command_ptr, sizeof(sub_cmd), shellcode::get_current_user_cr3());
+        if (status != status_success)
+            break;
+
+        status = physmem::copy_virtual_memory(sub_cmd.destination, sub_cmd.source, sub_cmd.size, sub_cmd.destination_cr3, sub_cmd.source_cr3);
         if (status != status_success)
             break;
 

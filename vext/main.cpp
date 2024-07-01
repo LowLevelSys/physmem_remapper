@@ -2,14 +2,14 @@
 #include "proc/process.hpp"
 
 int main(void) {
-	g_proc = process_t::get_inst("Notepad.exe");
+	g_proc = process_t::get_inst("notepad.exe");
 	if (!g_proc) {
 		log("Failed to init process instance");
 		getchar();
 		return -1;
 	}
 
-	uint64_t ow_base = g_proc->get_module_base("Notepad.exe");
+	uint64_t ow_base = g_proc->get_module_base("notepad.exe");
 	if (!ow_base) {
 		log("Failed to get notepad base");
 		getchar();

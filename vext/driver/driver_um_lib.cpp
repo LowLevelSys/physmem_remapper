@@ -35,12 +35,10 @@ inline void spinlock_unlock(volatile long* lock) {
 
 inline volatile long handler_lock = 0;
 
-inline trap_frame_t saved_entry;
-
 // Restores from a nmi
 extern "C" void nmi_restoring(trap_frame_t* trap_frame) {
     uint64_t* stack_ptr = (uint64_t*)trap_frame->rsp;
-    
+
     while (true) {
         if (*stack_ptr != stack_id) {
             stack_ptr++; // Move up the stack
@@ -60,34 +58,13 @@ extern "C" void nmi_restoring(trap_frame_t* trap_frame) {
 __int64 physmem_remapper_um_t::send_request(void* cmd) {
     spinlock_lock(&handler_lock);
 
-    __int64 ret = asm_call_driver((uint64_t)cmd, caller_signature, (uint64_t)&asm_nmi_restoring);
+    __int64 ret = asm_call_driver((uint64_t)cmd, caller_signature, (uint64_t)asm_nmi_restoring);
     if (ret == nmi_occured) {
         spinlock_unlock(&handler_lock);
-
-        DWORD current_processor_number = GetCurrentProcessorNumber();
-
-        uint64_t nmi_panic_function_address = (uint64_t)&asm_nmi_restoring;
-
-        // Format the message to be displayed in the message box
-        std::ostringstream oss;
-        oss << "NMI Callback Called\n"
-            << "Current Processor Core: " << current_processor_number << "\n"
-            << "Interrupted RIP: 0x" << std::hex << nmi_panic_function_address << "\n";
-
-        std::string message = oss.str();
-
-        // Display the message box
-        int msgboxID = MessageBoxA(
-            NULL,
-            message.c_str(),
-            "VEXT",
-            MB_ICONINFORMATION | MB_OK
-        );
 
         // The nmi handler code pops stack id for us, so just recurively call the request
         return send_request(cmd);
     }
-
     spinlock_unlock(&handler_lock);
 
     return ret;

@@ -1,8 +1,8 @@
 #pragma once
 #include "../project_includes.hpp"
 
-constexpr uint64_t TABLE_COUNT = 512;
-constexpr uint64_t REMAPPING_COUNT = 100;
+constexpr uint64_t TABLE_COUNT = 50;
+constexpr uint64_t REMAPPING_COUNT = 50;
 
 typedef union {
     struct {
