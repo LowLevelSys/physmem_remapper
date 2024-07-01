@@ -160,8 +160,8 @@ int wmain(const int argc, wchar_t** argv) {
 
 	kdmapper::AllocationMode mode = kdmapper::AllocationMode::AllocateContiguousMemory;
 
-	bool free_mem = false;
-	bool remove_from_system_page_tables = false;
+	bool free_mem = true;
+	bool remove_from_system_page_tables = true;
 	bool destroy_header = false;
 	bool pass_allocation = true;
 	bool pass_size = true;

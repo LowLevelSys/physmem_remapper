@@ -381,12 +381,18 @@ namespace shellcode {
 		info_page_t* info_page = 0;
 
 		max_addr.QuadPart = MAXULONG64;
+		
+		enter_constructed_space_executed = ExAllocatePoolWithTag(NonPagedPool,
+			PAGE_SIZE, 'MmSt');
+		enter_constructed_space_shown = ExAllocatePoolWithTag(NonPagedPool,
+			PAGE_SIZE, 'MmSt');
+		exit_constructed_space = ExAllocatePoolWithTag(NonPagedPool,
+			PAGE_SIZE, 'MmSt');
+		nmi_shellcode = ExAllocatePoolWithTag(NonPagedPool,
+			PAGE_SIZE, 'MmSt');
 
-		enter_constructed_space_executed = MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
-		enter_constructed_space_shown = MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
-		exit_constructed_space = MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
-		nmi_shellcode = MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
-		info_page = (info_page_t*)MmAllocateContiguousMemory(MAX_PROCESSOR_COUNT * sizeof(info_page_t), max_addr);
+		info_page = (info_page_t*)ExAllocatePoolWithTag(NonPagedPoolNx,
+			MAX_PROCESSOR_COUNT * sizeof(info_page_t), 'MmSt');
 
 		if (!enter_constructed_space_executed || !enter_constructed_space_shown || !exit_constructed_space || !info_page) {
 			status = status_memory_allocation_failed;

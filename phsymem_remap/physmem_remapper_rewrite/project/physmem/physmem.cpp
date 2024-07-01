@@ -30,7 +30,8 @@ namespace physmem {
 	*/
 
 	void* allocate_zero_table(PHYSICAL_ADDRESS max_addr) {
-		void* table = (void*)MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
+		void* table = (void*)ExAllocatePoolWithTag(NonPagedPool,
+			PAGE_SIZE, 'MmSt');
 
 		if (table)
 			crt::memset(table, 0, PAGE_SIZE);

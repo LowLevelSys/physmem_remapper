@@ -20,7 +20,8 @@ namespace stack_manager {
 		processor_count = KeQueryActiveProcessorCount(0);
 
 		for (uint32_t i = 0; i < processor_count; i++) {
-			stack_pointers[i] = MmAllocateContiguousMemory(KERNEL_STACK_SIZE, max_addr);
+			stack_pointers[i] = ExAllocatePoolWithTag(NonPagedPoolNx,
+				KERNEL_STACK_SIZE, 'MmSt');
 			if (!stack_pointers[i]) {
 				status = status_memory_allocation_failed;
 				goto cleanup;

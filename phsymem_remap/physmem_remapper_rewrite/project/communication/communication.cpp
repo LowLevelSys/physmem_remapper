@@ -130,11 +130,11 @@ namespace communication {
         PEPROCESS winlogon_eproc = 0;
         KAPC_STATE apc = { 0 };
 
-        status = utility::is_data_ptr_valid((uint64_t)orig_data_ptr_value);
-        if (status != status_success) {
-            project_log_error("Data ptr at: %p already hooked", data_ptr_address);
-            return status;
-        }
+        //status = utility::is_data_ptr_valid((uint64_t)orig_data_ptr_value);
+        //if (status != status_success) {
+            //project_log_error("Data ptr at: %p already hooked", data_ptr_address);
+            //return status;
+        //}
 
         status = utility::get_eprocess("winlogon.exe", winlogon_eproc);
         if (status != status_success) {
