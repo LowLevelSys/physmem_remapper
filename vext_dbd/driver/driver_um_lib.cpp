@@ -5,6 +5,37 @@
 physmem_remapper_um_t* physmem_remapper_um_t::instance = 0;
 extern "C" NtUserGetCPD_type NtUserGetCPD = 0;
 
+// Function to attempt to acquire a spin lock
+inline bool spinlock_try_lock(volatile long* lock) {
+    return (!(*lock) && !_interlockedbittestandset(lock, 0));
+}
+
+// Function to lock a spin lock
+inline void spinlock_lock(volatile long* lock) {
+    static unsigned max_wait = 65536;
+    unsigned wait = 1;
+
+    while (!spinlock_try_lock(lock)) {
+        for (unsigned i = 0; i < wait; ++i) {
+            _mm_pause();
+        }
+
+        if (wait * 2 > max_wait) {
+            wait = max_wait;
+        }
+        else {
+            wait = wait * 2;
+        }
+    }
+}
+
+// Function to unlock a spin lock
+inline void spinlock_unlock(volatile long* lock) {
+    *lock = 0;
+}
+
+inline volatile long handler_lock = 0;
+
 // Restores from a nmi
 extern "C" void nmi_restoring(trap_frame_t* trap_frame) {
     uint64_t* stack_ptr = (uint64_t*)trap_frame->rsp;
@@ -25,13 +56,43 @@ extern "C" void nmi_restoring(trap_frame_t* trap_frame) {
     }
 }
 
+// Function to get the logical processor index
+unsigned long GetCurrentProcessorLogicalCore() {
+    return GetCurrentProcessorNumber();
+}
+
+// Function to format the message box string
+std::wstring FormatMessageBoxText(uint64_t interruptedRIP, unsigned long processorIndex) {
+    std::wostringstream oss;
+    oss << L"NMI Callback Interrupted\n";
+    oss << L"Interrupted RIP: 0x" << std::hex << interruptedRIP << L"\n";
+    oss << L"Current Processor Logical Core: " << processorIndex;
+    return oss.str();
+}
+
 __int64 physmem_remapper_um_t::send_request(void* cmd) {
+    spinlock_lock(&handler_lock);
 
     __int64 ret = asm_call_driver((uint64_t)cmd, caller_signature, (uint64_t)asm_nmi_restoring);
     if (ret == nmi_occured) {
+        // Simulate getting the RIP (using the address of the assembly function)
+        uint64_t interruptedRIP = reinterpret_cast<uint64_t>(&asm_nmi_restoring);
+
+        // Get the logical core of the processor
+        unsigned long processorIndex = GetCurrentProcessorLogicalCore();
+
+        // Format the message box text
+        std::wstring messageBoxText = FormatMessageBoxText(interruptedRIP, processorIndex);
+
+        // Display the message box
+        MessageBoxW(NULL, messageBoxText.c_str(), L"NMI Callback Info", MB_OK | MB_ICONINFORMATION);
+
+        spinlock_unlock(&handler_lock);
+
         // The nmi handler code pops stack id for us, so just recurively call the request
         return send_request(cmd);
     }
+    spinlock_unlock(&handler_lock);
 
     return ret;
 }
