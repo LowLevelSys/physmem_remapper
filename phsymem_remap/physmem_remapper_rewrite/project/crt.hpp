@@ -153,35 +153,21 @@ namespace crt {
         return dest;
     }
 
-    inline int strcmp(const char* cs, const char* ct) {
-        if (cs && ct) {
-            while (*cs == *ct) {
-                if (*cs == 0 && *ct == 0)
-                    return 0;
-
-                if (*cs == 0 || *ct == 0)
-                    break;
-                cs++;
-                ct++;
-            }
-
-            return *cs - *ct;
+    inline int strcmp(const char* s1, const char* s2) {
+        while (*s1 && (*s1 == *s2)) {
+            s1++;
+            s2++;
         }
-
-        return -1;
+        return static_cast<unsigned char>(*s1) - static_cast<unsigned char>(*s2);
     }
 
     inline int strncmp(const char* s1, const char* s2, size_t n) {
-        for (size_t i = 0; i < n; ++i) {
-            if (s1[i] == '\0' || s2[i] == '\0') {
-                return (unsigned char)s1[i] - (unsigned char)s2[i];
-            }
-            if (s1[i] != s2[i]) {
-                return (unsigned char)s1[i] - (unsigned char)s2[i];
-            }
+        while (n && *s1 && (*s1 == *s2)) {
+            ++s1;
+            ++s2;
+            --n;
         }
-
-        return 0;
+        return n ? (static_cast<unsigned char>(*s1) - static_cast<unsigned char>(*s2)) : 0;
     }
 
     inline char tolower(char c) {
@@ -192,70 +178,57 @@ namespace crt {
     }
 
     inline size_t strlen(const char* str) {
-        const char* s;
-        for (s = str; *s; ++s) {}
-
-        return static_cast<size_t>(s - str);
+        const char* s = str;
+        while (*s) ++s;
+        return s - str;
     }
 
     typedef unsigned short wchar_t;
 
     inline wchar_t towlower(wchar_t wc) {
-        if (wc >= L'A' && wc <= L'Z')
-            return wc - L'A' + L'a';
-
+        if (wc >= L'A' && wc <= L'Z') {
+            return wc + 32;
+        }
         return wc;
     }
 
     inline int _wcsicmp(const wchar_t* s1, const wchar_t* s2) {
-        wchar_t c1, c2;
-        do {
-            c1 = towlower(*s1++);
-            c2 = towlower(*s2++);
-
-            if (c1 == L'\0')
-                break;
-
-        } while (c1 == c2);
-
-        return (int)(c1 - c2);
+        while (*s1 && (towlower(*s1) == towlower(*s2))) {
+            ++s1;
+            ++s2;
+        }
+        return towlower(*s1) - towlower(*s2);
     }
 
     inline const char* strstr(const char* haystack, const char* needle) {
-        if (*needle == '\0')
-            return haystack;
+        if (!*needle) return haystack;
 
-        for (const char* h = haystack; *h != '\0'; ++h) {
-            const char* n = needle;
-            const char* h2 = h;
+        const char* p1 = haystack;
+        const char* p2 = needle;
 
-            while (*n != '\0' && *h2 != '\0' && *h2 == *n) {
-                ++n;
-                ++h2;
+        while (*haystack) {
+            if (*haystack == *p2) {
+                p1 = haystack;
+                while (*p1 && *p2 && (*p1 == *p2)) {
+                    ++p1;
+                    ++p2;
+                }
+                if (!*p2) return haystack;
+                p2 = needle;
             }
-
-            if (*n == '\0')
-                return h;
+            ++haystack;
         }
-
-        return 0;
+        return nullptr;
     }
 
-    inline char* strrchr(const char* str, int c) {
-        char* last_occurrence = 0;
-        char ch = (char)c;
-
+    inline const char* strrchr(const char* str, int c) {
+        const char* last = nullptr;
         while (*str) {
-            if (*str == ch) {
-                last_occurrence = (char*)str;
+            if (*str == c) {
+                last = str;
             }
-            str++;
+            ++str;
         }
-
-        if (ch == '\0') { 
-            return (char*)str;
-        }
-
-        return last_occurrence;
+        return (*str == c) ? str : last;
     }
 };
