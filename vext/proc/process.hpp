@@ -92,6 +92,10 @@ public:
 		physmem_instance = 0;
 	}
 
+	physmem_remapper_um_t* get_remapper() {
+		return process_instance->physmem_instance;
+	}
+
 	static process_t* get_inst(std::string process_name) {
 		if (!process_instance) {
 			process_instance = new process_t();
@@ -188,6 +192,14 @@ public:
 	bool restore_apc() {
 		bool result = physmem_instance->restore_apc();
 		return result;
+	}
+
+	bool trigger_cow_in_target(void* target_address) {
+		return physmem_instance->trigger_cow(target_address, this->target_cr3, this->owner_cr3);
+	}
+
+	void revert_cow_trigger_in_target(void* target_address) {
+		return physmem_instance->revert_cow_triggering(target_address, this->target_cr3);
 	}
 };
 

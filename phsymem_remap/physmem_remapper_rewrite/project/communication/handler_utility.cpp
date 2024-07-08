@@ -333,4 +333,65 @@ namespace handler_utility {
 
         return (uint64_t)data_table_entry.SizeOfImage;
     }
+
+    project_status trigger_cow(void* target_address, uint64_t target_cr3, uint64_t source_cr3) {
+        if (!target_address || !target_cr3 || !source_cr3)
+            return status_invalid_parameter;
+
+        project_status status;
+        uint64_t physical_address;
+        status = physmem::translate_to_physical_address(source_cr3, target_address, physical_address);
+        if (status != status_success)
+            return status;
+
+        if (!physical_address)
+            return status_address_translation_failed;
+
+        pte_64 dummy;
+        pte_64* pte;
+        status = physmem::get_pte_entry(target_address, target_cr3, pte);
+        if (status != status_success)
+            return status;
+
+        if (!pte)
+            return status_failure;
+
+        dummy.flags = 0;
+        dummy.present = true;
+        dummy.write = true;
+        dummy.supervisor = true;
+        dummy.execute_disable = false;
+        dummy.page_frame_number = physical_address >> 12;
+        *pte = dummy;
+
+        __invlpg(target_address);
+
+        physmem::safely_unmap_4kb_page(pte);
+
+        return status_success;
+    }
+
+    project_status revert_cow_triggering(void* target_address, uint64_t target_cr3) {
+        if (!target_address || !target_cr3)
+            return status_invalid_parameter;
+
+        project_status status;
+        pte_64 dummy;
+        pte_64* pte;
+        status = physmem::get_pte_entry(target_address, target_cr3, pte);
+        if (status != status_success)
+            return status;
+
+        if (!pte)
+            return status_failure;
+
+        dummy.flags = 0;
+        *pte = dummy;
+
+        __invlpg(target_address);
+
+        physmem::safely_unmap_4kb_page(pte);
+
+        return status_success;
+    }
 };

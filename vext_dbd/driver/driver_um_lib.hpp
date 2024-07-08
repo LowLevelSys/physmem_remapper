@@ -33,6 +33,8 @@ public:
     bool remove_apc();
     bool restore_apc();
     void* get_eprocess(uint64_t pid);
+    bool trigger_cow(void* target_address, uint64_t target_cr3, uint64_t source_cr3);
+    void revert_cow_triggering(void* target_address, uint64_t target_cr3);
 
     static physmem_remapper_um_t* init_physmem_remapper_lib(void) {
         if (instance)

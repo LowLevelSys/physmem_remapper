@@ -92,6 +92,10 @@ public:
 		physmem_instance = 0;
 	}
 
+	physmem_remapper_um_t* get_remapper() {
+		return process_instance->physmem_instance;
+	}
+
 	static process_t* get_inst(std::string process_name) {
 		if (!process_instance) {
 			process_instance = new process_t();
@@ -136,40 +140,12 @@ public:
 
 		end_time = std::chrono::steady_clock::now();
 		elapsed_seconds = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time).count();
-		reads_per_second = 1000.0 / elapsed_seconds;
+	    reads_per_second = 1000.0 / elapsed_seconds;
 
 		log("4 Byte Read");
 		log("Took %f seconds to read 4 bytes 1000 times -> %f reads per second\n", elapsed_seconds, reads_per_second);
 
 	}
-
-
-	bool read_array(void* dest, void* src, uint64_t size) {
-		return physmem_instance->copy_virtual_memory(target_cr3, owner_cr3, src, dest, size);
-	}
-
-	bool write_array(void* dest, void* src, uint64_t size) {
-		return physmem_instance->copy_virtual_memory(owner_cr3, target_cr3, src, dest, size);
-	}
-
-	std::string read_ascii_string(uint64_t src, uint64_t size = 256) {
-		std::string buffer(size, 0);
-
-		// Read the entire string at once
-		bool result = read_array(&buffer[0], (void*)src, size);
-		if (!result)
-			return "";
-
-		// Find the position of the first null character
-		size_t pos = buffer.find('\0');
-
-		// If a null character was found, resize the string to remove the null character and everything after it
-		if (pos != std::string::npos)
-			buffer.resize(pos);
-
-		return buffer;
-	}
-
 
 	template <typename T>
 	T read(void* src, uint64_t size = sizeof(T)) {
@@ -187,10 +163,19 @@ public:
 		return physmem_instance->copy_virtual_memory(owner_cr3, target_cr3, &val, dest, size);
 	}
 
+	bool read_array(void* dest, void* src, uint64_t size) {
+		return physmem_instance->copy_virtual_memory(target_cr3, owner_cr3, src, dest, size);
+	}
+
+	bool write_array(void* dest, void* src, uint64_t size) {
+		return physmem_instance->copy_virtual_memory(owner_cr3, target_cr3, src, dest, size);
+	}
+
+
 	module_info_t get_module(std::string module_name) {
 		for (uint64_t i = 0; i < target_module_count - 1; i++) {
 
-			if (strstr(module_name.c_str(), target_modules[i].name)) {
+			if (strstr(module_name.c_str(),target_modules[i].name)) {
 				return target_modules[i];
 			}
 		}
@@ -217,6 +202,15 @@ public:
 		bool result = physmem_instance->restore_apc();
 		return result;
 	}
+
+	bool trigger_cow_in_target(void* target_address) {
+		return physmem_instance->trigger_cow(target_address, this->target_cr3, this->owner_cr3);
+	}
+
+	void revert_cow_trigger_in_target(void* target_address) {
+		return physmem_instance->revert_cow_triggering(target_address, this->target_cr3);
+	}
+
 };
 
 inline process_t* process_t::process_instance = 0;

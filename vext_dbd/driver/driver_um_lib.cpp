@@ -183,7 +183,7 @@ void* physmem_remapper_um_t::get_eprocess(uint64_t pid) {
     if (!inited || !NtUserGetCPD)
         return 0;
 
-    cmd_get_eprocess sub_cmd;
+    cmd_get_eprocess_t sub_cmd;
     sub_cmd.pid = pid;
 
     command_t cmd = { 0 };
@@ -193,4 +193,52 @@ void* physmem_remapper_um_t::get_eprocess(uint64_t pid) {
     send_request(&cmd);
 
     return sub_cmd.eproc;
+}
+
+void write_to_read_only(uint64_t address, uint8_t* bytes, uint64_t len) {
+    DWORD old_prot = 0;
+    VirtualProtect((LPVOID)address, len, PAGE_EXECUTE_READWRITE, &old_prot);
+    memcpy((void*)address, (void*)bytes, len);
+    VirtualProtect((LPVOID)address, len, old_prot, 0);
+}
+
+void trigger_cow_locally(uint8_t* address) {
+    uint8_t buff = *address;
+
+    // Trigger coW
+    write_to_read_only((uint64_t)address, (uint8_t*)"\xC3", 1);
+    write_to_read_only((uint64_t)address, &buff, 1);
+}
+
+bool physmem_remapper_um_t::trigger_cow(void* target_address, uint64_t target_cr3, uint64_t source_cr3) {
+    /*
+        First trigger cow in your own process
+    */
+    trigger_cow_locally((uint8_t*)target_address);
+
+    cmd_trigger_cow_t sub_cmd;
+    sub_cmd.target_address = target_address;
+    sub_cmd.target_cr3 = target_cr3;
+    sub_cmd.source_cr3 = source_cr3;
+
+    command_t cmd = { 0 };
+    cmd.call_type = cmd_trigger_cow;
+    cmd.sub_command_ptr = &sub_cmd;
+
+    send_request(&cmd);
+
+    return cmd.status;
+}
+
+
+void physmem_remapper_um_t::revert_cow_triggering(void* target_address, uint64_t target_cr3) {
+    cmd_revert_cow_triggering_t sub_cmd;
+    sub_cmd.target_address = target_address;
+    sub_cmd.target_cr3 = target_cr3;
+
+    command_t cmd = { 0 };
+    cmd.call_type = cmd_revert_cow_triggering;
+    cmd.sub_command_ptr = &sub_cmd;
+
+    send_request(&cmd);
 }

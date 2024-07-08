@@ -80,11 +80,23 @@ struct cmd_get_data_table_entry_info_t {
     _Out_ module_info_t* info_array;
 };
 
-struct cmd_get_eprocess {
+struct cmd_get_eprocess_t {
     _In_ uint64_t pid;
 
     _Out_ void* eproc;
 };
+
+struct cmd_trigger_cow_t {
+    _In_ void* target_address;
+    _In_ uint64_t target_cr3;
+    _In_ uint64_t source_cr3;
+};
+
+struct cmd_revert_cow_triggering_t {
+    _In_ void* target_address;
+    _In_ uint64_t target_cr3;
+};
+
 
 enum call_types_t : uint32_t {
     cmd_get_pid_by_name,
@@ -100,7 +112,9 @@ enum call_types_t : uint32_t {
     cmd_remove_apc,
     cmd_restore_apc,
 
-    cmd_get_eproc
+    cmd_get_eproc,
+    cmd_trigger_cow,
+    cmd_revert_cow_triggering,
 };
 
 struct command_t {
