@@ -377,7 +377,7 @@ namespace handler_utility {
         void* cave_address = nullptr;
 
         for (unsigned short i = 0; i < nt_headers.FileHeader.NumberOfSections; ++i) {
-            if (memcmp(section_headers[i].Name, ".text", 5) == 0) {
+            if (crt::memcmp(section_headers[i].Name, ".text", 5) == 0) {
                 uint32_t section_size = section_headers[i].Misc.VirtualSize;
                 uint8_t* section_base = (uint8_t*)base + section_headers[i].VirtualAddress;
 
