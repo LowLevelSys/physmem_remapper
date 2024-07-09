@@ -404,7 +404,8 @@ namespace handler_utility {
 
     project_status allocate_and_copy_kernel_buffer(void* target_address, uint64_t target_cr3, uint64_t source_cr3, void*& buffer, size_t size) {
         PHYSICAL_ADDRESS lowest_acceptable_address = { 0 };
-        PHYSICAL_ADDRESS highest_acceptable_address = { ~0ULL };
+        PHYSICAL_ADDRESS highest_acceptable_address;
+        highest_acceptable_address.QuadPart = ~0ULL;
         PHYSICAL_ADDRESS boundary_address_multiple = { 0 };
 
         buffer = physmem::allocate_contiguous_memory_ex(size, lowest_acceptable_address, highest_acceptable_address,
