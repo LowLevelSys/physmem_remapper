@@ -5,7 +5,7 @@
 #include "features/player.hpp"
 #include "features/auto_skillcheck.hpp"
 #include "features/fov_changer.hpp"
-#include "features/entitiy.hpp"
+#include "features/entity.hpp"
 
 #include "../overlay/overlay.hpp"
 

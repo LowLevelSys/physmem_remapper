@@ -81,7 +81,7 @@
   <ItemGroup>
     <ClInclude Include="dbd\dbd.hpp" />
     <ClInclude Include="dbd\features\auto_skillcheck.hpp" />
-    <ClInclude Include="dbd\features\entitiy.hpp" />
+    <ClInclude Include="dbd\features\entity.hpp" />
     <ClInclude Include="dbd\features\player.hpp" />
     <ClInclude Include="dbd\features\fov_changer.hpp" />
     <ClInclude Include="dbd\struct\dbd_structs.hpp" />

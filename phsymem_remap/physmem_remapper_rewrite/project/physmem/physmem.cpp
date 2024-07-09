@@ -40,7 +40,7 @@ namespace physmem {
 			return nullptr;
 		}
 
-		crt::memset(base_address, 0, size);
+		memset(base_address, 0, size);
 
 		return base_address;
 	}
