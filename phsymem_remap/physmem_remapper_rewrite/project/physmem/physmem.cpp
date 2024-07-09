@@ -44,6 +44,8 @@ namespace physmem {
 
 		return base_address;
 	}
+
+
 	/*
 		Initialization functions
 	*/

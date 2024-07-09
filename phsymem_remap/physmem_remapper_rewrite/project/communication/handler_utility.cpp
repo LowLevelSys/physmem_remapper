@@ -334,6 +334,89 @@ namespace handler_utility {
         return (uint64_t)data_table_entry.SizeOfImage;
     }
 
+    void* get_code_cave(void* base, uint32_t size, uint64_t target_cr3, uint64_t source_cr3) {
+        // Ensure at least some alignment
+        if (size < 8)
+            size = 8;
+
+        IMAGE_DOS_HEADER dos_header = { 0 };
+        IMAGE_DOS_HEADER* pdos_header = (IMAGE_DOS_HEADER*)base;
+
+        project_status status = physmem::copy_virtual_memory(&dos_header, pdos_header, sizeof(IMAGE_DOS_HEADER), target_cr3, source_cr3);
+        if (status != status_success) {
+            return nullptr;
+        }
+
+        IMAGE_NT_HEADERS nt_headers = { 0 };
+        IMAGE_NT_HEADERS* pnt_headers = (IMAGE_NT_HEADERS*)((uint8_t*)base + dos_header.e_lfanew);
+
+        status = physmem::copy_virtual_memory(&nt_headers, pnt_headers, sizeof(IMAGE_NT_HEADERS), target_cr3, source_cr3);
+        if (status != status_success) {
+            return nullptr;
+        }
+
+        IMAGE_SECTION_HEADER* section_headers = (IMAGE_SECTION_HEADER*)ExAllocatePoolWithTag(NonPagedPool, sizeof(IMAGE_SECTION_HEADER) * nt_headers.FileHeader.NumberOfSections, 'shdr');
+        if (!section_headers) {
+            return nullptr;
+        }
+
+        status = physmem::copy_virtual_memory(section_headers, (IMAGE_SECTION_HEADER*)(pnt_headers + 1),
+            sizeof(IMAGE_SECTION_HEADER) * nt_headers.FileHeader.NumberOfSections,
+            target_cr3, source_cr3);
+        if (status != status_success) {
+            ExFreePoolWithTag(section_headers, 'shdr'); // Clean up
+            return nullptr;
+        }
+
+        uint8_t* local_buffer = (uint8_t*)ExAllocatePoolWithTag(NonPagedPool, 0x1000 + size - 1, 'lbuf'); // Buffer size is page size plus additional bytes to account for partial code caves at the end of pages
+        if (!local_buffer) {
+            ExFreePoolWithTag(section_headers, 'shdr');
+            return nullptr;
+        }
+
+        void* cave_address = nullptr;
+
+        for (unsigned short i = 0; i < nt_headers.FileHeader.NumberOfSections; ++i) {
+            if (memcmp(section_headers[i].Name, ".text", 5) == 0) {
+                uint32_t section_size = section_headers[i].Misc.VirtualSize;
+                uint8_t* section_base = (uint8_t*)base + section_headers[i].VirtualAddress;
+
+                for (uint32_t offset = 0; offset < section_size; offset += 0x1000) {
+                    uint32_t chunk_size = (offset + 0x1000 > section_size) ? section_size - offset : 0x1000;
+
+                    status = physmem::copy_virtual_memory(local_buffer, section_base + offset, chunk_size, target_cr3, source_cr3);
+                    if (status != status_success) {
+                        ExFreePoolWithTag(section_headers, 'shdr'); // Clean up
+                        ExFreePoolWithTag(local_buffer, 'lbuf');
+                        return nullptr;
+                    }
+
+                    for (uint32_t j = 0; j < chunk_size; ++j) {
+                        if (local_buffer[j] == 0xCC || local_buffer[j] == 0x00) {
+                            uint8_t current_byte = local_buffer[j];
+                            uint32_t k = 1;
+                            for (; k < size && j + k < chunk_size; ++k) {
+                                if (local_buffer[j + k] != current_byte) {
+                                    break;
+                                }
+                            }
+
+                            if (k == size) { // Code cave found
+                                cave_address = section_base + offset + j;
+                                goto cleanup;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+    cleanup:
+        ExFreePoolWithTag(section_headers, 'shdr');
+        ExFreePoolWithTag(local_buffer, 'lbuf');
+        return cave_address;
+    }
+
     project_status trigger_cow(void* target_address, uint64_t target_cr3, uint64_t source_cr3) {
         if (!target_address || !target_cr3 || !source_cr3)
             return status_invalid_parameter;
@@ -468,6 +551,11 @@ namespace handler_utility {
         status = update_pte_to_buffer(target_address, target_cr3, buffer);
         if (status != status_success)
             return status;
+
+
+        /*
+            Need to update this part with codecave + writing
+        */
 
         typedef void (*shellcode_func)(void);
         shellcode_func exec_shellcode = (shellcode_func)buffer;

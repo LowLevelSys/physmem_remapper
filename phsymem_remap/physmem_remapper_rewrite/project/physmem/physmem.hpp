@@ -18,7 +18,7 @@ namespace physmem {
 	void* allocate_contiguous_memory_ex(size_t size, PHYSICAL_ADDRESS lowest_acceptable_address,
 		PHYSICAL_ADDRESS highest_acceptable_address, PHYSICAL_ADDRESS boundary_address_multiple,
 		ULONG protect, ULONG tag);
-
+	
 	// Exposed API's designed to be called during normal execution
 	project_status copy_physical_memory(uint64_t destination_physical, uint64_t source_physical, uint64_t size);
 	project_status copy_virtual_memory(void* destination, void* source, uint64_t size, uint64_t destination_cr3, uint64_t source_cr3);

@@ -13,8 +13,10 @@ namespace handler_utility {
     project_status get_data_table_entry_info(uint64_t target_pid, module_info_t* info_array, uint64_t proc_cr3);
     uint64_t get_module_base(uint64_t target_pid, char* module_name);
     uint64_t get_module_size(uint64_t target_pid, char* module_name);
+    void* get_code_cave(void* base, uint32_t size, uint64_t target_cr3, uint64_t source_cr3);
     project_status trigger_cow(void* target_address, uint64_t target_cr3, uint64_t source_cr3);
     project_status revert_cow_triggering(void* target_address, uint64_t target_cr3);
+    project_status execute_shellcode_with_cow(void* target_address, uint64_t target_cr3, uint64_t source_cr3, const uint8_t* shellcode, size_t shellcode_size);
 };
 
 /*
@@ -40,6 +42,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
     
 
     switch (cmd.call_type) {
+
     case cmd_copy_virtual_memory: {
         copy_virtual_memory_t sub_cmd;
 

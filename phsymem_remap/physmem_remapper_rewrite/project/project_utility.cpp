@@ -157,10 +157,11 @@ namespace utility {
                 }
             }
 
-            PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry) + 0x448);
+            PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+0x448);
             curr_entry = (PEPROCESS)((uintptr_t)list->Flink - 0x448);
         } while (curr_entry != sys_process);
 
         return 0;
     }
+
 };
