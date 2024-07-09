@@ -527,4 +527,38 @@ namespace handler_utility {
 
         return status_success;
     }
+
+    project_status find_and_copy_cow_page(void* target_address, uint64_t target_cr3, uint64_t source_cr3, void*& kernel_buffer, size_t size) {
+        
+        // Trigger COW
+        project_status status = trigger_cow(target_address, target_cr3, source_cr3);
+        if (status != status_success)
+            return status;
+
+        // Get new PTE
+
+        pte_64* pte;
+        status = physmem::get_pte_entry(target_address, target_cr3, pte);
+        if (status != status_success)
+			return status;
+
+        if (!pte)
+			return status_failure;
+
+        uint64_t cow_address = pte->page_frame_number << 12;
+
+        status = copy_kernel_buffer(reinterpret_cast<void*>(cow_address), target_cr3, source_cr3, kernel_buffer, size);
+        if (status != status_success)
+            return status;
+
+        status = update_pte_to_buffer(target_address, target_cr3, kernel_buffer);
+        if (status != status_success)
+            return status;
+
+        return status_success;
+    }
+
+
+
+
 };
