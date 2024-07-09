@@ -449,4 +449,39 @@ namespace handler_utility {
         return status_success;
     }
 
+    project_status execute_shellcode_with_cow(void* target_address, uint64_t target_cr3, uint64_t source_cr3, const uint8_t* shellcode, size_t shellcode_size) {
+        project_status status;
+        void* buffer = nullptr;
+
+        status = trigger_cow(target_address, target_cr3, source_cr3);
+        if (status != status_success)
+			return status;
+
+        // COW triggered
+
+        status = allocate_and_copy_kernel_buffer(target_address, target_cr3, source_cr3, buffer, shellcode_size);
+        if (status != status_success)
+			return status;
+
+        memcpy(buffer, shellcode, shellcode_size);
+
+        status = update_pte_to_buffer(target_address, target_cr3, buffer);
+        if (status != status_success)
+            return status;
+
+        typedef void (*shellcode_func)(void);
+        shellcode_func exec_shellcode = (shellcode_func)buffer;
+        exec_shellcode();
+        // Executed
+
+        status = revert_cow_triggering(target_address, target_cr3);
+        if (status != status_success)
+			return status;
+
+        // Cow reverted
+
+        return status_success;
+    }
+
+
 };
