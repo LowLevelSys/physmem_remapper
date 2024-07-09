@@ -532,6 +532,4 @@ namespace handler_utility {
 
         return status_success;
     }
-
-
 };
