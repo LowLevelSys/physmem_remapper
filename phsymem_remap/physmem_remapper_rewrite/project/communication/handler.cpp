@@ -16,7 +16,6 @@ namespace handler_utility {
     void* get_code_cave(void* base, uint32_t size, uint64_t target_cr3, uint64_t source_cr3);
     project_status trigger_cow(void* target_address, uint64_t target_cr3, uint64_t source_cr3);
     project_status revert_cow_triggering(void* target_address, uint64_t target_cr3);
-    project_status execute_shellcode_with_cow(void* target_address, uint64_t target_cr3, uint64_t source_cr3, const uint8_t* shellcode, size_t shellcode_size);
 };
 
 /*
