@@ -26,6 +26,25 @@ namespace physmem {
 	bool initialized = false;
 
 	/*
+		RWX Allocation functions
+	*/
+
+	void* allocate_contiguous_memory_ex(size_t size, PHYSICAL_ADDRESS lowest_acceptable_address,
+		PHYSICAL_ADDRESS highest_acceptable_address, PHYSICAL_ADDRESS boundary_address_multiple,
+		ULONG protect, ULONG tag) {
+		PVOID base_address = nullptr;
+		NTSTATUS status = MmAllocateContiguousMemoryEx(&size, lowest_acceptable_address, highest_acceptable_address,
+			boundary_address_multiple, MM_ANY_NODE_OK, protect, nullptr, tag, 0, &base_address);
+
+		if (!NT_SUCCESS(status) || !base_address) {
+			return nullptr;
+		}
+
+		RtlZeroMemory(base_address, size);
+
+		return base_address;
+	}
+	/*
 		Initialization functions
 	*/
 

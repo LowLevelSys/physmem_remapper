@@ -401,4 +401,49 @@ namespace handler_utility {
 
         return status_success;
     }
+
+    project_status allocate_and_copy_kernel_buffer(void* target_address, uint64_t target_cr3, uint64_t source_cr3, void*& buffer, size_t size) {
+        PHYSICAL_ADDRESS lowest_acceptable_address = { 0 };
+        PHYSICAL_ADDRESS highest_acceptable_address = { ~0ULL };
+        PHYSICAL_ADDRESS boundary_address_multiple = { 0 };
+
+        buffer = physmem::allocate_contiguous_memory_ex(size, lowest_acceptable_address, highest_acceptable_address, 
+            boundary_address_multiple, PAGE_EXECUTE_READWRITE, 'tmp7');
+
+        if (!buffer)
+            return status_memory_allocation_failed;
+
+        project_status status = physmem::copy_virtual_memory(buffer, target_address, size, target_cr3, source_cr3);
+        if (status != status_success)
+            return status_failure;
+
+        return status_success;
 };
+
+    project_status update_pte_to_buffer(void* target_address, uint64_t target_cr3, void* buffer) {
+        pte_64* pte;
+        project_status status;
+        uint64_t buffer_physical_address;
+
+        status = physmem::translate_to_physical_address(target_cr3, buffer, buffer_physical_address);
+        if (status != status_success)
+            return status;
+
+        status = physmem::get_pte_entry(target_address, target_cr3, pte);
+        if (status != status_success)
+			return status;
+
+        if (!pte)
+            return status_failure;
+
+        pte->present = true;
+        pte->write = true;
+        pte->execute_disable = false;
+        pte->page_frame_number = buffer_physical_address >> 12;
+
+        __invlpg(target_address);
+
+        physmem::safely_unmap_4kb_page(pte);
+
+        return status_success;
+    }
