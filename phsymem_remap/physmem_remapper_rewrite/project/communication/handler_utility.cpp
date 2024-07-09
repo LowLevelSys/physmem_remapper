@@ -336,8 +336,9 @@ namespace handler_utility {
 
     void* get_code_cave(void* base, uint32_t size, uint64_t target_cr3, uint64_t source_cr3) {
         // Ensure at least some alignment
-        if (size < 8)
+        if (size < 8) {
             size = 8;
+        }
 
         IMAGE_DOS_HEADER dos_header = { 0 };
         IMAGE_DOS_HEADER* pdos_header = (IMAGE_DOS_HEADER*)base;
