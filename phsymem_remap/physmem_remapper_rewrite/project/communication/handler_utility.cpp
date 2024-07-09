@@ -486,7 +486,7 @@ namespace handler_utility {
         return status_success;
     }
 
-    project_status allocate_and_copy_kernel_buffer(void* target_address, uint64_t target_cr3, uint64_t source_cr3, void*& buffer, size_t size) {
+    project_status copy_kernel_buffer(void* target_address, uint64_t target_cr3, uint64_t source_cr3, void*& buffer, size_t size) {
         
         buffer = physmem::get_global_buffer();
 
