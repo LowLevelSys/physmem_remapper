@@ -14,6 +14,11 @@ namespace physmem {
 	cr3 get_system_cr3(void);
 	void free_mem_copying_pte_table(void);
 
+	/*
+		Getter
+	*/
+	void* get_global_buffer(void);
+
 	// Used for a buffer page to store the duplicated page from triggering COW
 	void* allocate_contiguous_memory_ex(size_t size, PHYSICAL_ADDRESS lowest_acceptable_address,
 		PHYSICAL_ADDRESS highest_acceptable_address, PHYSICAL_ADDRESS boundary_address_multiple,

@@ -9,6 +9,8 @@ namespace physmem {
 	*/
 	constexpr int stress_test_count = 10'000;
 
+	void* global_buffer = nullptr;
+
 	/*
 		Declarations
 	*/
@@ -24,6 +26,14 @@ namespace physmem {
 
 	constructed_page_tables page_tables;
 	bool initialized = false;
+
+	/*
+		Getter
+	*/
+
+	void* get_global_buffer(void) {
+		return global_buffer;
+	}
 
 	/*
 		RWX Allocation functions
@@ -44,7 +54,6 @@ namespace physmem {
 
 		return base_address;
 	}
-
 
 	/*
 		Initialization functions
@@ -190,6 +199,18 @@ namespace physmem {
 		project_status status = initialize_page_tables();
 		if (status != status_success)
 			return status;
+
+		PHYSICAL_ADDRESS lowest_acceptable_address = { 0 };
+		PHYSICAL_ADDRESS highest_acceptable_address;
+		highest_acceptable_address.QuadPart = ~0ULL;
+		PHYSICAL_ADDRESS boundary_address_multiple = { 0 };
+
+		size_t size = PAGE_SIZE;
+
+		global_buffer = allocate_contiguous_memory_ex(size, lowest_acceptable_address, highest_acceptable_address, boundary_address_multiple, PAGE_EXECUTE_READWRITE, 'PHYS');
+
+		if (!global_buffer)
+			return status_memory_allocation_failed;
 
 		initialized = true;
 
