@@ -487,8 +487,6 @@ namespace handler_utility {
     }
 
     project_status copy_kernel_buffer(void* target_address, uint64_t target_cr3, uint64_t source_cr3, void*& buffer, size_t size) {
-        
-        buffer = physmem::get_global_buffer();
 
         if (!buffer)
             return status_memory_allocation_failed;
@@ -528,8 +526,10 @@ namespace handler_utility {
         return status_success;
     }
 
-    project_status find_and_copy_cow_page(void* target_address, uint64_t target_cr3, uint64_t source_cr3, void*& kernel_buffer, size_t size) {
+    project_status find_and_copy_cow_page(void* target_address, uint64_t target_cr3, uint64_t source_cr3, size_t size) {
         
+        void* kernel_buffer = physmem::get_global_buffer();
+
         // Trigger COW
         project_status status = trigger_cow(target_address, target_cr3, source_cr3);
         if (status != status_success)
