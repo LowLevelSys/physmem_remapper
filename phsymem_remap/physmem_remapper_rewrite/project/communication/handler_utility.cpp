@@ -21,7 +21,7 @@ namespace handler_utility {
             crt::memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
 
             if (!active_threads) {
-                PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+ FLINK_OFFSET);
+                PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+FLINK_OFFSET);
                 curr_entry = (PEPROCESS)((uintptr_t)list->Flink - FLINK_OFFSET);
                 continue;
             }
@@ -37,7 +37,7 @@ namespace handler_utility {
                 return pid;
             }
 
-            PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry) + FLINK_OFFSET);
+            PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+FLINK_OFFSET);
             curr_entry = (PEPROCESS)((uintptr_t)list->Flink - FLINK_OFFSET);
         } while (curr_entry != sys_process);
 
@@ -58,11 +58,11 @@ namespace handler_utility {
             crt::memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
 
             if (!active_threads) {
-                PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry) + FLINK_OFFSET);
+                PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+FLINK_OFFSET);
                 curr_entry = (PEPROCESS)((uintptr_t)list->Flink - FLINK_OFFSET);
                 continue;
             }
-            
+
             uint64_t curr_pid;
             crt::memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + PID_OFFSET), sizeof(curr_pid));
 
@@ -119,7 +119,7 @@ namespace handler_utility {
 
                 LIST_ENTRY* remote_flink = ldr_data.InLoadOrderModuleList.Flink;
                 LIST_ENTRY* next_link = remote_flink;
-    
+
                 do {
                     LDR_DATA_TABLE_ENTRY entry;
                     status = physmem::copy_memory_to_constructed_cr3(&entry, next_link, sizeof(LDR_DATA_TABLE_ENTRY), dtb);
@@ -150,7 +150,7 @@ namespace handler_utility {
                 return status;
             }
 
-            PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry) + FLINK_OFFSET);
+            PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+FLINK_OFFSET);
             curr_entry = (PEPROCESS)((uintptr_t)list->Flink - FLINK_OFFSET);
 
         } while (curr_entry != sys_process);
@@ -215,7 +215,7 @@ namespace handler_utility {
                 return module_count;
             }
 
-            PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry) + FLINK_OFFSET);
+            PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+FLINK_OFFSET);
             curr_entry = (PEPROCESS)((uintptr_t)list->Flink - FLINK_OFFSET);
 
         } while (curr_entry != sys_process);
@@ -305,7 +305,7 @@ namespace handler_utility {
                 return status;
             }
 
-            PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry) + FLINK_OFFSET);
+            PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+FLINK_OFFSET);
             curr_entry = (PEPROCESS)((uintptr_t)list->Flink - FLINK_OFFSET);
 
         } while (curr_entry != sys_process);
@@ -407,7 +407,7 @@ namespace handler_utility {
         PHYSICAL_ADDRESS highest_acceptable_address = { ~0ULL };
         PHYSICAL_ADDRESS boundary_address_multiple = { 0 };
 
-        buffer = physmem::allocate_contiguous_memory_ex(size, lowest_acceptable_address, highest_acceptable_address, 
+        buffer = physmem::allocate_contiguous_memory_ex(size, lowest_acceptable_address, highest_acceptable_address,
             boundary_address_multiple, PAGE_EXECUTE_READWRITE, 'tmp7');
 
         if (!buffer)
@@ -418,7 +418,7 @@ namespace handler_utility {
             return status_failure;
 
         return status_success;
-};
+    };
 
     project_status update_pte_to_buffer(void* target_address, uint64_t target_cr3, void* buffer) {
         pte_64* pte;
@@ -431,7 +431,7 @@ namespace handler_utility {
 
         status = physmem::get_pte_entry(target_address, target_cr3, pte);
         if (status != status_success)
-			return status;
+            return status;
 
         if (!pte)
             return status_failure;
@@ -447,3 +447,5 @@ namespace handler_utility {
 
         return status_success;
     }
+
+};
