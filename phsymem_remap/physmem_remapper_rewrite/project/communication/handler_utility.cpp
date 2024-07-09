@@ -340,6 +340,8 @@ namespace handler_utility {
 
         project_status status;
         uint64_t physical_address;
+
+        // Translate VA to PA
         status = physmem::translate_to_physical_address(source_cr3, target_address, physical_address);
         if (status != status_success)
             return status;
@@ -349,6 +351,8 @@ namespace handler_utility {
 
         pte_64 dummy;
         pte_64* pte;
+
+        // Get PTE for target address
         status = physmem::get_pte_entry(target_address, target_cr3, pte);
         if (status != status_success)
             return status;
@@ -356,12 +360,15 @@ namespace handler_utility {
         if (!pte)
             return status_failure;
 
+        // Prepare PTE for COW
         dummy.flags = 0;
         dummy.present = true;
         dummy.write = true;
         dummy.supervisor = true;
         dummy.execute_disable = false;
         dummy.page_frame_number = physical_address >> 12;
+
+        // Update PTE to point to the physical address
         *pte = dummy;
 
         __invlpg(target_address);
