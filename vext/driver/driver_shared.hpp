@@ -5,14 +5,6 @@
     Typedefs and Definitions
 */
 
-#ifndef _In_
-#define _In_
-#endif // !_In_
-
-#ifndef _Out_
-#define _Out_
-#endif // !_Out_
-
 #ifndef MAX_PATH
 #define MAX_PATH 260
 #endif // !MAX_PATH
