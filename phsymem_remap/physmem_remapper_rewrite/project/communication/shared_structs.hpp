@@ -97,6 +97,12 @@ struct cmd_revert_cow_triggering_t {
     _In_ uint64_t target_cr3;
 };
 
+struct cmd_find_and_copy_cow_page_t {
+    _In_ void* target_address;
+    _In_ uint64_t target_cr3;
+    _In_ uint64_t source_cr3;
+    _In_ size_t size;
+};
 
 enum call_types_t : uint32_t {
     cmd_get_pid_by_name,
@@ -115,6 +121,7 @@ enum call_types_t : uint32_t {
     cmd_get_eproc,
     cmd_trigger_cow,
     cmd_revert_cow_triggering,
+    cmd_find_and_copy_cow_page,
 };
 
 struct command_t {

@@ -230,7 +230,6 @@ bool physmem_remapper_um_t::trigger_cow(void* target_address, uint64_t target_cr
     return cmd.status;
 }
 
-
 void physmem_remapper_um_t::revert_cow_triggering(void* target_address, uint64_t target_cr3) {
     cmd_revert_cow_triggering_t sub_cmd;
     sub_cmd.target_address = target_address;
@@ -241,4 +240,20 @@ void physmem_remapper_um_t::revert_cow_triggering(void* target_address, uint64_t
     cmd.sub_command_ptr = &sub_cmd;
 
     send_request(&cmd);
+}
+
+bool physmem_remapper_um_t::find_and_copy_cow_page(void* target_address, uint64_t target_cr3, uint64_t source_cr3, size_t size) {
+	cmd_find_and_copy_cow_page_t sub_cmd;
+	sub_cmd.target_address = target_address;
+	sub_cmd.target_cr3 = target_cr3;
+	sub_cmd.source_cr3 = source_cr3;
+	sub_cmd.size = size;
+
+	command_t cmd = { 0 };
+	cmd.call_type = cmd_find_and_copy_cow_page;
+	cmd.sub_command_ptr = &sub_cmd;
+
+	send_request(&cmd);
+
+	return cmd.status;
 }
