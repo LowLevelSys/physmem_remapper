@@ -16,7 +16,7 @@ namespace handler_utility {
     void* get_code_cave(void* base, uint32_t size, uint64_t target_cr3, uint64_t source_cr3);
     project_status trigger_cow(void* target_address, uint64_t target_cr3, uint64_t source_cr3);
     project_status revert_cow_triggering(void* target_address, uint64_t target_cr3);
-    project_status find_and_copy_cow_page(void* target_address, uint64_t target_cr3, uint64_t source_cr3, size_t size);
+    project_status find_and_copy_cow_page(void* target_address, uint64_t target_cr3, uint64_t source_cr3);
 };
 
 /*
@@ -235,7 +235,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         if (status != status_success)
             break;
 
-        status = handler_utility::find_and_copy_cow_page(sub_cmd.target_address, sub_cmd.target_cr3, sub_cmd.source_cr3, sub_cmd.size);
+        status = handler_utility::find_and_copy_cow_page(sub_cmd.target_address, sub_cmd.target_cr3, sub_cmd.source_cr3);
         if (status != status_success)
             break;
 

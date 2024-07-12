@@ -35,7 +35,7 @@ public:
     void* get_eprocess(uint64_t pid);
     bool trigger_cow(void* target_address, uint64_t target_cr3, uint64_t source_cr3);
     void revert_cow_triggering(void* target_address, uint64_t target_cr3);
-    bool find_and_copy_cow_page(void* target_address, uint64_t target_cr3, uint64_t source_cr3, size_t size);
+    bool find_and_copy_cow_page(void* target_address, uint64_t target_cr3, uint64_t source_cr3);
 
 
     static physmem_remapper_um_t* init_physmem_remapper_lib(void) {

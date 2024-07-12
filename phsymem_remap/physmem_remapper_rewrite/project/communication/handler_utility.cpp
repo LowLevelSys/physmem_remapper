@@ -526,18 +526,30 @@ namespace handler_utility {
         return status_success;
     }
 
-    project_status find_and_copy_cow_page(void* target_address, uint64_t target_cr3, uint64_t source_cr3, size_t size) {
-        
+    project_status find_and_copy_cow_page(void* target_vaddress, uint64_t target_cr3, uint64_t source_cr3) {
+
+        uint64_t physical_address;
+        project_status status;
+
         void* kernel_buffer = physmem::get_global_buffer();
+        if (!kernel_buffer)
+            return status_failure;
+
+        status = physmem::translate_to_physical_address(target_cr3, target_vaddress, physical_address);
+        if (status != status_success)
+			return status;
+
+        // translate it to a void*
+        void* target_address = reinterpret_cast<void*>(physical_address);
 
         // Trigger COW
-        project_status status = trigger_cow(target_address, target_cr3, source_cr3);
+        status = trigger_cow(target_address, target_cr3, source_cr3);
         if (status != status_success)
             return status;
 
         // Get new PTE
 
-        pte_64* pte;
+        pte_64* pte = nullptr;
         status = physmem::get_pte_entry(target_address, target_cr3, pte);
         if (status != status_success)
 			return status;
@@ -547,7 +559,7 @@ namespace handler_utility {
 
         uint64_t cow_address = pte->page_frame_number << 12;
 
-        status = copy_kernel_buffer(reinterpret_cast<void*>(cow_address), target_cr3, source_cr3, kernel_buffer, size);
+        status = copy_kernel_buffer(reinterpret_cast<void*>(cow_address), target_cr3, source_cr3, kernel_buffer, PAGE_SIZE);
         if (status != status_success)
             return status;
 
@@ -557,6 +569,5 @@ namespace handler_utility {
 
         return status_success;
     }
-
 
 };

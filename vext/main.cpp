@@ -23,7 +23,7 @@ int main(void) {
 	log("COW Triggered");
 	getchar();
 
-	if (!g_proc->find_and_copy_cow_page(target_func, page_size)) {
+	if (!g_proc->find_and_copy_cow_page(target_func)) {
 		log("Failed to find and copy COW page");
 		getchar();
 		g_proc->revert_cow_trigger_in_target(target_func);

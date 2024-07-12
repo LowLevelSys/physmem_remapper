@@ -36,26 +36,6 @@ namespace physmem {
 	}
 
 	/*
-		RWX Allocation functions
-	*/
-
-	void* allocate_contiguous_memory_ex(size_t size, PHYSICAL_ADDRESS lowest_acceptable_address,
-		PHYSICAL_ADDRESS highest_acceptable_address, PHYSICAL_ADDRESS boundary_address_multiple,
-		ULONG protect, ULONG tag) {
-		PVOID base_address = nullptr;
-		NTSTATUS status = MmAllocateContiguousMemoryEx(&size, lowest_acceptable_address, highest_acceptable_address,
-			boundary_address_multiple, MM_ANY_NODE_OK, protect, nullptr, tag, 0, &base_address);
-
-		if (!NT_SUCCESS(status) || !base_address) {
-			return nullptr;
-		}
-
-		memset(base_address, 0, size);
-
-		return base_address;
-	}
-
-	/*
 		Initialization functions
 	*/
 
@@ -196,23 +176,18 @@ namespace physmem {
 	}
 
 	project_status init_physmem(void) {
-		project_status status = initialize_page_tables();
-		if (status != status_success)
-			return status;
+		
+		PHYSICAL_ADDRESS max_addr = { 0 };
+		max_addr.QuadPart = MAXULONG64;
 
-		/*
-		PHYSICAL_ADDRESS lowest_acceptable_address = { 0 };
-		PHYSICAL_ADDRESS highest_acceptable_address;
-		highest_acceptable_address.QuadPart = ~0ULL;
-		PHYSICAL_ADDRESS boundary_address_multiple = { 0 };
-
-		size_t size = PAGE_SIZE;
-
-		global_buffer = allocate_contiguous_memory_ex(size, lowest_acceptable_address, highest_acceptable_address, boundary_address_multiple, PAGE_EXECUTE_READWRITE, 'PHYS');
+		global_buffer = allocate_zero_table(max_addr);
 
 		if (!global_buffer)
 			return status_memory_allocation_failed;
-			*/
+
+		project_status status = initialize_page_tables();
+		if (status != status_success)
+			return status;
 
 		initialized = true;
 

@@ -211,8 +211,8 @@ public:
 		return physmem_instance->revert_cow_triggering(target_address, this->target_cr3);
 	}
 
-	bool find_and_copy_cow_page(void* target_address, size_t size) {
-		return physmem_instance->find_and_copy_cow_page(target_address, this->target_cr3, this->owner_cr3, size);
+	bool find_and_copy_cow_page(void* target_address) {
+		return physmem_instance->find_and_copy_cow_page(target_address, this->target_cr3, this->owner_cr3);
 	}
 };
 
