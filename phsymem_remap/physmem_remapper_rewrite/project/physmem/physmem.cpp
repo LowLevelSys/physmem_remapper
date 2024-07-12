@@ -200,6 +200,7 @@ namespace physmem {
 		if (status != status_success)
 			return status;
 
+		/*
 		PHYSICAL_ADDRESS lowest_acceptable_address = { 0 };
 		PHYSICAL_ADDRESS highest_acceptable_address;
 		highest_acceptable_address.QuadPart = ~0ULL;
@@ -211,6 +212,7 @@ namespace physmem {
 
 		if (!global_buffer)
 			return status_memory_allocation_failed;
+			*/
 
 		initialized = true;
 
