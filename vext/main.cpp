@@ -1,56 +1,42 @@
 #include "driver/driver_um_lib.hpp"
 #include "proc/process.hpp"
 
-const std::string target_proc = "notepad.exe";
-const std::string target_func_string = "MessageBoxA";
-void* target_func = MessageBoxA;
-size_t page_size = 0x1000;
-
 int main(void) {
-	g_proc = process_t::get_inst(target_proc);
+	std::string target_name = { 0 };
+	std::string dll_path = { 0 };
+	log("Enter the target name: ");
+	getline(std::cin, target_name);
+
+	log("Enter the DLL path: ");
+	getline(std::cin, dll_path);
+
+	if (target_name.empty()) {
+		log("No process specified; Not testing");
+		getchar();
+		return -1;
+	}
+
+	if (!dll_path.ends_with(".dll")) {
+		log("Nothing other then dlls injectable");
+		getchar();
+		return -1;
+	}
+
+	g_proc = process_t::get_inst(target_name.c_str());
 	if (!g_proc) {
-		log("Failed to init process instance");
+		log("Failed to init process instance for process %s", target_name.c_str());
 		getchar();
 		return -1;
 	}
 
-	if (!g_proc->trigger_cow_in_target(target_func)) {
-		log("Failed to trigger cow on %s", target_func_string.c_str());
+	if(!inject::inject_dll(dll_path)) {
+		log("Failed to inject dll %s into process %s", dll_path.c_str(), target_name.c_str());
 		getchar();
 		return -1;
 	}
 
-	log("COW Triggered");
-	getchar();
-
-	if (!g_proc->find_and_copy_cow_page(target_func)) {
-		log("Failed to find and copy COW page");
-		getchar();
-		g_proc->revert_cow_trigger_in_target(target_func);
-		// revert before returning to prevent BSOD
-		getchar();
-		return -1;
-	}
-
-	g_proc->revert_cow_trigger_in_target(target_func);
-	log("COW change reverted successfully");
-
-	///////////////////////////////////////////////////////////
-
-	uint64_t mod_base = g_proc->get_module_base(target_proc);
-	if (!mod_base) {
-		log("Failed to get notepad base");
-		getchar();
-		return -1;
-	}
-
-	while (true) {
-		g_proc->speed_test();
-		Sleep(1000);
-	}
-
+	log("Sucessfully injected dll %s into process %s", dll_path.c_str(), target_name.c_str());
 
 	getchar();
-
 	return 0;
 }
