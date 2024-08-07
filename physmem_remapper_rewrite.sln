@@ -15,17 +15,28 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "reclass_plugin", "reclass_p
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0B8EACB8-A4B3-4F37-BA0C-2AA50F087351}.Debug|x64.ActiveCfg = Debug|x64
+		{0B8EACB8-A4B3-4F37-BA0C-2AA50F087351}.Debug|x64.Build.0 = Debug|x64
 		{0B8EACB8-A4B3-4F37-BA0C-2AA50F087351}.Release|x64.ActiveCfg = Release|x64
 		{0B8EACB8-A4B3-4F37-BA0C-2AA50F087351}.Release|x64.Build.0 = Release|x64
+		{3115ECC5-0DA7-4743-B2D0-234F3F46A97F}.Debug|x64.ActiveCfg = Debug|x64
+		{3115ECC5-0DA7-4743-B2D0-234F3F46A97F}.Debug|x64.Build.0 = Debug|x64
 		{3115ECC5-0DA7-4743-B2D0-234F3F46A97F}.Release|x64.ActiveCfg = Release|x64
 		{3115ECC5-0DA7-4743-B2D0-234F3F46A97F}.Release|x64.Build.0 = Release|x64
+		{278B99AC-C438-472A-8272-79F83DEF7F7D}.Debug|x64.ActiveCfg = Debug|x64
+		{278B99AC-C438-472A-8272-79F83DEF7F7D}.Debug|x64.Build.0 = Debug|x64
 		{278B99AC-C438-472A-8272-79F83DEF7F7D}.Release|x64.ActiveCfg = Release|x64
 		{278B99AC-C438-472A-8272-79F83DEF7F7D}.Release|x64.Build.0 = Release|x64
+		{33F8840D-BAF6-4968-B22C-52ACE0DB623C}.Debug|x64.ActiveCfg = Debug|x64
+		{33F8840D-BAF6-4968-B22C-52ACE0DB623C}.Debug|x64.Build.0 = Debug|x64
 		{33F8840D-BAF6-4968-B22C-52ACE0DB623C}.Release|x64.ActiveCfg = Release|x64
 		{33F8840D-BAF6-4968-B22C-52ACE0DB623C}.Release|x64.Build.0 = Release|x64
+		{287E2179-9A85-47E2-A2FF-3D3FD4AD0F41}.Debug|x64.ActiveCfg = Debug|x64
+		{287E2179-9A85-47E2-A2FF-3D3FD4AD0F41}.Debug|x64.Build.0 = Debug|x64
 		{287E2179-9A85-47E2-A2FF-3D3FD4AD0F41}.Release|x64.ActiveCfg = Release|x64
 		{287E2179-9A85-47E2-A2FF-3D3FD4AD0F41}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
