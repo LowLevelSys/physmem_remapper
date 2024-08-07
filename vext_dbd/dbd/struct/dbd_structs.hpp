@@ -11,9 +11,9 @@ namespace dbd {
 
     namespace offsets {
         // Global
-        constexpr auto OFFSET_GOBJECTS = 0xf6989c0;
-        constexpr auto OFFSET_GWORLD = 0xF83BBD0;
-        constexpr auto OFFSET_GNAMES = 0xF5D6100;
+        constexpr auto OFFSET_GOBJECTS = 0xf6999c0;
+        constexpr auto OFFSET_GWORLD = 0xF83CC50;
+        constexpr auto OFFSET_GNAMES = 0xF5D7100;
     };
 }
 

@@ -941,7 +941,9 @@ namespace physmem {
 			default: {
 				_sti();
 				__writecr3(kernel_cr3.flags);
+#ifndef _DEBUG
 				project_log_info("WIA WIA WIA");
+#endif
 				status = status_non_valid_usable_until_level;
 				__writecr3(constructed_cr3.flags);
 				_cli();
@@ -1025,7 +1027,9 @@ namespace physmem {
 			default: {
 				_sti();
 				__writecr3(kernel_cr3.flags);
+#ifndef _DEBUG
 				project_log_info("WIA WIA WIA");
+#endif
 				status = status_non_valid_usable_until_level;
 				__writecr3(constructed_cr3.flags);
 				_cli();
@@ -1166,7 +1170,9 @@ namespace physmem {
 		default: {
 			_sti();
 			__writecr3(kernel_cr3.flags);
+#ifndef _DEBUG
 			project_log_info("WIA WIA WIA");
+#endif
 			status = status_non_valid_usable_until_level;
 			__writecr3(constructed_cr3.flags);
 			_cli();

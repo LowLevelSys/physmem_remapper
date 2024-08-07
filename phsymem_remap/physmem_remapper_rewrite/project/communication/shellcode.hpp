@@ -434,7 +434,7 @@ namespace shellcode {
 	cleanup:
 		return status;
 	}
-
+#ifndef _DEBUG
 	inline void log_shellcode_addresses(void) {
 
 		project_log_info("Executed entering shellcode at %p", g_enter_constructed_space_executed);
@@ -442,6 +442,7 @@ namespace shellcode {
 		project_log_info("Exiting shellcode at %p", g_exit_constructed_space);
 		project_log_info("Nmi shellcode at %p", g_nmi_shellcode);
 	}
+#endif
 
 	inline uint64_t get_current_user_cr3(void) {
 		if (!initialized)

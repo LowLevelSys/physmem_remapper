@@ -59,12 +59,14 @@ enum project_status {
 	Macros
 */
 
+#ifndef _DEBUG
 #define extract_file_name(file) (crt::strrchr(file, '\\') ? crt::strrchr(file, '\\') + 1 : file)
 
 #define project_log_error(fmt, ...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[-] " "[%s:%d] " fmt "\n", extract_file_name(__FILE__), __LINE__, ##__VA_ARGS__)
 #define project_log_warning(fmt, ...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[~] " "[%s:%d] " fmt "\n", extract_file_name(__FILE__), __LINE__, ##__VA_ARGS__)
 #define project_log_success(fmt, ...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[+] " "[%s:%d] " fmt "\n", extract_file_name(__FILE__), __LINE__, ##__VA_ARGS__)
 #define project_log_info(fmt, ...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[*] " "[%s:%d] " fmt "\n", extract_file_name(__FILE__), __LINE__, ##__VA_ARGS__)
+#endif
 
 /*
 	Win API wrappers
