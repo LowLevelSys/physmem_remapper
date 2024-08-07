@@ -12,6 +12,7 @@
     <ProjectGuid>{3115ecc5-0da7-4743-b2d0-234f3f46a97f}</ProjectGuid>
     <RootNamespace>vext</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>um</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">

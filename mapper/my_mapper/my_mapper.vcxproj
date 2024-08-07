@@ -29,6 +29,7 @@
     <ProjectGuid>{278b99ac-c438-472a-8272-79f83def7f7d}</ProjectGuid>
     <RootNamespace>mymapper</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>mapper</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
