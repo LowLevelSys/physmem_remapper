@@ -15,6 +15,7 @@ private:
 	uint64_t owner_cr3 = 0;
 
 	// Target specific data
+	std::string target_name;
 	uint64_t target_pid = 0;
 	uint64_t target_cr3 = 0;
 
@@ -24,6 +25,7 @@ private:
 
 	bool init_process(std::string process_name) {
 
+		target_name = process_name;
 		physmem_instance = physmem_remapper_um_t::init_physmem_remapper_lib();
 
 		if (!physmem_instance) {
@@ -81,6 +83,7 @@ private:
 			return false;
 		}
 
+		inited = true;
 
 		return true;
 	}
@@ -114,6 +117,11 @@ public:
 	}
 
 	void speed_test(void) {
+		if (!process_instance || !process_instance->inited) {
+			log("Init with a process first");
+			return;
+		}
+
 		std::chrono::steady_clock::time_point start_time, end_time;
 		double elapsed_seconds;
 		start_time = std::chrono::steady_clock::now();
@@ -144,7 +152,6 @@ public:
 
 		log("4 Byte Read");
 		log("Took %f seconds to read 4 bytes 1000 times -> %f reads per second\n", elapsed_seconds, reads_per_second);
-
 	}
 
 	template <typename t>
@@ -182,28 +189,6 @@ public:
 	uint64_t get_module_size(std::string module_name) {
 		module_info_t module = get_module(module_name);
 		return module.size;
-	}
-
-	bool remove_apc() {
-		bool result = physmem_instance->remove_apc();
-		return result;
-	}
-
-	bool restore_apc() {
-		bool result = physmem_instance->restore_apc();
-		return result;
-	}
-
-	bool trigger_cow_in_target(void* target_address) {
-		return physmem_instance->trigger_cow(target_address, this->target_cr3, this->owner_cr3);
-	}
-
-	void revert_cow_trigger_in_target(void* target_address) {
-		return physmem_instance->revert_cow_triggering(target_address, this->target_cr3);
-	}
-
-	bool find_and_copy_cow_page(void* target_address) {
-		return physmem_instance->find_and_copy_cow_page(target_address, this->target_cr3, this->owner_cr3);
 	}
 };
 

@@ -27,11 +27,11 @@ using uint64_t = unsigned long long;
 */
 
 struct copy_virtual_memory_t {
-    _In_ uint64_t source_cr3;
-    _In_ uint64_t destination_cr3;
+    _In_ uint64_t src_cr3;
+    _In_ uint64_t dst_cr3;
 
-    _In_ void* source;
-    _In_ void* destination;
+    _In_ void* src;
+    _In_ void* dst;
 
     _In_ uint64_t size;
 };
@@ -80,30 +80,6 @@ struct cmd_get_data_table_entry_info_t {
     _Out_ module_info_t* info_array;
 };
 
-struct cmd_get_eprocess_t {
-    _In_ uint64_t pid;
-
-    _Out_ void* eproc;
-};
-
-struct cmd_trigger_cow_t {
-    _In_ void* target_address;
-    _In_ uint64_t target_cr3;
-    _In_ uint64_t source_cr3;
-};
-
-struct cmd_revert_cow_triggering_t {
-    _In_ void* target_address;
-    _In_ uint64_t target_cr3;
-};
-
-struct cmd_find_and_copy_cow_page_t {
-    _In_ void* target_address;
-    _In_ uint64_t target_cr3;
-    _In_ uint64_t source_cr3;
-    _In_ size_t size;
-};
-
 enum call_types_t : uint32_t {
     cmd_get_pid_by_name,
     cmd_get_cr3,
@@ -114,14 +90,6 @@ enum call_types_t : uint32_t {
     cmd_get_data_table_entry_info,
 
     cmd_copy_virtual_memory,
-
-    cmd_remove_apc,
-    cmd_restore_apc,
-    
-    cmd_get_eproc,
-    cmd_trigger_cow,
-    cmd_revert_cow_triggering,
-    cmd_find_and_copy_cow_page,
 };
 
 struct command_t {

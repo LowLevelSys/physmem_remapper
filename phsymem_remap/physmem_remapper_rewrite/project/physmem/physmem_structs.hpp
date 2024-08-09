@@ -1,9 +1,6 @@
 #pragma once
 #include "../project_includes.hpp"
 
-constexpr uint64_t TABLE_COUNT = 250;
-constexpr uint64_t REMAPPING_COUNT = 50;
-
 typedef union {
     struct {
         uint64_t reserved1 : 3;
@@ -17,15 +14,38 @@ typedef union {
     uint64_t flags;
 } cr3;
 
-typedef union
-{
+typedef union {
     struct {
-        uint64_t task_priority_level : 4;
-        uint64_t reserved : 60;
+        uint64_t virtual_mode_extensions : 1;
+        uint64_t protected_mode_virtual_interrupts : 1;
+        uint64_t timestamp_disable : 1;
+        uint64_t debugging_extensions : 1;
+        uint64_t page_size_extensions : 1;
+        uint64_t physical_address_extension : 1;
+        uint64_t machine_check_enable : 1;
+        uint64_t page_global_enable : 1;
+        uint64_t performance_monitoring_counter_enable : 1;
+        uint64_t os_fxsave_fxrstor_support : 1;
+        uint64_t os_xmm_exception_support : 1;
+        uint64_t usermode_instruction_prevention : 1;
+        uint64_t linear_addresses_57_bit : 1;
+        uint64_t vmx_enable : 1;
+        uint64_t smx_enable : 1;
+        uint64_t reserved1 : 1;
+        uint64_t fsgsbase_enable : 1;
+        uint64_t pcid_enable : 1;
+        uint64_t os_xsave : 1;
+        uint64_t key_locker_enable : 1;
+        uint64_t smep_enable : 1;
+        uint64_t smap_enable : 1;
+        uint64_t protection_key_enable : 1;
+        uint64_t control_flow_enforcement_enable : 1;
+        uint64_t protection_key_for_supervisor_mode_enable : 1;
+        uint64_t reserved2 : 39;
     };
 
     uint64_t flags;
-} cr8;
+} cr4;
 
 typedef union {
     struct {
@@ -184,70 +204,45 @@ typedef union {
     };
 
     uint64_t flags;
-} va_64;
+} va_64_t;
 
-struct slot_t {
-    void* table;
-    bool large_page;
+#define PAGE_TABLE_ENTRY_COUNT 512
+struct page_tables_t {
+    alignas(0x1000) pml4e_64 pml4_table[PAGE_TABLE_ENTRY_COUNT]; // Basically only is a windows copy; We replace one entry and point it to our paging structure
+    alignas(0x1000) pdpte_64 pdpt_table[PAGE_TABLE_ENTRY_COUNT];
+    alignas(0x1000) pde_2mb_64 pd_2mb_table[PAGE_TABLE_ENTRY_COUNT][PAGE_TABLE_ENTRY_COUNT];
 };
 
-struct remapped_entry_t {
-    va_64 remapped_va;
-
-    // Pml4 slot not needed as we only have 1 anyways
-    slot_t pdpt_table;
-    slot_t pd_table;
-    void* pt_table;
-
-    bool used;
-};
-
-enum usable_until {
-    pdpt_table_valid, // Means that the pml4 at the correct index already points to a remapped pdpt table
-    pde_table_valid,  // Means that the pdpt at the correct index already points to a remapped pde table
-    pte_table_valid,  // Means that the pde at the correct index already points to a remapped pte table
-    non_valid,        // Means that the pml4 indexes didn't match
-};
-
-enum restorable_until {
-    pdpt_table_removeable, // You can free everything up to the pdpt table
-    pde_table_removeable, // You can free everything up to the pde level
-    pte_table_removeable, // You can free everything up to the pte level
-    nothing_removeable,    // You can free nothing as there is another mapping in the remapped pte table
-};
-
-struct per_processor_page_table_info {
-    // memcpy slots
-    pdpte_1gb_64* memcpy_pdpt_1gb_table;
-    pde_2mb_64* memcpy_pd_2mb_table;
-    pte_64* memcpy_pt_table;
-
-    uint32_t memcpy_pml4e_idx;
-    uint32_t memcpy_pdpt_idx;
-    uint32_t memcpy_pd_idx;
-};
-
-struct constructed_page_tables {
-    remapped_entry_t remapping_list[REMAPPING_COUNT];
-
-    // We copy the top layer of pml4's and insert a new entry for memory copying util
-    pml4e_64* pml4_table;
-
-    // These are here for remapping
+#define REMAPPING_TABLE_COUNT 5
+struct remapping_tables_t {
     union {
-        pdpte_64* pdpt_table[TABLE_COUNT];
-        pdpte_1gb_64* pdpt_1gb_table[TABLE_COUNT];
+        pdpte_64* pdpt_table[REMAPPING_TABLE_COUNT];
+        pdpte_1gb_64* pdpt_1gb_table[REMAPPING_TABLE_COUNT];
     };
     union {
-        pde_64* pd_table[TABLE_COUNT];
-        pde_2mb_64* pd_2mb_table[TABLE_COUNT];
+        pde_64* pd_table[REMAPPING_TABLE_COUNT];
+        pde_2mb_64* pd_2mb_table[REMAPPING_TABLE_COUNT];
     };
 
-    pte_64* pt_table[TABLE_COUNT];
+    pte_64* pt_table[REMAPPING_TABLE_COUNT];
 
-    bool is_pdpt_table_occupied[TABLE_COUNT];
-    bool is_pd_table_occupied[TABLE_COUNT];
-    bool is_pt_table_occupied[TABLE_COUNT];
+    bool is_pdpt_table_occupied[REMAPPING_TABLE_COUNT];
+    bool is_pd_table_occupied[REMAPPING_TABLE_COUNT];
+    bool is_pt_table_occupied[REMAPPING_TABLE_COUNT];
+};
 
-    per_processor_page_table_info per_cpu_info[TABLE_COUNT];
+struct physmem_t {
+    // These page tables make up our cr3
+    page_tables_t page_tables;
+
+    // These page tables are sole entries we use to
+    // remap addresses in our cr3
+    remapping_tables_t remapping_tables;
+
+    cr3 kernel_cr3;
+
+    cr3 constructed_cr3;
+    uint64_t mapped_physical_mem_base; // Is the base where we mapped the first 512 gb of physical memory 
+
+    bool initialized;
 };

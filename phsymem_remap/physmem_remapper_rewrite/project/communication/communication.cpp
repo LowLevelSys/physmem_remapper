@@ -1,12 +1,13 @@
 #include "communication.hpp"
-#include "shellcode.hpp"
-
+#
 #include "../project_api.hpp"
 #include "../project_utility.hpp"
 
 // Declaration of imports
 extern "C" NTKERNELAPI VOID KeStackAttachProcess(PRKPROCESS PROCESS, PKAPC_STATE ApcState);
 extern "C" NTKERNELAPI VOID KeUnstackDetachProcess(PKAPC_STATE ApcState);
+
+extern "C" info_page_t* g_info_page = 0;
 
 namespace communication {
     /*
@@ -15,7 +16,6 @@ namespace communication {
     void** data_ptr_address = 0;
     void* orig_data_ptr_value = 0;
 
-    // Shellcode ptrs
     void* enter_constructed_space_executed = 0;
     void* enter_constructed_space_shown = 0;
     extern "C" void* exit_constructed_space = 0;
@@ -96,35 +96,6 @@ namespace communication {
         return status;
     }
 
-    project_status setup_cr3_mappings(void* driver_base, uint64_t driver_size) {
-        project_status status = status_success;
-
-        // First unset the global flag of the driver pages to avoid it staying in the tlb
-        status = physmem::unset_global_flag_for_range(driver_base, driver_size, physmem::get_system_cr3().flags);
-        if (status != status_success) {
-            project_log_error("Failed to unset the global flag on one of the drivers pages with status %d", status);
-            return status;
-        }
-
-        // Then ensure the driver mapping in our cr3
-        status = physmem::ensure_memory_mapping_for_range(driver_base, driver_size, physmem::get_system_cr3().flags);
-        if (status != status_success) {
-            project_log_error("Failed to ensure driver mapping with status %d", status);
-            project_log_error("If you remove it from physical memory now and call it, you WILL bsod");
-            return status;
-        }
-        
-        // Partially hide the shellcode
-        status = physmem::overwrite_virtual_address_mapping(enter_constructed_space_shown, enter_constructed_space_executed,
-                                                            physmem::get_system_cr3().flags, physmem::get_system_cr3().flags);
-        if (status != status_success) {
-            project_log_error("Failed to hide shellcode with status %d", status);
-            return status;
-        }
-
-        return status;
-    }
-
     project_status init_data_ptr_hook(void) {
         project_status status = status_success;
         PEPROCESS winlogon_eproc = 0;
@@ -139,52 +110,48 @@ namespace communication {
         status = utility::get_eprocess("winlogon.exe", winlogon_eproc);
         if (status != status_success) {
             project_log_error("Failed to get winlogon.exe EPROCESS");
-            goto cleanup;
+            return status;
         }
 
         KeStackAttachProcess((PRKPROCESS)winlogon_eproc, &apc);
 
-        if (!InterlockedExchangePointer((void**)data_ptr_address, (void*)enter_constructed_space_shown)) {
+        if (!InterlockedExchangePointer((void**)data_ptr_address, (void*)enter_constructed_space_executed)) {
             KeUnstackDetachProcess(&apc);
             project_log_error("Failed to exchange ptr at: %p", data_ptr_address);
             status = status_failure;
-            goto cleanup;
+            return status;
         }
 
         KeUnstackDetachProcess(&apc);
-
-    cleanup:
 
         return status;
     }
 
     project_status init_communication(void* driver_base, uint64_t driver_size) {
-        if (!interrupts::is_initialized() || !stack_manager::is_initialized() || !physmem::is_initialized())
-            return status_not_initialized;
-
         project_status status = status_success;
+
+        UNREFERENCED_PARAMETER(driver_base);
+        UNREFERENCED_PARAMETER(driver_size);
 
         status = init_data_ptr_data();
         if (status != status_success)
-            goto cleanup;
+            return status;
 
         status = shellcode::construct_shellcodes(enter_constructed_space_executed, enter_constructed_space_shown,
             exit_constructed_space, nmi_shellcode,
-            interrupts::get_constructed_idt_ptr(), orig_data_ptr_value, 
-            asm_handler, physmem::get_constructed_cr3().flags);
-
+            interrupts::get_constructed_idt_ptr(), orig_data_ptr_value,
+            asm_handler, physmem::util::get_constructed_cr3().flags);
         if (status != status_success)
-            goto cleanup;
+            return status;
 
-        status = setup_cr3_mappings(driver_base, driver_size);
-        if (status != status_success)
-            goto cleanup;
+        project_log_info("Shown entering shellcode at %p", enter_constructed_space_shown);
+        project_log_info("Executed entering shellcode at %p", enter_constructed_space_executed);
+        project_log_info("Exiting shellcode at %p", exit_constructed_space);
 
        status = init_data_ptr_hook();
        if (status != status_success)
-           goto cleanup;
+           return status;
 
-    cleanup:
         return status;
     }
 };

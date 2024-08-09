@@ -274,15 +274,15 @@ bool intel_driver::Unload(HANDLE device_handle) {
 	return true;
 }
 
-bool intel_driver::MemCopy(HANDLE device_handle, uint64_t destination, uint64_t source, uint64_t size) {
-	if (!destination || !source || !size)
+bool intel_driver::MemCopy(HANDLE device_handle, uint64_t dst, uint64_t source, uint64_t size) {
+	if (!dst || !source || !size)
 		return 0;
 
 	COPY_MEMORY_BUFFER_INFO copy_memory_buffer = { 0 };
 
 	copy_memory_buffer.case_number = 0x33;
 	copy_memory_buffer.source = source;
-	copy_memory_buffer.destination = destination;
+	copy_memory_buffer.dst = dst;
 	copy_memory_buffer.length = size;
 
 	DWORD bytes_returned = 0;
@@ -296,7 +296,7 @@ bool intel_driver::SetMemory(HANDLE device_handle, uint64_t address, uint32_t va
 	FILL_MEMORY_BUFFER_INFO fill_memory_buffer = { 0 };
 
 	fill_memory_buffer.case_number = 0x30;
-	fill_memory_buffer.destination = address;
+	fill_memory_buffer.dst = address;
 	fill_memory_buffer.value = value;
 	fill_memory_buffer.length = size;
 

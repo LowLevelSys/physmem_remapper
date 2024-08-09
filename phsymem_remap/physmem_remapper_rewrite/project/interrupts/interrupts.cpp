@@ -1,14 +1,13 @@
 #pragma once
 #include "interrupts.hpp"
 
-#include "../communication/shellcode.hpp"
 #include "../physmem/physmem.hpp"
 
 namespace interrupts {
 	/*
 		Definitions
 	*/
-	uint64_t SEGMENT_DESCRIPTOR_TYPE_INTERRUPT_GATE = 0xE;
+	#define  SEGMENT_DESCRIPTOR_TYPE_INTERRUPT_GATE 0xE;
 
 	/*
 		Global variables
@@ -52,7 +51,7 @@ namespace interrupts {
 	extern "C" void nmi_handler(trap_frame_t* trap_frame) {
 		uint64_t star_msr = __readmsr(IA32_STAR);
 		KPCR* kcpr = __getpcr(); // Only valid if you call this while gs == kernel_gs
-		uint64_t curr_user_panic_rip = shellcode::get_current_nmi_panic_function();
+		uint64_t curr_user_panic_rip = 0;
 		rflags curr_user_rflags = { 0 };
 
 		// Enable the interrupt flag again
@@ -81,10 +80,6 @@ namespace interrupts {
 
 		// Swap back to the um gs
 		__swapgs();
-
-		// Finally remove all mappings that the current driver called used up
-		// in order to avoid the pte table filling up
-		physmem::free_mem_copying_pte_table();
 	}
 
 	/*
@@ -99,7 +94,8 @@ namespace interrupts {
 		if (!constructed_idt_table)
 			return status_memory_allocation_failed;
 
-		crt::memset(constructed_idt_table, 0, sizeof(segment_descriptor_interrupt_gate_64) * 256);
+		
+		memset(constructed_idt_table, 0, sizeof(segment_descriptor_interrupt_gate_64) * 256);
 
 		segment_descriptor_register_64 idt = { 0 };
 		__sidt(&idt);
@@ -131,36 +127,5 @@ namespace interrupts {
 
 	void* get_windows_nmi_handler(void) {
 		return (void*)g_windows_nmi_handler;
-	}
-	
-	/*
-		APC
-	*/
-
-	project_status remove_apc() {
-
-		KThread* Thread = reinterpret_cast<KThread*>(KeGetCurrentThread());
-
-		if (!Thread)
-			return status_not_present;
-
-		originalFlags = Thread->MiscFlags;
-
-		Thread->MiscFlags &= ~(1UL << MISC_FLAG_ALERTABLE); // Null Alertable
-		Thread->MiscFlags &= ~(1UL << MISC_FLAG_APC); // Null APC
-
-		return status_success;
-	}
-
-	project_status restore_apc() {
-
-		KThread* Thread = reinterpret_cast<KThread*>(KeGetCurrentThread());
-
-		if (!Thread)
-			return status_not_present;
-
-		Thread->MiscFlags = originalFlags;
-
-		return status_success;
 	}
 };

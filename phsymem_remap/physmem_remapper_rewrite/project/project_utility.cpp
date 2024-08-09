@@ -5,7 +5,6 @@
 extern "C" PLIST_ENTRY PsLoadedModuleList;
 
 namespace utility {
-
     project_status get_driver_module_base(const wchar_t* driver_name, void*& driver_base) {
         PLIST_ENTRY head = PsLoadedModuleList;
         PLIST_ENTRY curr = head->Flink;
@@ -14,7 +13,7 @@ namespace utility {
         while (curr != head) {
             LDR_DATA_TABLE_ENTRY* curr_mod = CONTAINING_RECORD(curr, LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
 
-            if (crt::_wcsicmp(curr_mod->BaseDllName.Buffer, driver_name) == 0) {
+            if (_wcsicmp(curr_mod->BaseDllName.Buffer, driver_name) == 0) {
                 driver_base = curr_mod->DllBase;
                 return status_success;
             }
@@ -32,12 +31,12 @@ namespace utility {
         char image_name[15];
 
         do {
-            crt::memcpy((void*)(&image_name), (void*)((uintptr_t)curr_entry + 0x5a8), sizeof(image_name));
+            memcpy((void*)(&image_name), (void*)((uintptr_t)curr_entry + 0x5a8), sizeof(image_name));
 
-            if (crt::strcmp(image_name, process_name) == 0) {
+            if (strcmp(image_name, process_name) == 0) {
                 uint32_t active_threads;
 
-                crt::memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
+                memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
 
                 if (active_threads) {
                     pe_proc = curr_entry;
@@ -98,7 +97,7 @@ namespace utility {
                 !(sections[i].Characteristics & IMAGE_SCN_MEM_EXECUTE) ||
                 (sections[i].Characteristics & IMAGE_SCN_MEM_DISCARDABLE))
                 continue;
-            if (crt::strncmp((const char*)sections[i].Name, section_name, IMAGE_SIZEOF_SHORT_NAME) == 0) {
+            if (strncmp((const char*)sections[i].Name, section_name, IMAGE_SIZEOF_SHORT_NAME) == 0) {
                 uintptr_t section_start = (uintptr_t)module_handle + sections[i].VirtualAddress;
                 uint32_t section_size = sections[i].Misc.VirtualSize;
 
@@ -139,19 +138,19 @@ namespace utility {
         do {
             uint64_t curr_pid;
 
-            crt::memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + 0x440), sizeof(curr_pid));
+            memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + 0x440), sizeof(curr_pid));
 
             // Check whether we found our process
             if (target_pid == curr_pid) {
 
                 uint32_t active_threads;
 
-                crt::memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
+                memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
 
                 if (active_threads || target_pid == 4) {
                     uint64_t cr3;
 
-                    crt::memcpy(&cr3, (void*)((uintptr_t)curr_entry + 0x28), sizeof(cr3));
+                    memcpy(&cr3, (void*)((uintptr_t)curr_entry + 0x28), sizeof(cr3));
 
                     return cr3;
                 }
@@ -163,5 +162,4 @@ namespace utility {
 
         return 0;
     }
-
 };

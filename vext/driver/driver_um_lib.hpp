@@ -23,20 +23,16 @@ private:
     __int64 send_request(void* cmd);
 
 public:
-    bool copy_virtual_memory(uint64_t source_cr3, uint64_t destination_cr3, void* source, void* destination, uint64_t size);
+    bool copy_virtual_memory(uint64_t 
+        
+        
+        _cr3, uint64_t dst_cr3, void* src, void* dst, uint64_t size);
     uint64_t get_cr3(uint64_t pid);
     uint64_t get_module_base(const char* module_name, uint64_t pid);
     uint64_t get_module_size(const char* module_name, uint64_t pid);
     uint64_t get_pid_by_name(const char* name);
     uint64_t get_ldr_data_table_entry_count(uint64_t pid);
     bool get_data_table_entry_info(uint64_t pid, module_info_t* info_array);
-    bool remove_apc();
-    bool restore_apc();
-    void* get_eprocess(uint64_t pid);
-    bool trigger_cow(void* target_address, uint64_t target_cr3, uint64_t source_cr3);
-    void revert_cow_triggering(void* target_address, uint64_t target_cr3);
-    bool find_and_copy_cow_page(void* target_address, uint64_t target_cr3, uint64_t source_cr3);
-
 
     static physmem_remapper_um_t* init_physmem_remapper_lib(void) {
         if (instance)

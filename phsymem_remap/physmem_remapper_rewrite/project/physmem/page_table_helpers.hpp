@@ -50,8 +50,8 @@ namespace pt_helpers {
 
 namespace pt_manager {
     // Allocation helpers
-    inline pdpte_64* get_free_pdpt_table(constructed_page_tables* table) {
-        for (uint32_t i = 0; i < TABLE_COUNT; i++) {
+    inline pdpte_64* get_free_pdpt_table(remapping_tables_t* table) {
+        for (uint32_t i = 0; i < REMAPPING_TABLE_COUNT; i++) {
             if (!table->is_pdpt_table_occupied[i]) {
                 table->is_pdpt_table_occupied[i] = true;
                 return table->pdpt_table[i];
@@ -61,8 +61,8 @@ namespace pt_manager {
         return 0;
     }
 
-    inline pde_64* get_free_pd_table(constructed_page_tables* table) {
-        for (uint32_t i = 0; i < TABLE_COUNT; i++) {
+    inline pde_64* get_free_pd_table(remapping_tables_t* table) {
+        for (uint32_t i = 0; i < REMAPPING_TABLE_COUNT; i++) {
             if (!table->is_pd_table_occupied[i]) {
                 table->is_pd_table_occupied[i] = true;
                 return table->pd_table[i];
@@ -72,8 +72,8 @@ namespace pt_manager {
         return 0;
     }
 
-    inline pte_64* get_free_pt_table(constructed_page_tables* table) {
-        for (uint32_t i = 0; i < TABLE_COUNT; i++) {
+    inline pte_64* get_free_pt_table(remapping_tables_t* table) {
+        for (uint32_t i = 0; i < REMAPPING_TABLE_COUNT; i++) {
             if (!table->is_pt_table_occupied[i]) {
                 table->is_pt_table_occupied[i] = true;
                 return table->pt_table[i];
@@ -84,40 +84,31 @@ namespace pt_manager {
     }
 
     // Freeing helpers
-    inline void safely_free_pdpt_table(constructed_page_tables* table, pdpte_64* pdpt_table) {
-        if (!pdpt_table)
-            return;
-
-        for (uint32_t i = 0; i < TABLE_COUNT; i++) {
+    inline void free_pdpt_table(remapping_tables_t* table, pdpte_64* pdpt_table) {
+        for (uint32_t i = 0; i < REMAPPING_TABLE_COUNT; i++) {
             if (table->pdpt_table[i] == pdpt_table) {
                 table->is_pdpt_table_occupied[i] = false;
-                crt::memset(pdpt_table, 0, 512 * sizeof(pdpte_64));
+                memset(pdpt_table, 0, 512 * sizeof(pdpte_64));
                 return;
             }
         }
     }
 
-    inline void safely_free_pd_table(constructed_page_tables* table, pde_64* pd_table) {
-        if (!pd_table)
-            return;
-
-        for (uint32_t i = 0; i < TABLE_COUNT; i++) {
+    inline void free_pd_table(remapping_tables_t* table, pde_64* pd_table) {
+        for (uint32_t i = 0; i < REMAPPING_TABLE_COUNT; i++) {
             if (table->pd_table[i] == pd_table) {
                 table->is_pd_table_occupied[i] = false;
-                crt::memset(pd_table, 0, 512 * sizeof(pde_64));
+                memset(pd_table, 0, 512 * sizeof(pde_64));
                 return;
             }
         }
     }
 
-    inline void safely_free_pt_table(constructed_page_tables* table, pte_64* pt_table) {
-        if (!pt_table)
-            return;
-
-        for (uint32_t i = 0; i < TABLE_COUNT; i++) {
+    inline void free_pt_table(remapping_tables_t* table, pte_64* pt_table) {
+        for (uint32_t i = 0; i < REMAPPING_TABLE_COUNT; i++) {
             if (table->pt_table[i] == pt_table) {
                 table->is_pt_table_occupied[i] = false;
-                crt::memset(pt_table, 0, 512 * sizeof(pte_64));
+                memset(pt_table, 0, 512 * sizeof(pte_64));
                 return;
             }
         }

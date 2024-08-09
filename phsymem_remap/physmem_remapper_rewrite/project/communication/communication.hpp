@@ -1,5 +1,6 @@
 #pragma once
 #include "../project_includes.hpp"
+#include "shellcode.hpp"
 
 namespace communication {
 	// Initialization functions

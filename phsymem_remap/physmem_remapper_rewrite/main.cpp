@@ -23,12 +23,6 @@ NTSTATUS driver_entry(void* driver_base, uint64_t driver_size) {
 		return STATUS_UNSUCCESSFUL;
 	}
 
-	status = stack_manager::init_stack_manager();
-	if (status != status_success) {
-		project_log_error("Failed to init stack manager with status %d", status);
-		return STATUS_UNSUCCESSFUL;
-	}
-
 	status = communication::init_communication(driver_base, driver_size);
 	if (status != status_success) {
 		project_log_error("Failed to init communication with status %d", status);

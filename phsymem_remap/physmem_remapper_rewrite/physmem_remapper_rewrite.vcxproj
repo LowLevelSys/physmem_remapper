@@ -79,14 +79,12 @@
     <ClCompile Include="project\interrupts\interrupts.cpp" />
     <ClCompile Include="project\physmem\physmem.cpp" />
     <ClCompile Include="project\project_utility.cpp" />
-    <ClCompile Include="project\stack\stack_manager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="includes.hpp" />
     <ClInclude Include="project\communication\communication.hpp" />
     <ClInclude Include="project\communication\shared_structs.hpp" />
     <ClInclude Include="project\communication\shellcode.hpp" />
-    <ClInclude Include="project\crt.hpp" />
     <ClInclude Include="project\interrupts\interrupts.hpp" />
     <ClInclude Include="project\interrupts\interrupt_structs.hpp" />
     <ClInclude Include="project\physmem\page_table_helpers.hpp" />
@@ -95,7 +93,6 @@
     <ClInclude Include="project\project_api.hpp" />
     <ClInclude Include="project\project_includes.hpp" />
     <ClInclude Include="project\project_utility.hpp" />
-    <ClInclude Include="project\stack\stack_manager.hpp" />
     <ClInclude Include="project\windows_structs.hpp" />
   </ItemGroup>
   <ItemGroup>

@@ -1,7 +1,16 @@
 #pragma once
 #include <ntddk.h>
 #include <intrin.h>
-#include "crt.hpp"
+
+// We like nice declarations
+typedef signed char        int8_t;
+typedef short              int16_t;
+typedef int                int32_t;
+typedef long long          int64_t;
+typedef unsigned char      uint8_t;
+typedef unsigned short     uint16_t;
+typedef unsigned int       uint32_t;
+typedef unsigned long long uint64_t;
 
 
 /*
@@ -12,38 +21,25 @@
 // to get more information from the return
 enum project_status {
 	/*
-		General
+		GENERAL
 	*/
 	status_success,
 	status_failure,
-	status_not_initialized,
-	status_non_implemented,
 	status_invalid_parameter,
-	status_invalid_return_value,
 	status_memory_allocation_failed,
+	status_win_address_translation_failed,
+	status_not_supported,
 
 	/*
-		Physmem
+		WINDOWS
 	*/
-	status_address_already_remapped,
-	status_address_translation_failed,
 	status_cr3_not_found,
-	status_data_mismatch,
-	status_invalid_my_page_table,
-	status_invalid_page_table_index,
-	status_no_available_page_tables,
-	status_no_valid_remapping_entry,
-	status_non_aligned,
-	status_non_matching_page_offsets,
-	status_paging_hierchy_mismatch,
-	status_paging_wrong_granularity,
-	status_remapping_entry_found,
-	status_remapping_entry_not_found,
-	status_remapping_list_full,
-	status_wrong_context,
-	status_non_valid_usable_until_level,
-	status_not_present,
-	status_too_many_cores,
+
+	/*
+		PHYSMEM
+	*/
+	status_invalid_paging_idx,
+	status_paging_entry_not_present,
 
 	/*
 		Interrupts
@@ -59,7 +55,7 @@ enum project_status {
 	Macros
 */
 
-#define extract_file_name(file) (crt::strrchr(file, '\\') ? crt::strrchr(file, '\\') + 1 : file)
+#define extract_file_name(file) (strrchr(file, '\\') ? strrchr(file, '\\') + 1 : file)
 
 #define project_log_error(fmt, ...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[-] " "[%s:%d] " fmt "\n", extract_file_name(__FILE__), __LINE__, ##__VA_ARGS__)
 #define project_log_warning(fmt, ...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[~] " "[%s:%d] " fmt "\n", extract_file_name(__FILE__), __LINE__, ##__VA_ARGS__)

@@ -21,7 +21,7 @@ namespace intel_driver
 		uint64_t case_number;
 		uint64_t reserved;
 		uint64_t source;
-		uint64_t destination;
+		uint64_t dst;
 		uint64_t length;
 	}COPY_MEMORY_BUFFER_INFO, * PCOPY_MEMORY_BUFFER_INFO;
 
@@ -31,7 +31,7 @@ namespace intel_driver
 		uint64_t reserved1;
 		uint32_t value;
 		uint32_t reserved2;
-		uint64_t destination;
+		uint64_t dst;
 		uint64_t length;
 	}FILL_MEMORY_BUFFER_INFO, * PFILL_MEMORY_BUFFER_INFO;
 
@@ -122,7 +122,7 @@ namespace intel_driver
 	HANDLE Load();
 	bool Unload(HANDLE device_handle);
 
-	bool MemCopy(HANDLE device_handle, uint64_t destination, uint64_t source, uint64_t size);
+	bool MemCopy(HANDLE device_handle, uint64_t dst, uint64_t source, uint64_t size);
 	bool SetMemory(HANDLE device_handle, uint64_t address, uint32_t value, uint64_t size);
 	bool GetPhysicalAddress(HANDLE device_handle, uint64_t address, uint64_t* out_physical_address);
 	uint64_t MapIoSpace(HANDLE device_handle, uint64_t physical_address, uint32_t size);

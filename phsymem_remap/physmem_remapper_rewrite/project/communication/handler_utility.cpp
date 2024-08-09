@@ -12,13 +12,13 @@ namespace handler_utility {
         char image_name[IMAGE_NAME_LENGTH];
 
         // Easy way for system pid
-        if (crt::strstr(target_process_name, "System"))
+        if (strstr(target_process_name, "System"))
             return SYSTEM_PID;
 
         do {
             uint32_t active_threads;
 
-            crt::memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
+            memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
 
             if (!active_threads) {
                 PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+FLINK_OFFSET);
@@ -26,13 +26,13 @@ namespace handler_utility {
                 continue;
             }
 
-            crt::memcpy(&image_name, (void*)((uintptr_t)curr_entry + IMAGE_NAME_OFFSET), IMAGE_NAME_LENGTH);
+            memcpy(&image_name, (void*)((uintptr_t)curr_entry + IMAGE_NAME_OFFSET), IMAGE_NAME_LENGTH);
 
             // Check whether we found our process
-            if (crt::strstr(image_name, target_process_name) || crt::strstr(target_process_name, image_name)) {
+            if (strstr(image_name, target_process_name) || strstr(target_process_name, image_name)) {
                 uint64_t pid = 0;
 
-                crt::memcpy(&pid, (void*)((uintptr_t)curr_entry + PID_OFFSET), sizeof(pid));
+                memcpy(&pid, (void*)((uintptr_t)curr_entry + PID_OFFSET), sizeof(pid));
 
                 return pid;
             }
@@ -55,7 +55,7 @@ namespace handler_utility {
         do {
             uint32_t active_threads;
 
-            crt::memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
+            memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
 
             if (!active_threads) {
                 PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+FLINK_OFFSET);
@@ -64,7 +64,7 @@ namespace handler_utility {
             }
 
             uint64_t curr_pid;
-            crt::memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + PID_OFFSET), sizeof(curr_pid));
+            memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + PID_OFFSET), sizeof(curr_pid));
 
             // Check whether we found our process
             if (curr_pid == target_pid) {
@@ -88,7 +88,7 @@ namespace handler_utility {
         do {
             uint32_t active_threads;
 
-            crt::memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
+            memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
 
             if (!active_threads) {
                 PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+FLINK_OFFSET);
@@ -98,22 +98,22 @@ namespace handler_utility {
 
             uint64_t curr_pid;
 
-            crt::memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + PID_OFFSET), sizeof(curr_pid));
+            memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + PID_OFFSET), sizeof(curr_pid));
 
             if (target_pid == curr_pid) {
                 uint64_t dtb;
                 uint64_t peb;
 
-                crt::memcpy(&dtb, (void*)((uintptr_t)curr_entry + DIRECTORY_TABLE_BASE_OFFSET), sizeof(dtb));
-                crt::memcpy(&peb, (void*)((uintptr_t)curr_entry + PEB_OFFSET), sizeof(peb));
+                memcpy(&dtb, (void*)((uintptr_t)curr_entry + DIRECTORY_TABLE_BASE_OFFSET), sizeof(dtb));
+                memcpy(&peb, (void*)((uintptr_t)curr_entry + PEB_OFFSET), sizeof(peb));
 
                 PEB_LDR_DATA* pldr;
-                status = physmem::copy_memory_to_constructed_cr3(&pldr, (void*)(peb + LDR_DATA_OFFSET), sizeof(PEB_LDR_DATA*), dtb);
+                status = physmem::runtime::copy_memory_to_constructed_cr3(&pldr, (void*)(peb + LDR_DATA_OFFSET), sizeof(PEB_LDR_DATA*), dtb);
                 if (status != status_success)
                     break;
 
                 PEB_LDR_DATA ldr_data;
-                status = physmem::copy_memory_to_constructed_cr3(&ldr_data, pldr, sizeof(PEB_LDR_DATA), dtb);
+                status = physmem::runtime::copy_memory_to_constructed_cr3(&ldr_data, pldr, sizeof(PEB_LDR_DATA), dtb);
                 if (status != status_success)
                     break;
 
@@ -122,14 +122,14 @@ namespace handler_utility {
 
                 do {
                     LDR_DATA_TABLE_ENTRY entry;
-                    status = physmem::copy_memory_to_constructed_cr3(&entry, next_link, sizeof(LDR_DATA_TABLE_ENTRY), dtb);
+                    status = physmem::runtime::copy_memory_to_constructed_cr3(&entry, next_link, sizeof(LDR_DATA_TABLE_ENTRY), dtb);
                     if (status != status_success)
                         break;
 
                     wchar_t dll_name_buffer[MAX_PATH] = { 0 };
                     char char_dll_name_buffer[MAX_PATH] = { 0 };
 
-                    status = physmem::copy_memory_to_constructed_cr3(&dll_name_buffer, entry.BaseDllName.Buffer, entry.BaseDllName.Length, dtb);
+                    status = physmem::runtime::copy_memory_to_constructed_cr3(&dll_name_buffer, entry.BaseDllName.Buffer, entry.BaseDllName.Length, dtb);
                     if (status != status_success)
                         break;
 
@@ -138,8 +138,8 @@ namespace handler_utility {
 
                     char_dll_name_buffer[entry.BaseDllName.Length / sizeof(wchar_t)] = '\0';
 
-                    if (crt::strstr(char_dll_name_buffer, module_name)) {
-                        crt::memcpy(module_entry, &entry, sizeof(LDR_DATA_TABLE_ENTRY));
+                    if (strstr(char_dll_name_buffer, module_name)) {
+                        memcpy(module_entry, &entry, sizeof(LDR_DATA_TABLE_ENTRY));
                         return status;
                     }
 
@@ -169,7 +169,7 @@ namespace handler_utility {
         do {
             uint32_t active_threads;
 
-            crt::memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
+            memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
 
             if (!active_threads) {
                 PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+FLINK_OFFSET);
@@ -179,22 +179,22 @@ namespace handler_utility {
 
             uint64_t curr_pid;
 
-            crt::memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + PID_OFFSET), sizeof(curr_pid));
+            memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + PID_OFFSET), sizeof(curr_pid));
 
             if (target_pid == curr_pid) {
                 uint64_t dtb;
                 uint64_t peb;
 
-                crt::memcpy(&dtb, (void*)((uintptr_t)curr_entry + DIRECTORY_TABLE_BASE_OFFSET), sizeof(dtb));
-                crt::memcpy(&peb, (void*)((uintptr_t)curr_entry + PEB_OFFSET), sizeof(peb));
+                memcpy(&dtb, (void*)((uintptr_t)curr_entry + DIRECTORY_TABLE_BASE_OFFSET), sizeof(dtb));
+                memcpy(&peb, (void*)((uintptr_t)curr_entry + PEB_OFFSET), sizeof(peb));
 
                 PEB_LDR_DATA* pldr;
-                status = physmem::copy_memory_to_constructed_cr3(&pldr, (void*)(peb + LDR_DATA_OFFSET), sizeof(PEB_LDR_DATA*), dtb);
+                status = physmem::runtime::copy_memory_to_constructed_cr3(&pldr, (void*)(peb + LDR_DATA_OFFSET), sizeof(PEB_LDR_DATA*), dtb);
                 if (status != status_success)
                     break;
 
                 PEB_LDR_DATA ldr_data;
-                status = physmem::copy_memory_to_constructed_cr3(&ldr_data, pldr, sizeof(PEB_LDR_DATA), dtb);
+                status = physmem::runtime::copy_memory_to_constructed_cr3(&ldr_data, pldr, sizeof(PEB_LDR_DATA), dtb);
                 if (status != status_success)
                     break;
 
@@ -204,7 +204,7 @@ namespace handler_utility {
 
                 do {
                     LDR_DATA_TABLE_ENTRY entry;
-                    status = physmem::copy_memory_to_constructed_cr3(&entry, next_link, sizeof(LDR_DATA_TABLE_ENTRY), dtb);
+                    status = physmem::runtime::copy_memory_to_constructed_cr3(&entry, next_link, sizeof(LDR_DATA_TABLE_ENTRY), dtb);
                     if (status != status_success)
                         return module_count;
 
@@ -235,7 +235,7 @@ namespace handler_utility {
         do {
             uint32_t active_threads;
 
-            crt::memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
+            memcpy((void*)&active_threads, (void*)((uintptr_t)curr_entry + ACTIVE_THREADS), sizeof(active_threads));
 
             if (!active_threads) {
                 PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+FLINK_OFFSET);
@@ -245,22 +245,22 @@ namespace handler_utility {
 
             uint64_t curr_pid;
 
-            crt::memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + PID_OFFSET), sizeof(curr_pid));
+            memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + PID_OFFSET), sizeof(curr_pid));
 
             if (target_pid == curr_pid) {
                 uint64_t dtb;
                 uint64_t peb;
 
-                crt::memcpy(&dtb, (void*)((uintptr_t)curr_entry + DIRECTORY_TABLE_BASE_OFFSET), sizeof(dtb));
-                crt::memcpy(&peb, (void*)((uintptr_t)curr_entry + PEB_OFFSET), sizeof(peb));
+                memcpy(&dtb, (void*)((uintptr_t)curr_entry + DIRECTORY_TABLE_BASE_OFFSET), sizeof(dtb));
+                memcpy(&peb, (void*)((uintptr_t)curr_entry + PEB_OFFSET), sizeof(peb));
 
                 PEB_LDR_DATA* pldr;
-                status = physmem::copy_memory_to_constructed_cr3(&pldr, (void*)(peb + LDR_DATA_OFFSET), sizeof(PEB_LDR_DATA*), dtb);
+                status = physmem::runtime::copy_memory_to_constructed_cr3(&pldr, (void*)(peb + LDR_DATA_OFFSET), sizeof(PEB_LDR_DATA*), dtb);
                 if (status != status_success)
                     break;
 
                 PEB_LDR_DATA ldr_data;
-                status = physmem::copy_memory_to_constructed_cr3(&ldr_data, pldr, sizeof(PEB_LDR_DATA), dtb);
+                status = physmem::runtime::copy_memory_to_constructed_cr3(&ldr_data, pldr, sizeof(PEB_LDR_DATA), dtb);
                 if (status != status_success)
                     break;
 
@@ -269,14 +269,14 @@ namespace handler_utility {
 
                 do {
                     LDR_DATA_TABLE_ENTRY entry;
-                    status = physmem::copy_memory_to_constructed_cr3(&entry, next_link, sizeof(LDR_DATA_TABLE_ENTRY), dtb);
+                    status = physmem::runtime::copy_memory_to_constructed_cr3(&entry, next_link, sizeof(LDR_DATA_TABLE_ENTRY), dtb);
                     if (status != status_success)
                         break;
 
                     wchar_t dll_name_buffer[MAX_PATH] = { 0 };
                     char char_dll_name_buffer[MAX_PATH] = { 0 };
 
-                    status = physmem::copy_memory_to_constructed_cr3(&dll_name_buffer, entry.BaseDllName.Buffer, entry.BaseDllName.Length, dtb);
+                    status = physmem::runtime::copy_memory_to_constructed_cr3(&dll_name_buffer, entry.BaseDllName.Buffer, entry.BaseDllName.Length, dtb);
                     if (status != status_success) {
                         next_link = (LIST_ENTRY*)entry.InLoadOrderLinks.Flink;
                         continue;
@@ -290,9 +290,9 @@ namespace handler_utility {
                     module_info_t info = { 0 };
                     info.base = (uint64_t)entry.DllBase;
                     info.size = entry.SizeOfImage;
-                    crt::memcpy(&info.name, &char_dll_name_buffer, min(entry.BaseDllName.Length / sizeof(wchar_t), MAX_PATH - 1));
+                    memcpy(&info.name, &char_dll_name_buffer, min(entry.BaseDllName.Length / sizeof(wchar_t), MAX_PATH - 1));
 
-                    status = physmem::copy_memory_from_constructed_cr3((void*)curr_info_entry, &info, sizeof(module_info_t), proc_cr3);
+                    status = physmem::runtime::copy_memory_from_constructed_cr3((void*)curr_info_entry, &info, sizeof(module_info_t), proc_cr3);
                     if (status != status_success) {
                         next_link = (LIST_ENTRY*)entry.InLoadOrderLinks.Flink;
                         continue;
@@ -333,241 +333,4 @@ namespace handler_utility {
 
         return (uint64_t)data_table_entry.SizeOfImage;
     }
-
-    void* get_code_cave(void* base, uint32_t size, uint64_t target_cr3, uint64_t source_cr3) {
-        // Ensure at least some alignment
-        if (size < 8) {
-            size = 8;
-        }
-
-        IMAGE_DOS_HEADER dos_header = { 0 };
-        IMAGE_DOS_HEADER* pdos_header = (IMAGE_DOS_HEADER*)base;
-
-        project_status status = physmem::copy_virtual_memory(&dos_header, pdos_header, sizeof(IMAGE_DOS_HEADER), target_cr3, source_cr3);
-        if (status != status_success) {
-            return nullptr;
-        }
-
-        IMAGE_NT_HEADERS nt_headers = { 0 };
-        IMAGE_NT_HEADERS* pnt_headers = (IMAGE_NT_HEADERS*)((uint8_t*)base + dos_header.e_lfanew);
-
-        status = physmem::copy_virtual_memory(&nt_headers, pnt_headers, sizeof(IMAGE_NT_HEADERS), target_cr3, source_cr3);
-        if (status != status_success) {
-            return nullptr;
-        }
-
-        IMAGE_SECTION_HEADER* section_headers = (IMAGE_SECTION_HEADER*)ExAllocatePoolWithTag(NonPagedPool, sizeof(IMAGE_SECTION_HEADER) * nt_headers.FileHeader.NumberOfSections, 'shdr');
-        if (!section_headers) {
-            return nullptr;
-        }
-
-        status = physmem::copy_virtual_memory(section_headers, (IMAGE_SECTION_HEADER*)(pnt_headers + 1),
-            sizeof(IMAGE_SECTION_HEADER) * nt_headers.FileHeader.NumberOfSections,
-            target_cr3, source_cr3);
-        if (status != status_success) {
-            ExFreePoolWithTag(section_headers, 'shdr'); // Clean up
-            return nullptr;
-        }
-
-        uint8_t* local_buffer = (uint8_t*)ExAllocatePoolWithTag(NonPagedPool, 0x1000 + size - 1, 'lbuf'); // Buffer size is page size plus additional bytes to account for partial code caves at the end of pages
-        if (!local_buffer) {
-            ExFreePoolWithTag(section_headers, 'shdr');
-            return nullptr;
-        }
-
-        void* cave_address = nullptr;
-
-        for (unsigned short i = 0; i < nt_headers.FileHeader.NumberOfSections; ++i) {
-            if (crt::memcmp(section_headers[i].Name, ".text", 5) == 0) {
-                uint32_t section_size = section_headers[i].Misc.VirtualSize;
-                uint8_t* section_base = (uint8_t*)base + section_headers[i].VirtualAddress;
-
-                for (uint32_t offset = 0; offset < section_size; offset += 0x1000) {
-                    uint32_t chunk_size = (offset + 0x1000 > section_size) ? section_size - offset : 0x1000;
-
-                    status = physmem::copy_virtual_memory(local_buffer, section_base + offset, chunk_size, target_cr3, source_cr3);
-                    if (status != status_success) {
-                        ExFreePoolWithTag(section_headers, 'shdr'); // Clean up
-                        ExFreePoolWithTag(local_buffer, 'lbuf');
-                        return nullptr;
-                    }
-
-                    for (uint32_t j = 0; j < chunk_size; ++j) {
-                        if (local_buffer[j] == 0xCC || local_buffer[j] == 0x00) {
-                            uint8_t current_byte = local_buffer[j];
-                            uint32_t k = 1;
-                            for (; k < size && j + k < chunk_size; ++k) {
-                                if (local_buffer[j + k] != current_byte) {
-                                    break;
-                                }
-                            }
-
-                            if (k == size) { // Code cave found
-                                cave_address = section_base + offset + j;
-                                goto cleanup;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-    cleanup:
-        ExFreePoolWithTag(section_headers, 'shdr');
-        ExFreePoolWithTag(local_buffer, 'lbuf');
-        return cave_address;
-    }
-
-    project_status trigger_cow(void* target_address, uint64_t target_cr3, uint64_t source_cr3) {
-        if (!target_address || !target_cr3 || !source_cr3)
-            return status_invalid_parameter;
-
-        project_status status;
-        uint64_t physical_address;
-
-        // Translate VA to PA
-        status = physmem::translate_to_physical_address(source_cr3, target_address, physical_address);
-        if (status != status_success)
-            return status;
-
-        if (!physical_address)
-            return status_address_translation_failed;
-
-        pte_64 dummy;
-        pte_64* pte;
-
-        // Get PTE for target address
-        status = physmem::get_pte_entry(target_address, target_cr3, pte);
-        if (status != status_success)
-            return status;
-
-        if (!pte)
-            return status_failure;
-
-        // Prepare PTE for COW
-        dummy.flags = 0;
-        dummy.present = true;
-        dummy.write = true;
-        dummy.supervisor = true;
-        dummy.execute_disable = false;
-        dummy.page_frame_number = physical_address >> 12;
-
-        // Update PTE to point to the physical address
-        *pte = dummy;
-
-        __invlpg(target_address);
-
-        physmem::safely_unmap_4kb_page(pte);
-
-        return status_success;
-    }
-
-    project_status revert_cow_triggering(void* target_address, uint64_t target_cr3) {
-        if (!target_address || !target_cr3)
-            return status_invalid_parameter;
-
-        project_status status;
-        pte_64 dummy;
-        pte_64* pte;
-        status = physmem::get_pte_entry(target_address, target_cr3, pte);
-        if (status != status_success)
-            return status;
-
-        if (!pte)
-            return status_failure;
-
-        dummy.flags = 0;
-        *pte = dummy;
-
-        __invlpg(target_address);
-
-        physmem::safely_unmap_4kb_page(pte);
-
-        return status_success;
-    }
-
-    project_status copy_kernel_buffer(void* target_address, uint64_t target_cr3, uint64_t source_cr3, void*& buffer, size_t size) {
-
-        if (!buffer)
-            return status_memory_allocation_failed;
-
-        project_status status = physmem::copy_virtual_memory(buffer, target_address, size, target_cr3, source_cr3);
-        if (status != status_success)
-            return status_failure;
-
-        return status_success;
-    };
-
-    project_status update_pte_to_buffer(void* target_address, uint64_t target_cr3, void* buffer) {
-        pte_64* pte;
-        project_status status;
-        uint64_t buffer_physical_address;
-
-        status = physmem::translate_to_physical_address(target_cr3, buffer, buffer_physical_address);
-        if (status != status_success)
-            return status;
-
-        status = physmem::get_pte_entry(target_address, target_cr3, pte);
-        if (status != status_success)
-            return status;
-
-        if (!pte)
-            return status_failure;
-
-        pte->present = true;
-        pte->write = true;
-        pte->execute_disable = false;
-        pte->page_frame_number = buffer_physical_address >> 12;
-
-        __invlpg(target_address);
-
-        physmem::safely_unmap_4kb_page(pte);
-
-        return status_success;
-    }
-
-    project_status find_and_copy_cow_page(void* target_vaddress, uint64_t target_cr3, uint64_t source_cr3) {
-
-        uint64_t physical_address;
-        project_status status;
-
-        void* kernel_buffer = physmem::get_global_buffer();
-        if (!kernel_buffer)
-            return status_failure;
-
-        status = physmem::translate_to_physical_address(target_cr3, target_vaddress, physical_address);
-        if (status != status_success)
-			return status;
-
-        // translate it to a void*
-        void* target_address = reinterpret_cast<void*>(physical_address);
-
-        // Trigger COW
-        status = trigger_cow(target_address, target_cr3, source_cr3);
-        if (status != status_success)
-            return status;
-
-        // Get new PTE
-
-        pte_64* pte = nullptr;
-        status = physmem::get_pte_entry(target_address, target_cr3, pte);
-        if (status != status_success)
-			return status;
-
-        if (!pte)
-			return status_failure;
-
-        uint64_t cow_address = pte->page_frame_number << 12;
-
-        status = copy_kernel_buffer(reinterpret_cast<void*>(cow_address), target_cr3, source_cr3, kernel_buffer, PAGE_SIZE);
-        if (status != status_success)
-            return status;
-
-        status = update_pte_to_buffer(target_address, target_cr3, kernel_buffer);
-        if (status != status_success)
-            return status;
-
-        return status_success;
-    }
-
 };
