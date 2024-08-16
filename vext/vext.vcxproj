@@ -40,7 +40,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>false</IntrinsicFunctions>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
@@ -48,11 +48,13 @@
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <DisableSpecificWarnings>4091;6328;6031;4996</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <Optimization>Disabled</Optimization>
-      <WholeProgramOptimization>false</WholeProgramOptimization>
+      <Optimization>MaxSpeed</Optimization>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
       <CallingConvention>StdCall</CallingConvention>
       <ExceptionHandling>Async</ExceptionHandling>
       <FloatingPointExceptions>true</FloatingPointExceptions>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -62,17 +64,18 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="driver\driver_um_lib.cpp" />
+    <ClCompile Include="api\driver\driver_um_lib.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="driver\driver_includes.hpp" />
-    <ClInclude Include="driver\driver_shared.hpp" />
-    <ClInclude Include="driver\driver_um_lib.hpp" />
-    <ClInclude Include="proc\process.hpp" />
+    <ClInclude Include="api\driver\driver_includes.hpp" />
+    <ClInclude Include="api\driver\driver_shared.hpp" />
+    <ClInclude Include="api\driver\driver_um_lib.hpp" />
+    <ClInclude Include="api\dumper\driver_dumper.hpp" />
+    <ClInclude Include="api\proc\process.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="driver\nmi_restoring_assembly.asm" />
+    <MASM Include="api\driver\nmi_restoring_assembly.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

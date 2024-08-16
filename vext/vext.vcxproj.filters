@@ -5,38 +5,47 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Source Files\driver">
-      <UniqueIdentifier>{93c01cc6-f937-4f24-bc61-d74406dc1691}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\proc">
+    <Filter Include="Source Files\api">
       <UniqueIdentifier>{f54bc66c-607f-4c04-bcb5-4c89a668872b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\api\process">
+      <UniqueIdentifier>{0b303ee2-7a45-4bd5-a053-0f8f7d410a4d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\api\driver dumper">
+      <UniqueIdentifier>{86f8fd30-3ba8-41f8-bda4-b331cc72f519}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\api\core">
+      <UniqueIdentifier>{93c01cc6-f937-4f24-bc61-d74406dc1691}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="driver\driver_um_lib.cpp">
-      <Filter>Source Files\driver</Filter>
+    <ClCompile Include="api\driver\driver_um_lib.cpp">
+      <Filter>Source Files\api\core</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="driver\driver_includes.hpp">
-      <Filter>Source Files\driver</Filter>
+    <ClInclude Include="api\driver\driver_includes.hpp">
+      <Filter>Source Files\api\core</Filter>
     </ClInclude>
-    <ClInclude Include="driver\driver_shared.hpp">
-      <Filter>Source Files\driver</Filter>
+    <ClInclude Include="api\driver\driver_shared.hpp">
+      <Filter>Source Files\api\core</Filter>
     </ClInclude>
-    <ClInclude Include="driver\driver_um_lib.hpp">
-      <Filter>Source Files\driver</Filter>
+    <ClInclude Include="api\driver\driver_um_lib.hpp">
+      <Filter>Source Files\api\core</Filter>
     </ClInclude>
-    <ClInclude Include="proc\process.hpp">
-      <Filter>Source Files\proc</Filter>
+    <ClInclude Include="api\proc\process.hpp">
+      <Filter>Source Files\api\process</Filter>
+    </ClInclude>
+    <ClInclude Include="api\dumper\driver_dumper.hpp">
+      <Filter>Source Files\api\driver dumper</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="driver\nmi_restoring_assembly.asm">
-      <Filter>Source Files\driver</Filter>
+    <MASM Include="api\driver\nmi_restoring_assembly.asm">
+      <Filter>Source Files\api\core</Filter>
     </MASM>
   </ItemGroup>
 </Project>

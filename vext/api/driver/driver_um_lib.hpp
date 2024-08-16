@@ -14,19 +14,12 @@ extern "C" void asm_nmi_wrapper(void);
 extern "C" void asm_nmi_restoring(void);
 extern "C" __int64  __fastcall asm_call_driver(uint64_t hwnd, uint32_t flags, ULONG_PTR dw_data);
 
-class physmem_remapper_um_t {
-private:
-
-    static physmem_remapper_um_t* instance;
-
-    bool inited = false;
+namespace physmem {
+    inline bool inited = false;
     __int64 send_request(void* cmd);
 
-public:
-    bool copy_virtual_memory(uint64_t 
-        
-        
-        _cr3, uint64_t dst_cr3, void* src, void* dst, uint64_t size);
+
+    bool copy_virtual_memory(uint64_t src_cr3, uint64_t dst_cr3, void* src, void* dst, uint64_t size);
     uint64_t get_cr3(uint64_t pid);
     uint64_t get_module_base(const char* module_name, uint64_t pid);
     uint64_t get_module_size(const char* module_name, uint64_t pid);
@@ -34,45 +27,46 @@ public:
     uint64_t get_ldr_data_table_entry_count(uint64_t pid);
     bool get_data_table_entry_info(uint64_t pid, module_info_t* info_array);
 
-    static physmem_remapper_um_t* init_physmem_remapper_lib(void) {
-        if (instance)
-            return instance;
+    bool hide_driver(void); // <- Should be called upon initialization
+    bool unload_driver(void);
+    bool ping_driver(void);
 
-
-        auto temp = new physmem_remapper_um_t;
-        memset(temp, 0, sizeof(physmem_remapper_um_t));
-
-        instance = temp;
-
-        if (!instance) {
-            log("Why tf is the new keyword not functioning");
-            return 0;
-        }
-
+    inline bool init_physmem_remapper_lib(void) {
+        if (inited)
+            return true;
 
         // For some reason user32.dll has to also be loaded for calls to NtUser functions to work?
         if (!LoadLibraryW(L"user32.dll")) {
             log("Failed to load user32.dll");
-            return 0;
+            return false;
         }
 
         HMODULE win32u = LoadLibraryW(L"win32u.dll");
         if (!win32u) {
             log("Failed to get win32u.dll handle");
-            return 0;
+            return false;
         }
 
         uint64_t handler_address = (uint64_t)GetProcAddress(win32u, "NtUserGetCPD");
 
         NtUserGetCPD = (NtUserGetCPD_type)handler_address;
+        inited = true;
 
-        instance->inited = true;
+        if (!ping_driver()) {
+            log("Driver loading was faulty; Communication not established");
+            return false;
+        }
 
-        return instance;
+        if(!hide_driver()) {
+            log("Failed to hide driver");
+            return false;
+        }
+
+        return true;
     }
 
-    bool is_lib_inited(void) {
-        return instance->inited;
+    inline bool is_lib_inited(void) {
+        return inited;
     }
 };
 

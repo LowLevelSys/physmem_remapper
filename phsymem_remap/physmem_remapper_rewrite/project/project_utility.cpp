@@ -2,8 +2,6 @@
 #include "windows_structs.hpp"
 #include <ntimage.h>
 
-extern "C" PLIST_ENTRY PsLoadedModuleList;
-
 namespace utility {
     project_status get_driver_module_base(const wchar_t* driver_name, void*& driver_base) {
         PLIST_ENTRY head = PsLoadedModuleList;
@@ -110,7 +108,7 @@ namespace utility {
         return 0;
     }
 
-    project_status is_data_ptr_valid(uint64_t data_ptr) {
+    project_status is_data_ptr_in_valid_region(uint64_t data_ptr) {
         PLIST_ENTRY head = PsLoadedModuleList;
         PLIST_ENTRY curr = head->Flink;
 
@@ -122,8 +120,9 @@ namespace utility {
             uint64_t driver_end = (uint64_t)curr_mod->DllBase + curr_mod->SizeOfImage;
 
             // If the data ptr resides in a legit driver, it is considered valid
-            if (data_ptr >= driver_base && driver_end >= data_ptr)
+            if (data_ptr >= driver_base && driver_end >= data_ptr) {
                 return status_success;
+            }
 
             curr = curr->Flink;
         }

@@ -1,4 +1,3 @@
-#include "includes.hpp"
 #include "project/project_api.hpp"
 
 NTSTATUS driver_entry(void* driver_base, uint64_t driver_size) {
@@ -8,6 +7,9 @@ NTSTATUS driver_entry(void* driver_base, uint64_t driver_size) {
 		project_log_success("Wrong usage: You have to pass the allocation base and the allocation size of the driver pool to the driver_entry!");
 		return STATUS_UNSUCCESSFUL;
 	}
+
+	g_driver_base = driver_base;
+	g_driver_size = driver_size;
 
 	project_status status = status_success;
 	status = interrupts::init_interrupts();

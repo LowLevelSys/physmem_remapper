@@ -2,6 +2,8 @@
 #include <ntddk.h>
 #include <intrin.h>
 
+#include "windows_structs.hpp"
+
 // We like nice declarations
 typedef signed char        int8_t;
 typedef short              int16_t;
@@ -40,15 +42,23 @@ enum project_status {
 	*/
 	status_invalid_paging_idx,
 	status_paging_entry_not_present,
-
-	/*
-		Interrupts
-	*/
+	status_remapping_entry_found,
+	status_no_valid_remapping_entry,
+	status_no_available_page_tables,
+	status_remapping_list_full,
+	status_wrong_context,
+	status_invalid_my_page_table,
+	status_address_already_remapped,
+	status_non_aligned,
+	status_paging_wrong_granularity,
+	status_page_already_unmapped,
+	status_potential_mem_unmapping_overflow,
 
 	/*
 		Communication
 	*/
 	status_data_ptr_invalid,
+	status_no_gadget_found,
 };
 
 /*
@@ -92,3 +102,16 @@ inline void sleep(LONG milliseconds) {
 
 extern "C" uint32_t get_proc_number(void);
 extern "C" void asm_handler(void);
+
+/*
+	Declaration of imports
+*/
+extern "C" NTKERNELAPI VOID KeStackAttachProcess(PRKPROCESS PROCESS, PKAPC_STATE ApcState);
+extern "C" NTKERNELAPI VOID KeUnstackDetachProcess(PKAPC_STATE ApcState);
+extern "C" PLIST_ENTRY PsLoadedModuleList;
+
+/*
+	Driver globals
+*/
+inline void* g_driver_base;
+inline uint64_t g_driver_size;

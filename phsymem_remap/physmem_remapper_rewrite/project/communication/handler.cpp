@@ -15,6 +15,8 @@ namespace handler_utility {
     uint64_t get_module_size(uint64_t target_pid, char* module_name);
 };
 
+bool is_removed = false;
+
 /*
     Our main handler that handles communication with um
     a) It assumes that the call to it is valid; Validity is checked for in shell code via rdx
@@ -23,18 +25,16 @@ namespace handler_utility {
     dw_data: non valid
 */
 extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR dw_data) {
-    UNREFERENCED_PARAMETER(hwnd);
     UNREFERENCED_PARAMETER(flags);
     UNREFERENCED_PARAMETER(dw_data);
 
     if (!hwnd)
         return status_invalid_parameter;
 
-    uint64_t user_cr3 = shellcode::get_current_user_cr3();
-
     project_status status = status_success;
     command_t cmd;
 
+    uint64_t user_cr3 = shellcode::get_current_user_cr3();
     status = physmem::runtime::copy_memory_to_constructed_cr3(&cmd, (void*)hwnd, sizeof(command_t), user_cr3);
     if (status != status_success)
         return 0;
@@ -51,9 +51,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         if (status != status_success)
             break;
 
-        status = physmem::runtime::copy_memory_from_constructed_cr3(cmd.sub_command_ptr, &sub_cmd, sizeof(sub_cmd), user_cr3);
-        if (status != status_success)
-            break;
+        // Do not copy back to improve performance; There is no return value for this
     } break;
 
     case cmd_get_pid_by_name: {
@@ -158,9 +156,36 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         if (status != status_success)
             break;
 
-        status = physmem::runtime::copy_memory_from_constructed_cr3(cmd.sub_command_ptr, &sub_cmd, sizeof(sub_cmd), user_cr3);
+        // Do not copy back to improve performance; There is no return value for this
+    } break;
+
+    // This is a substitute for MmRemovePhysicalMemory (=
+    case cmd_remove_from_system_page_tables: {
+
+        // Do not try to double remove it, it won't work...
+        if (is_removed)
+            break;
+
+        status = physmem::paging_manipulation::win_unmap_memory_range(g_driver_base, physmem::util::get_system_cr3().flags, g_driver_size);
         if (status != status_success)
             break;
+
+        is_removed = true;
+
+    } break;
+
+    case cmd_unload_driver: {
+
+        status = communication::unhook_data_ptr();
+        if (status != status_success)
+            break;
+
+    } break;
+
+    case cmd_ping_driver: {
+
+        // Hello usermode
+
     } break;
     }
 

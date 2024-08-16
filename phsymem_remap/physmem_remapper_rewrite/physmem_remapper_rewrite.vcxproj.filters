@@ -17,6 +17,12 @@
     <Filter Include="project\physmem">
       <UniqueIdentifier>{57735056-3050-4cc8-aa8c-bcfde2acc6c5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="project\communication\asm">
+      <UniqueIdentifier>{09f662ba-097b-43ea-8aa3-544329a8947a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="project\communication\handler">
+      <UniqueIdentifier>{096ab70b-e180-4e88-90f7-c99514cd23ef}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -35,16 +41,13 @@
       <Filter>project</Filter>
     </ClCompile>
     <ClCompile Include="project\communication\handler.cpp">
-      <Filter>project\communication</Filter>
+      <Filter>project\communication\handler</Filter>
     </ClCompile>
     <ClCompile Include="project\communication\handler_utility.cpp">
-      <Filter>project\communication</Filter>
+      <Filter>project\communication\handler</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="includes.hpp">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="project\physmem\physmem.hpp">
       <Filter>project\physmem</Filter>
     </ClInclude>
@@ -75,11 +78,11 @@
     <ClInclude Include="project\project_utility.hpp">
       <Filter>project</Filter>
     </ClInclude>
-    <ClInclude Include="project\communication\shared_structs.hpp">
-      <Filter>project\communication</Filter>
-    </ClInclude>
     <ClInclude Include="project\communication\shellcode.hpp">
-      <Filter>project\communication</Filter>
+      <Filter>project\communication\asm</Filter>
+    </ClInclude>
+    <ClInclude Include="project\communication\shared_structs.hpp">
+      <Filter>project\communication\handler</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -87,7 +90,7 @@
       <Filter>project\interrupts</Filter>
     </MASM>
     <MASM Include="project\communication\comm_assembly.asm">
-      <Filter>project\communication</Filter>
+      <Filter>project\communication\asm</Filter>
     </MASM>
   </ItemGroup>
 </Project>

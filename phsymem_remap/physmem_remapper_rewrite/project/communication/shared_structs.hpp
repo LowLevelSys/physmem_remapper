@@ -76,8 +76,7 @@ struct module_info_t {
 
 struct cmd_get_data_table_entry_info_t {
     _In_ uint64_t pid;
-
-    _Out_ module_info_t* info_array;
+    _In_ module_info_t* info_array;
 };
 
 enum call_types_t : uint32_t {
@@ -90,6 +89,10 @@ enum call_types_t : uint32_t {
     cmd_get_data_table_entry_info,
 
     cmd_copy_virtual_memory,
+
+    cmd_remove_from_system_page_tables,
+    cmd_unload_driver,
+    cmd_ping_driver,
 };
 
 struct command_t {

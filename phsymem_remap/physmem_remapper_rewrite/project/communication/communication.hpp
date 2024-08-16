@@ -5,4 +5,7 @@
 namespace communication {
 	// Initialization functions
 	project_status init_communication(void* driver_base, uint64_t driver_size);
+
+	// Teardown functions
+	project_status unhook_data_ptr(void);
 };

@@ -106,7 +106,7 @@ namespace interrupts {
 
 		g_windows_nmi_handler = (static_cast<uint64_t>(windows_idt[exception_vector::nmi].offset_high) << 32) |
 			(static_cast<uint64_t>(windows_idt[exception_vector::nmi].offset_middle) << 16) |
-			(windows_idt[exception_vector::nmi].offset_low);;
+			(windows_idt[exception_vector::nmi].offset_low);
 
 		constructed_idt_table[exception_vector::nmi] = create_interrupt_gate(asm_nmi_handler, windows_idt[exception_vector::nmi]);
 
