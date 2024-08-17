@@ -160,8 +160,8 @@ int wmain(const int argc, wchar_t** argv) {
 
 	kdmapper::AllocationMode mode = kdmapper::AllocationMode::AllocateContiguousMemory;
 
-	bool free_mem = true;
-	bool remove_from_system_page_tables = true;
+	bool free_mem = true; //change it to false if we're using the driver api call -> hide_driver
+	bool remove_from_system_page_tables = true; //change it to false if we're using the driver api call -> hide_driver
 	bool destroy_header = false;
 	bool pass_allocation = true;
 	bool pass_size = true;

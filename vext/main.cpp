@@ -4,17 +4,17 @@
 
 void proc_test(void) {
 	// FortniteClient-Win64-Shipping.exe
-	if (!process::attach_to_proc("notepad.exe")) {
+	if (!process::attach_to_proc("Notepad.exe")) {
 		log("ERROR: Failed to init process instance");
 		return;
 	}
 
-	uint8_t count = 5;
-	while (count > 0) {
-		process::testing::speed_test();
-		Sleep(1000);
-		count--;
-	}
+	//uint8_t count = 5;
+	//while (count > 0) {
+	//	process::testing::speed_test();
+	//	Sleep(1000);
+	//	count--;
+	//}
 
 	log("Finished speed test\n");
 
