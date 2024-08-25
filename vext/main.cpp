@@ -4,7 +4,7 @@
 
 void proc_test(void) {
 	// FortniteClient-Win64-Shipping.exe
-	if (!process::attach_to_proc("Notepad.exe")) {
+	if (!process::attach_to_proc("r5apex.exe")) {
 		log("ERROR: Failed to init process instance");
 		return;
 	}
