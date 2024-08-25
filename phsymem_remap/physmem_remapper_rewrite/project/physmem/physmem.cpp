@@ -178,10 +178,6 @@ namespace physmem {
 	}
 
 	namespace util {
-		bool is_initialized(void) {
-			return physmem.initialized;
-		}
-
 		cr3 get_constructed_cr3(void) {
 			return physmem.constructed_cr3;
 		}
@@ -1249,6 +1245,10 @@ namespace physmem {
 			return a == b;
 		}
 	};
+
+	bool is_initialized(void) {
+		return physmem.initialized;
+	}
 
 	project_status init_physmem(void) {
 

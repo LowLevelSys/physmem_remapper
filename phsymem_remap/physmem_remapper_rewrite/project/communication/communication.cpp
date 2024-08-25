@@ -42,7 +42,7 @@ namespace communication {
         };
 
         uint32_t simple_random() {
-            static uint32_t seed = 0;
+            uint32_t seed = 0;
             if (!seed) {
                 uint64_t tsc = __rdtsc();
                 seed = (uint32_t)(tsc ^ (tsc >> 32));
@@ -462,7 +462,7 @@ namespace communication {
             uint32_t random_index = simple_random() % gadget_count;
             gadget_info_t& selected_gadget = gadgets[random_index];
 
-            log_gadget_info(gadget_count, random_index, selected_gadget);
+            //log_gadget_info(gadget_count, random_index, selected_gadget);
 
             // Now we have to map the memory this points to in windows' cr3
             project_status status = win_map_memory_page(selected_gadget.jump_destination);
@@ -624,7 +624,6 @@ namespace communication {
         project_log_info("Exiting shellcode at %p", exit_constructed_space);
         project_log_info("Nmi shellcode at %p", nmi_shellcode);
     }
-
 
     project_status init_communication(void* driver_base, uint64_t driver_size) {
         project_status status = status_success;

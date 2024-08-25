@@ -64,7 +64,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="api\driver\driver_um_lib.cpp" />
+    <ClCompile Include="api\driver\driver_um_lib.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Disabled</Optimization>
+    </ClCompile>
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>

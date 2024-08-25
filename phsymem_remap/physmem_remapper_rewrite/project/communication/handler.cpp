@@ -3,6 +3,7 @@
 
 #include "../project_api.hpp"
 #include "../project_utility.hpp"
+#include "../cr3 decryption/cr3_decryption.hpp"
 
 namespace handler_utility {
     uint64_t get_pid(const char* target_process_name);
@@ -79,7 +80,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         if (status != status_success)
             break;
 
-        sub_cmd.cr3 = utility::get_cr3(sub_cmd.pid);
+        sub_cmd.cr3 = cr3_decryption::get_decrypted_cr3(sub_cmd.pid);
         if (!sub_cmd.cr3)
             status = status_failure;
 

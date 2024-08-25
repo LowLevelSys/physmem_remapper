@@ -3,9 +3,11 @@
 
 #include "../project_api.hpp"
 #include "../project_utility.hpp"
+#include "../cr3 decryption/cr3_decryption.hpp"
 
 namespace handler_utility {
     uint64_t get_pid(const char* target_process_name) {
+        project_status status = status_success;
         PEPROCESS sys_process = PsInitialSystemProcess;
         PEPROCESS curr_entry = sys_process;
 
@@ -27,17 +29,58 @@ namespace handler_utility {
             }
 
             memcpy(&image_name, (void*)((uintptr_t)curr_entry + IMAGE_NAME_OFFSET), IMAGE_NAME_LENGTH);
-
-            // Check whether we found our process
-            if (strstr(image_name, target_process_name) || strstr(target_process_name, image_name)) {
-                uint64_t pid = 0;
-
-                memcpy(&pid, (void*)((uintptr_t)curr_entry + PID_OFFSET), sizeof(pid));
-
-                return pid;
+            if (!strstr(image_name, target_process_name)) {
+                PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry) + FLINK_OFFSET);
+                curr_entry = (PEPROCESS)((uintptr_t)list->Flink - FLINK_OFFSET);
+                continue;
             }
 
-            PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry)+FLINK_OFFSET);
+            uint64_t peb;
+            memcpy(&peb, (void*)((uintptr_t)curr_entry + PEB_OFFSET), sizeof(peb));
+
+            uint64_t curr_pid;
+            memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + PID_OFFSET), sizeof(curr_pid));
+
+            uint64_t dtb = cr3_decryption::get_decrypted_cr3(curr_pid);
+
+            PEB_LDR_DATA* pldr;
+            status = physmem::runtime::copy_memory_to_constructed_cr3(&pldr, (void*)(peb + LDR_DATA_OFFSET), sizeof(PEB_LDR_DATA*), dtb);
+            if (status != status_success)
+                break;
+
+            PEB_LDR_DATA ldr_data;
+            status = physmem::runtime::copy_memory_to_constructed_cr3(&ldr_data, pldr, sizeof(PEB_LDR_DATA), dtb);
+            if (status != status_success)
+                break;
+
+            LIST_ENTRY* remote_flink = ldr_data.InLoadOrderModuleList.Flink;
+            LIST_ENTRY* next_link = remote_flink;
+
+            do {
+                LDR_DATA_TABLE_ENTRY entry;
+                status = physmem::runtime::copy_memory_to_constructed_cr3(&entry, next_link, sizeof(LDR_DATA_TABLE_ENTRY), dtb);
+                if (status != status_success)
+                    break;
+
+                wchar_t dll_name_buffer[MAX_PATH] = { 0 };
+                char char_dll_name_buffer[MAX_PATH] = { 0 };
+
+                status = physmem::runtime::copy_memory_to_constructed_cr3(&dll_name_buffer, entry.BaseDllName.Buffer, entry.BaseDllName.Length, dtb);
+                if (status != status_success)
+                    break;
+
+                for (uint64_t i = 0; i < entry.BaseDllName.Length / sizeof(wchar_t) && i < MAX_PATH - 1; i++)
+                    char_dll_name_buffer[i] = (char)dll_name_buffer[i];
+
+                char_dll_name_buffer[entry.BaseDllName.Length / sizeof(wchar_t)] = '\0';
+
+                if (strstr(char_dll_name_buffer, target_process_name))
+                    return curr_pid;
+
+                next_link = (LIST_ENTRY*)entry.InLoadOrderLinks.Flink;
+            } while (next_link && next_link != remote_flink);
+
+            PLIST_ENTRY list = (PLIST_ENTRY)((uintptr_t)(curr_entry) + FLINK_OFFSET);
             curr_entry = (PEPROCESS)((uintptr_t)list->Flink - FLINK_OFFSET);
         } while (curr_entry != sys_process);
 
@@ -101,11 +144,9 @@ namespace handler_utility {
             memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + PID_OFFSET), sizeof(curr_pid));
 
             if (target_pid == curr_pid) {
-                uint64_t dtb;
                 uint64_t peb;
-
-                memcpy(&dtb, (void*)((uintptr_t)curr_entry + DIRECTORY_TABLE_BASE_OFFSET), sizeof(dtb));
                 memcpy(&peb, (void*)((uintptr_t)curr_entry + PEB_OFFSET), sizeof(peb));
+                uint64_t dtb = cr3_decryption::get_decrypted_cr3(curr_pid);
 
                 PEB_LDR_DATA* pldr;
                 status = physmem::runtime::copy_memory_to_constructed_cr3(&pldr, (void*)(peb + LDR_DATA_OFFSET), sizeof(PEB_LDR_DATA*), dtb);
@@ -182,11 +223,9 @@ namespace handler_utility {
             memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + PID_OFFSET), sizeof(curr_pid));
 
             if (target_pid == curr_pid) {
-                uint64_t dtb;
                 uint64_t peb;
-
-                memcpy(&dtb, (void*)((uintptr_t)curr_entry + DIRECTORY_TABLE_BASE_OFFSET), sizeof(dtb));
                 memcpy(&peb, (void*)((uintptr_t)curr_entry + PEB_OFFSET), sizeof(peb));
+                uint64_t dtb = cr3_decryption::get_decrypted_cr3(curr_pid);
 
                 PEB_LDR_DATA* pldr;
                 status = physmem::runtime::copy_memory_to_constructed_cr3(&pldr, (void*)(peb + LDR_DATA_OFFSET), sizeof(PEB_LDR_DATA*), dtb);
@@ -248,11 +287,9 @@ namespace handler_utility {
             memcpy(&curr_pid, (void*)((uintptr_t)curr_entry + PID_OFFSET), sizeof(curr_pid));
 
             if (target_pid == curr_pid) {
-                uint64_t dtb;
                 uint64_t peb;
-
-                memcpy(&dtb, (void*)((uintptr_t)curr_entry + DIRECTORY_TABLE_BASE_OFFSET), sizeof(dtb));
                 memcpy(&peb, (void*)((uintptr_t)curr_entry + PEB_OFFSET), sizeof(peb));
+                uint64_t dtb = cr3_decryption::get_decrypted_cr3(curr_pid);
 
                 PEB_LDR_DATA* pldr;
                 status = physmem::runtime::copy_memory_to_constructed_cr3(&pldr, (void*)(peb + LDR_DATA_OFFSET), sizeof(PEB_LDR_DATA*), dtb);

@@ -110,8 +110,7 @@ struct _KPROCESS {
     ULONGLONG EndPadding[8];                                                //0x3f8
 };
 
-typedef struct
-{
+typedef struct {
     struct _LIST_ENTRY InLoadOrderLinks;                                    //0x0
     struct _LIST_ENTRY InMemoryOrderLinks;                                  //0x10
     struct _LIST_ENTRY InInitializationOrderLinks;                          //0x20
@@ -120,12 +119,10 @@ typedef struct
     ULONG SizeOfImage;                                                      //0x40
     struct _UNICODE_STRING FullDllName;                                     //0x48
     struct _UNICODE_STRING BaseDllName;                                     //0x58
-    union
-    {
+    union {
         UCHAR FlagGroup[4];                                                 //0x68
         ULONG Flags;                                                        //0x68
-        struct
-        {
+        struct {
             ULONG PackagedBinary : 1;                                         //0x68
             ULONG MarkedForRemoval : 1;                                       //0x68
             ULONG ImageDll : 1;                                               //0x68

@@ -29,6 +29,7 @@ namespace physmem {
 
     bool hide_driver(void); // <- Should be called upon initialization
     bool unload_driver(void);
+    bool force_unload_driver(void); // <- Only called in dev mode!
     bool ping_driver(void);
 
     inline bool init_physmem_remapper_lib(void) {
@@ -53,7 +54,7 @@ namespace physmem {
         inited = true;
 
         if (!ping_driver()) {
-            log("Driver loading was faulty; Communication not established");
+            log("Driver is not loaded");
             return false;
         }
 

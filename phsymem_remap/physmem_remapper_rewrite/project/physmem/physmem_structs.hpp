@@ -292,6 +292,29 @@ typedef union {
 } pte_64;
 
 typedef union {
+    struct {
+        uint64_t present : 1;
+        uint64_t write : 1;
+        uint64_t supervisor : 1;
+        uint64_t page_level_write_through : 1;
+        uint64_t page_level_cache_disable : 1;
+        uint64_t accessed : 1;
+        uint64_t dirty : 1;
+        uint64_t large_page : 1;
+        uint64_t global : 1;
+        uint64_t ignored_1 : 2;
+        uint64_t restart : 1;
+        uint64_t page_frame_number : 36;
+        uint64_t reserved1 : 4;
+        uint64_t ignored_2 : 7;
+        uint64_t protection_key : 4;
+        uint64_t execute_disable : 1;
+    };
+
+    uint64_t flags;
+} pt_entry_64;
+
+typedef union {
 
     struct {
         uint64_t offset_1gb : 30;

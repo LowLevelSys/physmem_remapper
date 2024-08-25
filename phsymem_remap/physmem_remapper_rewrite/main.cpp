@@ -18,10 +18,15 @@ NTSTATUS driver_entry(void* driver_base, uint64_t driver_size) {
 		return STATUS_UNSUCCESSFUL;
 	}
 
-	// Interrupts should be inited before physmem as we make use of a idt with a nmi handler that points to an iretq
 	status = physmem::init_physmem();
 	if (status != status_success) {
 		project_log_error("Failed to init physmem with status %d", status);
+		return STATUS_UNSUCCESSFUL;
+	}
+
+	status = cr3_decryption::init_eac_cr3_decryption();
+	if (status != status_success) {
+		project_log_error("Failed to init cr3 decryption with status %d", status);
 		return STATUS_UNSUCCESSFUL;
 	}
 

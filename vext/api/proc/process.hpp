@@ -1,6 +1,8 @@
 #pragma once
 #pragma warning (disable: 4003)
 #include "../driver/driver_um_lib.hpp"
+#include <TlHelp32.h>
+#include <string>
 
 namespace process {
 	inline bool inited = false;
@@ -24,11 +26,6 @@ namespace process {
 
 		if (!physmem::init_physmem_remapper_lib()) {
 			log("Can't init process if the physmem instance is not allocated");
-			return false;
-		}
-
-		if (!physmem::ping_driver()) {
-			log("Driver loading was faulty; Communication not established");
 			return false;
 		}
 

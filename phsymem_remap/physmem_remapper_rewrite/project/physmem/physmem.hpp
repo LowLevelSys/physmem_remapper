@@ -7,9 +7,9 @@
 namespace physmem {
 	// Initialization functions
 	project_status init_physmem(void);
+	bool is_initialized(void);
 
 	namespace util {
-		bool is_initialized(void);
 		cr3 get_constructed_cr3(void);
 		cr3 get_system_cr3(void);
 	};

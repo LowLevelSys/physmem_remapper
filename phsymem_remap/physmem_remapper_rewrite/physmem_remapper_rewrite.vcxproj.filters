@@ -23,6 +23,9 @@
     <Filter Include="project\communication\handler">
       <UniqueIdentifier>{096ab70b-e180-4e88-90f7-c99514cd23ef}</UniqueIdentifier>
     </Filter>
+    <Filter Include="project\cr3 decryption">
+      <UniqueIdentifier>{87dae439-1c8c-4e5f-8c81-278a7ebf2807}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -45,6 +48,9 @@
     </ClCompile>
     <ClCompile Include="project\communication\handler_utility.cpp">
       <Filter>project\communication\handler</Filter>
+    </ClCompile>
+    <ClCompile Include="project\cr3 decryption\cr3_decryption.cpp">
+      <Filter>project\cr3 decryption</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -83,6 +89,9 @@
     </ClInclude>
     <ClInclude Include="project\communication\shared_structs.hpp">
       <Filter>project\communication\handler</Filter>
+    </ClInclude>
+    <ClInclude Include="project\cr3 decryption\cr3_decryption.hpp">
+      <Filter>project\cr3 decryption</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
