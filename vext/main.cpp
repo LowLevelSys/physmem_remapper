@@ -15,12 +15,12 @@ void proc_test(void) {
 
 	process::log_modules();
 
-	uint8_t count = 5;
-	while (count > 0) {
-		process::testing::speed_test();
-		Sleep(1000);
-		count--;
-	}
+	//uint8_t count = 5;
+	//while (count > 0) {
+	//	process::testing::speed_test();
+	//	Sleep(1000);
+	//	count--;
+	//}
 
 	log("Finished speed test\n");
 
