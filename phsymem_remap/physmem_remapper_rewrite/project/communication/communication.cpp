@@ -655,20 +655,25 @@ namespace communication {
     }
 
     project_status unhook_data_ptr(void) {
-        if (!g_data_ptr_address || !g_orig_data_ptr_value)
+        if (!g_data_ptr_address || !g_orig_data_ptr_value) {
+            logging::root_printf("Invalid unhook data");
             return status_failure;
+        }
 
         // Basically revert the data ptr swap
         project_status status = physmem::runtime::copy_memory_from_constructed_cr3(g_data_ptr_address, &g_orig_data_ptr_value, 
             sizeof(void*), shellcode::get_current_user_cr3());
-        if (status != status_success)
+        if (status != status_success) {
+            logging::root_printf("Failed restoring data ptr swap");
             return status;
+        }
 
         // Unmap our gadget in order to not run out of gadgets to use when reloading the driver
         status = physmem::paging_manipulation::win_unmap_memory_range(g_used_gadget_jump_destination, shellcode::get_current_user_cr3(), 0x1000);
-        if (status != status_success)
+        if (status != status_success) {
+            logging::root_printf("Failed unmapping win gadgets memory range");
             return status;
-
+        }
         return status;
     }
 };

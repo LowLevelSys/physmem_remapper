@@ -49,9 +49,6 @@
     <ClCompile Include="project\communication\handler.cpp">
       <Filter>project\communication\handler</Filter>
     </ClCompile>
-    <ClCompile Include="project\communication\handler_utility.cpp">
-      <Filter>project\communication\handler</Filter>
-    </ClCompile>
     <ClCompile Include="project\cr3 decryption\cr3_decryption.cpp">
       <Filter>project\cr3 decryption</Filter>
     </ClCompile>

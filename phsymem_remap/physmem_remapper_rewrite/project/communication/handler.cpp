@@ -5,14 +5,6 @@
 #include "../project_utility.hpp"
 #include "../cr3 decryption/cr3_decryption.hpp"
 
-namespace handler_utility {
-    project_status get_ldr_data_table_entry(uint64_t target_pid, char* module_name, LDR_DATA_TABLE_ENTRY* module_entry);
-    uint64_t get_data_table_entry_count(uint64_t target_pid);
-    project_status get_data_table_entry_info(uint64_t target_pid, module_info_t* info_array, uint64_t proc_cr3);
-    uint64_t get_module_base(uint64_t target_pid, char* module_name);
-    uint64_t get_module_size(uint64_t target_pid, char* module_name);
-};
-
 bool is_removed = false;
 
 /*
@@ -58,7 +50,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         if (status != status_success)
             break;
 
-        sub_cmd.pid = cr3_decryption::get_pid_via_decrypted_cr3(sub_cmd.name);
+        sub_cmd.pid = cr3_decryption::eproc::get_pid(sub_cmd.name);
         if (!sub_cmd.pid)
             status = status_failure;
 
@@ -77,7 +69,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         if (status != status_success)
             break;
 
-        sub_cmd.cr3 = cr3_decryption::get_decrypted_cr3(sub_cmd.pid);
+        sub_cmd.cr3 = cr3_decryption::eproc::get_cr3(sub_cmd.pid);
         if (!sub_cmd.cr3)
             status = status_failure;
 
@@ -96,7 +88,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         if (status != status_success)
             break;
 
-        sub_cmd.module_base = handler_utility::get_module_base(sub_cmd.pid, sub_cmd.module_name);
+        sub_cmd.module_base = cr3_decryption::peb::get_module_base(sub_cmd.pid, sub_cmd.module_name);
         if (!sub_cmd.module_base)
             status = status_failure;
 
@@ -114,7 +106,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         if (status != status_success)
             break;
 
-        sub_cmd.module_size = handler_utility::get_module_base(sub_cmd.pid, sub_cmd.module_name);
+        sub_cmd.module_size = cr3_decryption::peb::get_module_base(sub_cmd.pid, sub_cmd.module_name);
         if (!sub_cmd.module_size)
             status = status_failure;
 
@@ -132,7 +124,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         if (status != status_success)
             break;
 
-        sub_cmd.count = handler_utility::get_data_table_entry_count(sub_cmd.pid);
+        sub_cmd.count = cr3_decryption::peb::get_data_table_entry_count(sub_cmd.pid);
         if (!sub_cmd.count)
             status = status_failure;
 
@@ -150,7 +142,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         if (status != status_success)
             break;
 
-        status = handler_utility::get_data_table_entry_info(sub_cmd.pid, sub_cmd.info_array, user_cr3);
+        status = cr3_decryption::peb::get_data_table_entry_info(sub_cmd.pid, sub_cmd.info_array, user_cr3);
         if (status != status_success)
             break;
 

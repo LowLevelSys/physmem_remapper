@@ -76,7 +76,6 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="project\communication\communication.cpp" />
     <ClCompile Include="project\communication\handler.cpp" />
-    <ClCompile Include="project\communication\handler_utility.cpp" />
     <ClCompile Include="project\cr3 decryption\cr3_decryption.cpp" />
     <ClCompile Include="project\interrupts\interrupts.cpp" />
     <ClCompile Include="project\logging\logging.cpp" />

@@ -35,7 +35,7 @@ namespace physmem {
 				return status_not_supported;
 			}
 
-			// Since we map 512 gb of physical memory to 2MB pages they should be supporte -.-
+			// Since we map 512 gb of physical memory to 2MB pages they should be supported -.-
 			cpuid_eax_01 cpuid_1;
 			__cpuid((int*)(&cpuid_1), 1);
 			if (!cpuid_1.cpuid_feature_information_edx.physical_address_extension) {
@@ -46,6 +46,12 @@ namespace physmem {
 			// SSE2 support should be enable as we use mfence etc
 			if (!cpuid_1.cpuid_feature_information_edx.sse2_support) {
 				project_log_error("Too old instruction set");
+				return status_not_supported;
+			}
+
+			// We need an apic on chip as we check for the apic id and use that as a cpu index
+			if(!cpuid_1.cpuid_feature_information_edx.apic_on_chip) {
+				project_log_error("No apic on chip");
 				return status_not_supported;
 			}
 

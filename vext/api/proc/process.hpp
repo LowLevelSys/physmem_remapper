@@ -25,7 +25,6 @@ namespace process {
 		target_process_name = process_name;
 
 		if (!physmem::init_physmem_remapper_lib()) {
-			log("Can't init process if the physmem instance is not allocated");
 			return false;
 		}
 
@@ -43,13 +42,14 @@ namespace process {
 		owner_cr3 = physmem::get_cr3(owner_pid);
 		if (!owner_cr3) {
 			log("Failed to get cr3 of owner process");
+			physmem::flush_logs();
 			return false;
 		}
 
 		target_pid = physmem::get_pid_by_name(process_name.c_str());
-		physmem::flush_logs();
 		if (!target_pid) {
 			log("Failed to get pid of target process: %s", process_name.c_str());
+			physmem::flush_logs();
 			return false;
 		}
 
@@ -57,12 +57,14 @@ namespace process {
 		target_cr3 = physmem::get_cr3(target_pid);
 		if (!target_cr3) {
 			log("Failed to get cr3 of target process: %s", process_name.c_str());
+			physmem::flush_logs();
 			return false;
 		}
 
 		target_module_count = physmem::get_ldr_data_table_entry_count(target_pid);
 		if (!target_module_count) {
 			log("Failed get target module count");
+			physmem::flush_logs();
 			return false;
 		}
 
@@ -77,6 +79,7 @@ namespace process {
 
 		if (!physmem::get_data_table_entry_info(target_pid, target_modules)) {
 			log("Failed getting data table entry info");
+			physmem::flush_logs();
 			return false;
 		}
 

@@ -178,7 +178,6 @@ namespace logging {
         logger_format(curr_entry->payload, fmt, args);
         va_end(args);
         head_idx = (head_idx + 1) % MAX_MESSAGES;
-
     }
 
     void output_root_logs(log_entry_t* user_message_buffer, uint64_t user_cr3, uint32_t message_count) {
@@ -187,18 +186,21 @@ namespace logging {
 
         while (current_idx != head_idx && buffer_index < message_count) {
 
-            if (physmem::runtime::copy_memory_from_constructed_cr3((void*)&user_message_buffer[current_idx], 
-                (void*)&messages[buffer_index], sizeof(log_entry_t), user_cr3) != status_success)
+            if (physmem::runtime::copy_memory_from_constructed_cr3(
+                (void*)&user_message_buffer[buffer_index],  // destination
+                (void*)&messages[current_idx],              // source
+                sizeof(log_entry_t),
+                user_cr3) != status_success) {
                 return;
-
+            }
             memset(&messages[buffer_index], 0, sizeof(messages[buffer_index]));
+
             buffer_index++;
-
-
             current_idx = (current_idx + 1) % MAX_MESSAGES;
         }
-    }
 
+        tail_idx = head_idx;
+    }
     /*
         Initialization
     */

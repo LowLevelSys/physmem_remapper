@@ -236,12 +236,18 @@ namespace physmem {
             return;
         }
 
-        log("Log:");
+        if (!log_array[0].present) {
+            delete[] log_array;
+            return;
+        }
+
+        log_new_line();
+        log("Root Log:");
         for (uint32_t i = 0; i < 512; i++) {
             if (!log_array[i].present)
                 continue;
 
-            log("%s", log_array[i].payload);
+            log("Root: %s", log_array[i].payload);
         }
         log_new_line();
 

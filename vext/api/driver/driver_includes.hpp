@@ -9,5 +9,5 @@
 #include <assert.h>
 
 // Logging macros
-#define log(fmt, ...) printf("[vext] " fmt "\n", ##__VA_ARGS__)
+#define log(fmt, ...) printf("[Physmeme] " fmt "\n", ##__VA_ARGS__)
 #define log_new_line(fmt) printf(fmt "\n")
