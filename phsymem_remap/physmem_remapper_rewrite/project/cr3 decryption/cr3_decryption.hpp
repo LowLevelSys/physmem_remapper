@@ -21,4 +21,5 @@ namespace cr3_decryption {
 	project_status init_eac_cr3_decryption(void);
 
 	uint64_t get_decrypted_cr3(uint64_t pid);
+	uint64_t get_pid_via_decrypted_cr3(const char* target_process_name);
 }

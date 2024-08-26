@@ -214,4 +214,37 @@ namespace physmem {
 
         return cmd.status;
     }
+
+    void flush_logs(void) {
+        if (!inited || !NtUserGetCPD)
+            return;
+
+        log_entry_t* log_array = new log_entry_t[512];
+        memset(log_array, 0, sizeof(log_entry_t) * 512);
+
+        cmd_output_logs_t sub_cmd;
+        sub_cmd.count = 512;
+        sub_cmd.log_array = log_array;
+
+        command_t cmd = { 0 };
+        cmd.call_type = cmd_output_logs;
+        cmd.sub_command_ptr = &sub_cmd;
+
+        send_request(&cmd);
+        if (!cmd.status) {
+            log("Failed flushing logs");
+            return;
+        }
+
+        log("Log:");
+        for (uint32_t i = 0; i < 512; i++) {
+            if (!log_array[i].present)
+                continue;
+
+            log("%s", log_array[i].payload);
+        }
+        log_new_line();
+
+        delete[] log_array;
+    }
 };

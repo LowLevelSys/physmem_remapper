@@ -47,6 +47,7 @@ namespace process {
 		}
 
 		target_pid = physmem::get_pid_by_name(process_name.c_str());
+		physmem::flush_logs();
 		if (!target_pid) {
 			log("Failed to get pid of target process: %s", process_name.c_str());
 			return false;

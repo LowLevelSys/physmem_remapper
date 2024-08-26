@@ -6,9 +6,6 @@
 #include "../cr3 decryption/cr3_decryption.hpp"
 
 namespace handler_utility {
-    uint64_t get_pid(const char* target_process_name);
-    void* get_eprocess(uint64_t target_pid);
-
     project_status get_ldr_data_table_entry(uint64_t target_pid, char* module_name, LDR_DATA_TABLE_ENTRY* module_entry);
     uint64_t get_data_table_entry_count(uint64_t target_pid);
     project_status get_data_table_entry_info(uint64_t target_pid, module_info_t* info_array, uint64_t proc_cr3);
@@ -61,7 +58,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         if (status != status_success)
             break;
 
-        sub_cmd.pid = handler_utility::get_pid(sub_cmd.name);
+        sub_cmd.pid = cr3_decryption::get_pid_via_decrypted_cr3(sub_cmd.name);
         if (!sub_cmd.pid)
             status = status_failure;
 
@@ -158,6 +155,20 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
             break;
 
         // Do not copy back to improve performance; There is no return value for this
+    } break;
+
+    case cmd_output_logs: {
+        cmd_output_logs_t sub_cmd;
+        status = physmem::runtime::copy_memory_to_constructed_cr3(&sub_cmd, cmd.sub_command_ptr, sizeof(sub_cmd), user_cr3);
+        if (status != status_success)
+            break;
+
+        logging::output_root_logs(sub_cmd.log_array, user_cr3, sub_cmd.count);
+
+        status = physmem::runtime::copy_memory_from_constructed_cr3(cmd.sub_command_ptr, &sub_cmd, sizeof(sub_cmd), user_cr3);
+        if (status != status_success)
+            break;
+
     } break;
 
     // This is a substitute for MmRemovePhysicalMemory (=

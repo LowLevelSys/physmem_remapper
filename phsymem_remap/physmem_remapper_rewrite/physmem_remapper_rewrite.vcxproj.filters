@@ -26,6 +26,9 @@
     <Filter Include="project\cr3 decryption">
       <UniqueIdentifier>{87dae439-1c8c-4e5f-8c81-278a7ebf2807}</UniqueIdentifier>
     </Filter>
+    <Filter Include="project\logging">
+      <UniqueIdentifier>{d40ef54c-1ccf-4ce7-b3fc-30052e11da2b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -51,6 +54,9 @@
     </ClCompile>
     <ClCompile Include="project\cr3 decryption\cr3_decryption.cpp">
       <Filter>project\cr3 decryption</Filter>
+    </ClCompile>
+    <ClCompile Include="project\logging\logging.cpp">
+      <Filter>project\logging</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -92,6 +98,9 @@
     </ClInclude>
     <ClInclude Include="project\cr3 decryption\cr3_decryption.hpp">
       <Filter>project\cr3 decryption</Filter>
+    </ClInclude>
+    <ClInclude Include="project\logging\logging.hpp">
+      <Filter>project\logging</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

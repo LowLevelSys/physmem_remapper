@@ -79,6 +79,19 @@ struct cmd_get_data_table_entry_info_t {
     _In_ module_info_t* info_array;
 };
 
+#define MAX_MESSAGES 512
+#define MAX_MESSAGE_SIZE 256
+
+struct log_entry_t {
+    bool present;
+    char payload[MAX_MESSAGE_SIZE];
+};
+
+struct cmd_output_logs_t {
+    _In_ uint32_t count;
+    _In_ log_entry_t* log_array;
+};
+
 enum call_types_t : uint32_t {
     cmd_get_pid_by_name,
     cmd_get_cr3,
@@ -89,6 +102,8 @@ enum call_types_t : uint32_t {
     cmd_get_data_table_entry_info,
 
     cmd_copy_virtual_memory,
+
+    cmd_output_logs,
 
     cmd_remove_from_system_page_tables,
     cmd_unload_driver,

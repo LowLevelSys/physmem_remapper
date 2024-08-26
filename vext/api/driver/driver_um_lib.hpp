@@ -31,6 +31,7 @@ namespace physmem {
     bool unload_driver(void);
     bool force_unload_driver(void); // <- Only called in dev mode!
     bool ping_driver(void);
+    void flush_logs(void);
 
     inline bool init_physmem_remapper_lib(void) {
         if (inited)
