@@ -1,6 +1,7 @@
 #include "api/driver/driver_um_lib.hpp"
 #include "api/proc/process.hpp"
 #include "api/dumper/driver_dumper.hpp"
+#include "api/debug/debug.hpp"
 
 void proc_test(void) {
 	// FortniteClient-Win64-Shipping.exe
@@ -22,7 +23,9 @@ void proc_test(void) {
 }
 
 int main(void) {
-	proc_test();
-	getchar();
+	//proc_test();
+	//getchar();
+	//physmem::unload_driver();
+	debug::test_driver();
 	return 0;
 }

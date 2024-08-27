@@ -90,6 +90,14 @@ namespace communication {
                 "\x90\xE9"  // jmp near relative (32-bit offset is ommitted for pattern scanning)
             };
 
+            gadget_info_t* gadget_addresses = (gadget_info_t*)ExAllocatePool(NonPagedPool, PAGE_SIZE);
+            if (!gadget_addresses) {
+                KeUnstackDetachProcess(&apc);
+                project_log_error("Failed to alloc mem");
+                return 0;
+            }
+            memset(gadget_addresses, 0, PAGE_SIZE);
+
             uint32_t found_gadgets = 0;
             for (uint32_t i = 0; i < nt_headers->FileHeader.NumberOfSections; i++) {
                 // Limit yourself to only executable non-discardable sections
@@ -114,7 +122,16 @@ namespace communication {
 
                         // Only use invalid addresses that we can later map
                         if (!MmIsAddressValid((void*)jump_destination)) {
-                            found_gadgets++;
+                            if (((found_gadgets + 1) * sizeof(gadget_info_t)) <= PAGE_SIZE) {
+                                gadget_addresses[found_gadgets].gadget = (void*)result;
+                                gadget_addresses[found_gadgets].jump_destination = (void*)jump_destination;
+                                found_gadgets++;
+                            }
+                            else {
+                                KeUnstackDetachProcess(&apc);
+                                gadget_count = found_gadgets;
+                                return gadget_addresses;
+                            }
                         }
 
                         // Mov to after the end of our gadget
@@ -123,56 +140,9 @@ namespace communication {
                 }
             }
 
-            gadget_count = found_gadgets;
-            gadget_info_t* gadget_addresses = (gadget_info_t*)ExAllocatePool(NonPagedPool, found_gadgets * sizeof(gadget_info_t));
-            if (!gadget_addresses) {
-                KeUnstackDetachProcess(&apc);
-                project_log_error("Failed to alloc mem");
-                return 0;
-            }
-
-            for (uint32_t i = 0; i < nt_headers->FileHeader.NumberOfSections; i++) {
-                // Limit yourself to only executable non-discardable sections
-                if (!(sections[i].Characteristics & IMAGE_SCN_CNT_CODE) ||
-                    !(sections[i].Characteristics & IMAGE_SCN_MEM_EXECUTE) ||
-                    (sections[i].Characteristics & IMAGE_SCN_MEM_DISCARDABLE))
-                    continue;
-
-                if (strncmp((const char*)sections[i].Name, ".text", IMAGE_SIZEOF_SHORT_NAME) == 0) {
-                    uintptr_t section_start = (uintptr_t)win32k_base + sections[i].VirtualAddress;
-                    uint32_t section_size = sections[i].Misc.VirtualSize;
-
-                    for (uint32_t curr_section_offset = 0; curr_section_offset < section_size; curr_section_offset++) {
-                        uintptr_t result = utility::find_pattern_in_range((uintptr_t)section_start + curr_section_offset, section_size - curr_section_offset, gadget_pattern, 2, 0);
-                        if (!result)
-                            break;
-
-                        // Parse the 32-bit relative offset
-                        int32_t relative_offset = *(int32_t*)(result + 2);
-                        uintptr_t next_instruction = result + 6;  // 1 byte for the nop and 5 bytes for the jmp (1 for opcode + 4 for offset)
-                        uintptr_t jump_destination = next_instruction + relative_offset;
-
-                        // Only use invalid addresses
-                        if (!MmIsAddressValid((void*)jump_destination)) {
-                            uint32_t curr_idx = found_gadgets - 1;
-                            found_gadgets--;
-   
-                            gadget_addresses[curr_idx].gadget = (void*)result;
-                            gadget_addresses[curr_idx].jump_destination = (void*)jump_destination;
-                            if (found_gadgets == 0) {
-                                KeUnstackDetachProcess(&apc);
-                                return gadget_addresses;
-                            }
-                        }
-
-                        // Mov to after the end of our gadget
-                        curr_section_offset = (uint32_t)(result + 5 - section_start);
-                    }
-                }
-            }
-
             KeUnstackDetachProcess(&apc);
-            return 0;
+            gadget_count = found_gadgets;
+            return gadget_addresses;
         }
 
         project_status win_map_memory_page(void* memory) {
@@ -198,8 +168,9 @@ namespace communication {
                     Follow the principle of bottom to top (Pte->Pde->Pdpte->Pml4) when populating to avoid race conditions / logical errors
                 */
                 void* allocated_mem = MmAllocateContiguousMemory(0x1000, max_addr);
-                if (!allocated_mem)
+                if (!allocated_mem) {
                     return status_memory_allocation_failed;
+                }
 
                 memset(allocated_mem, 0, 0x1000);
 
@@ -293,8 +264,10 @@ namespace communication {
                     Follow the principle of bottom to top (Pte->Pde->Pdpte->Pml4) when populating to avoid race conditions / logical errors
                 */
                 void* allocated_mem = MmAllocateContiguousMemory(0x1000, max_addr);
-                if (!allocated_mem)
+                if (!allocated_mem) {
                     return status_memory_allocation_failed;
+                }
+
 
                 memset(allocated_mem, 0, 0x1000);
 
@@ -364,8 +337,10 @@ namespace communication {
                     Follow the principle of bottom to top (Pte->Pde->Pdpte->Pml4) when populating to avoid race conditions / logical errors
                 */
                 void* allocated_mem = MmAllocateContiguousMemory(0x1000, max_addr);
-                if (!allocated_mem)
+                if (!allocated_mem) {
                     return status_memory_allocation_failed;
+                }
+
 
                 memset(allocated_mem, 0, 0x1000);
 
@@ -408,8 +383,9 @@ namespace communication {
             }
 
             void* allocated_mem = MmAllocateContiguousMemory(0x1000, max_addr);
-            if (!allocated_mem)
+            if (!allocated_mem) {
                 return status_memory_allocation_failed;
+            }
 
             memset(allocated_mem, 0, 0x1000);
 

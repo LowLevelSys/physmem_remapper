@@ -17,6 +17,9 @@
     <Filter Include="Source Files\api\core">
       <UniqueIdentifier>{93c01cc6-f937-4f24-bc61-d74406dc1691}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\api\debug">
+      <UniqueIdentifier>{276ed56e-7add-41b0-920b-fd6c040acc4a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="api\driver\driver_um_lib.cpp">
@@ -24,6 +27,9 @@
     </ClCompile>
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="api\debug\debug.cpp">
+      <Filter>Source Files\api\debug</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -41,6 +47,9 @@
     </ClInclude>
     <ClInclude Include="api\dumper\driver_dumper.hpp">
       <Filter>Source Files\api\driver dumper</Filter>
+    </ClInclude>
+    <ClInclude Include="api\debug\debug.hpp">
+      <Filter>Source Files\api\debug</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

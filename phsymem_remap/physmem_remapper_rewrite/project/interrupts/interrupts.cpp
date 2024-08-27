@@ -91,10 +91,10 @@ namespace interrupts {
 		max_addr.QuadPart = MAXULONG64;
 
 		constructed_idt_table = (segment_descriptor_interrupt_gate_64*)MmAllocateContiguousMemory(sizeof(segment_descriptor_interrupt_gate_64) * 256, max_addr);
-		if (!constructed_idt_table)
+		if (!constructed_idt_table) {
 			return status_memory_allocation_failed;
+		}
 
-		
 		memset(constructed_idt_table, 0, sizeof(segment_descriptor_interrupt_gate_64) * 256);
 
 		segment_descriptor_register_64 idt = { 0 };

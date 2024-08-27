@@ -74,8 +74,10 @@ namespace physmem {
 			max_addr.QuadPart = MAXULONG64;
 
 			physmem.page_tables = (page_tables_t*)MmAllocateContiguousMemory(sizeof(page_tables_t), max_addr);
-			if(!physmem.page_tables)
+			if(!physmem.page_tables) {
 				return status_memory_allocation_failed;
+			}
+
 
 			memset(physmem.page_tables, 0, sizeof(page_tables_t));
 
@@ -84,8 +86,10 @@ namespace physmem {
 				physmem.remapping_tables.pd_table[i] = (pde_64*)allocate_zero_table(max_addr);
 				physmem.remapping_tables.pt_table[i] = (pte_64*)allocate_zero_table(max_addr);
 
-				if (!physmem.remapping_tables.pdpt_table[i] || !physmem.remapping_tables.pd_table[i] || !physmem.remapping_tables.pt_table[i])
+				if (!physmem.remapping_tables.pdpt_table[i] || !physmem.remapping_tables.pd_table[i] || !physmem.remapping_tables.pt_table[i]) {
 					return status_memory_allocation_failed;
+				}
+
 			}
 
 			return status_success;

@@ -52,7 +52,7 @@ namespace shellcode {
 
 			// Flush the TLB for this page
 			0x48, 0xB8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // mov rax, imm64 (page address) <- doesn't matter what to put here, it will not be executed
-			0x0F, 0x01, 0x38,											// invplg [rax]
+			0x0F, 0x01, 0x38,											// invlpg rax]
 		};
 
 		static const uint8_t calculate_base_shellcode[] = {
@@ -181,7 +181,7 @@ namespace shellcode {
 
 			// Flush the TLB for this page
 			0x48, 0xB8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // mov rax, imm64 (page address)
-			0x0F, 0x01, 0x38,											// invplg [rax]
+			0x0F, 0x01, 0x38,											// invlpg [rax]
 			0x58,														// pop rax <- Won't be executed anymore
 		};
 
@@ -323,7 +323,8 @@ namespace shellcode {
 		nmi_shellcode = MmAllocateContiguousMemory(PAGE_SIZE, max_addr);
 		info_page = (info_page_t*)MmAllocateContiguousMemory(KeQueryActiveProcessorCount(0) * sizeof(info_page_t), max_addr);
 
-		if (!enter_constructed_space_executed || !enter_constructed_space_shown || !exit_constructed_space || !info_page) {
+		if (!enter_constructed_space_executed || !enter_constructed_space_shown 
+			|| !exit_constructed_space || !info_page) {
 			return status_memory_allocation_failed;
 		}
 

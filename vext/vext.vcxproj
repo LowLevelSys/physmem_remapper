@@ -64,12 +64,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="api\debug\debug.cpp" />
     <ClCompile Include="api\driver\driver_um_lib.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Disabled</Optimization>
     </ClCompile>
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="api\debug\debug.hpp" />
     <ClInclude Include="api\driver\driver_includes.hpp" />
     <ClInclude Include="api\driver\driver_shared.hpp" />
     <ClInclude Include="api\driver\driver_um_lib.hpp" />

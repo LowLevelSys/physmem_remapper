@@ -32,7 +32,7 @@ namespace physmem {
     bool ping_driver(void);
     void flush_logs(void);
 
-    inline bool init_physmem_remapper_lib(void) {
+    inline bool init_physmem_remapper_lib() {
         if (inited)
             return true;
 
