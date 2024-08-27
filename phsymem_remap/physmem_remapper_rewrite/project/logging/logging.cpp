@@ -165,6 +165,9 @@ namespace logging {
         Exposed API'S
     */
     void root_printf(const char* fmt, ...) {
+#ifndef ROOT_MODE_LOGGING
+        return;
+#endif // !ROOT_MODE_LOGGING
         // Check if buffer is full. If it is, then tail needs to move ahead
         if ((head_idx + 1) % MAX_MESSAGES == tail_idx) {
             tail_idx = (tail_idx + 1) % MAX_MESSAGES;
@@ -181,6 +184,10 @@ namespace logging {
     }
 
     void output_root_logs(log_entry_t* user_message_buffer, uint64_t user_cr3, uint32_t message_count) {
+#ifndef ROOT_MODE_LOGGING
+        return;
+#endif // !ROOT_MODE_LOGGING
+
         uint32_t current_idx = tail_idx; // Oldest message
         uint32_t buffer_index = 0;
 

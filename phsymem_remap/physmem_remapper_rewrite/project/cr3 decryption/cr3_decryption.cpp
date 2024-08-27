@@ -10,7 +10,7 @@ namespace cr3_decryption {
 	uint64_t self_ref_idx = MAXUINT32;
 
 	PPHYSICAL_MEMORY_RANGE memory_ranges = 0;
-	uint64_t mm_pfn_database = 0;
+	_MMPFN* mm_pfn_database = 0;
 
 	/*
 		Utility
@@ -91,7 +91,7 @@ namespace cr3_decryption {
 			return status_failure;
 		}
 		uint64_t resolved_base = mov_instr + *reinterpret_cast<int32_t*>(mov_instr + 3) + 7;
-		mm_pfn_database = *(uint64_t*)resolved_base;
+		mm_pfn_database = *(_MMPFN**)resolved_base;
 
 
 		cr3 sys_cr3;
@@ -145,9 +145,7 @@ namespace cr3_decryption {
 
 				for (uint64_t i = start_pfn; i < end_pfn; i++) {
 					_MMPFN cur_mmpfn;
-					uint64_t virt_address = mm_pfn_database + (0x30 * i);
-
-					if (physmem::runtime::copy_memory_to_constructed_cr3(&cur_mmpfn, (void*)virt_address, sizeof(_MMPFN), physmem::util::get_system_cr3().flags)
+					if (physmem::runtime::copy_memory_to_constructed_cr3(&cur_mmpfn, (void*)&mm_pfn_database[i], sizeof(_MMPFN), physmem::util::get_system_cr3().flags)
 						!= status_success)
 						continue;
 
@@ -157,6 +155,13 @@ namespace cr3_decryption {
 					uint64_t decrypted_eprocess = ((cur_mmpfn.flags | 0xF000000000000000) >> 0xd) | 0xFFFF000000000000;
 					uint64_t dirbase = i << 12;
 					uint64_t pid = 0;
+
+					uint32_t active_threads;
+					if (physmem::runtime::copy_memory_to_constructed_cr3(&active_threads, (void*)(decrypted_eprocess + ACTIVE_THREADS), sizeof(active_threads), physmem::util::get_system_cr3().flags)
+						!= status_success)
+						continue;
+					if (!active_threads)
+						continue;
 
 					if (physmem::runtime::copy_memory_to_constructed_cr3(&pid, (void*)(decrypted_eprocess + PID_OFFSET), sizeof(pid), physmem::util::get_system_cr3().flags)
 						!= status_success)
@@ -186,9 +191,7 @@ namespace cr3_decryption {
 
 				for (uint64_t i = start_pfn; i < end_pfn; i++) {
 					_MMPFN cur_mmpfn;
-					uint64_t virt_address = mm_pfn_database + (0x30 * i);
-
-					if (physmem::runtime::copy_memory_to_constructed_cr3(&cur_mmpfn, (void*)virt_address, sizeof(_MMPFN), physmem::util::get_system_cr3().flags)
+					if (physmem::runtime::copy_memory_to_constructed_cr3(&cur_mmpfn, (void*)&mm_pfn_database[i], sizeof(_MMPFN), physmem::util::get_system_cr3().flags)
 						!= status_success)
 						continue;
 
@@ -198,17 +201,26 @@ namespace cr3_decryption {
 					uint64_t decrypted_eprocess = ((cur_mmpfn.flags | 0xF000000000000000) >> 0xd) | 0xFFFF000000000000;
 					uint64_t dirbase = i << 12;
 
+					uint32_t active_threads;
+					if (physmem::runtime::copy_memory_to_constructed_cr3(&active_threads, (void*)(decrypted_eprocess + ACTIVE_THREADS), sizeof(active_threads), physmem::util::get_system_cr3().flags)
+						!= status_success)
+						continue;
+					if (!active_threads)
+						continue;
+
 					char image_name[IMAGE_NAME_LENGTH];
 					if (physmem::runtime::copy_memory_to_constructed_cr3(&image_name, (void*)(decrypted_eprocess + IMAGE_NAME_OFFSET), IMAGE_NAME_LENGTH, physmem::util::get_system_cr3().flags)
 						!= status_success)
 						continue;
-					if (!strstr(image_name, target_process_name) && !strstr(target_process_name, image_name))
+					if (!strstr(target_process_name, image_name))
 						continue;
 
 					uint64_t pid = 0;
 					if (physmem::runtime::copy_memory_to_constructed_cr3(&pid, (void*)(decrypted_eprocess + PID_OFFSET), sizeof(pid), physmem::util::get_system_cr3().flags)
 						!= status_success)
 						continue;
+					if (!pid)
+						continue; // Can apperantly happen??
 
 					uint64_t peb;
 					if (physmem::runtime::copy_memory_to_constructed_cr3(&peb, (void*)(decrypted_eprocess + PEB_OFFSET), sizeof(peb), physmem::util::get_system_cr3().flags)
@@ -246,7 +258,7 @@ namespace cr3_decryption {
 
 						char_dll_name_buffer[entry.BaseDllName.Length / sizeof(wchar_t)] = '\0';
 
-						if (strstr(char_dll_name_buffer, target_process_name) || strstr(target_process_name, char_dll_name_buffer)) {
+						if (strstr(target_process_name, char_dll_name_buffer)) {
 							return pid;
 						}
 
@@ -279,9 +291,7 @@ namespace cr3_decryption {
 
 				for (uint64_t i = start_pfn; i < end_pfn; i++) {
 					_MMPFN cur_mmpfn;
-					uint64_t virt_address = mm_pfn_database + (0x30 * i);
-
-					if (physmem::runtime::copy_memory_to_constructed_cr3(&cur_mmpfn, (void*)virt_address, sizeof(_MMPFN), physmem::util::get_system_cr3().flags)
+					if (physmem::runtime::copy_memory_to_constructed_cr3(&cur_mmpfn, (void*)&mm_pfn_database[i], sizeof(_MMPFN), physmem::util::get_system_cr3().flags)
 						!= status_success)
 						continue;
 
@@ -290,6 +300,13 @@ namespace cr3_decryption {
 
 					uint64_t decrypted_eprocess = ((cur_mmpfn.flags | 0xF000000000000000) >> 0xd) | 0xFFFF000000000000;
 					uint64_t dirbase = i << 12;
+
+					uint32_t active_threads;
+					if (physmem::runtime::copy_memory_to_constructed_cr3(&active_threads, (void*)(decrypted_eprocess + ACTIVE_THREADS), sizeof(active_threads), physmem::util::get_system_cr3().flags)
+						!= status_success)
+						continue;
+					if (!active_threads)
+						continue;
 
 					uint64_t pid = 0;
 					if (physmem::runtime::copy_memory_to_constructed_cr3(&pid, (void*)(decrypted_eprocess + PID_OFFSET), sizeof(pid), physmem::util::get_system_cr3().flags)
@@ -334,7 +351,7 @@ namespace cr3_decryption {
 
 						char_dll_name_buffer[entry.BaseDllName.Length / sizeof(wchar_t)] = '\0';
 
-						if (strstr(char_dll_name_buffer, module_name) || strstr(module_name, char_dll_name_buffer)) {
+						if (strstr(module_name, char_dll_name_buffer)) {
 							memcpy(module_entry, &entry, sizeof(LDR_DATA_TABLE_ENTRY));
 							return status;
 						}
@@ -367,9 +384,7 @@ namespace cr3_decryption {
 
 				for (uint64_t i = start_pfn; i < end_pfn; i++) {
 					_MMPFN cur_mmpfn;
-					uint64_t virt_address = mm_pfn_database + (0x30 * i);
-
-					if (physmem::runtime::copy_memory_to_constructed_cr3(&cur_mmpfn, (void*)virt_address, sizeof(_MMPFN), physmem::util::get_system_cr3().flags)
+					if (physmem::runtime::copy_memory_to_constructed_cr3(&cur_mmpfn, (void*)&mm_pfn_database[i], sizeof(_MMPFN), physmem::util::get_system_cr3().flags)
 						!= status_success)
 						continue;
 
@@ -378,6 +393,13 @@ namespace cr3_decryption {
 
 					uint64_t decrypted_eprocess = ((cur_mmpfn.flags | 0xF000000000000000) >> 0xd) | 0xFFFF000000000000;
 					uint64_t dirbase = i << 12;
+
+					uint32_t active_threads;
+					if (physmem::runtime::copy_memory_to_constructed_cr3(&active_threads, (void*)(decrypted_eprocess + ACTIVE_THREADS), sizeof(active_threads), physmem::util::get_system_cr3().flags)
+						!= status_success)
+						continue;
+					if (!active_threads)
+						continue;
 
 					uint64_t pid = 0;
 					if (physmem::runtime::copy_memory_to_constructed_cr3(&pid, (void*)(decrypted_eprocess + PID_OFFSET), sizeof(pid), physmem::util::get_system_cr3().flags)
@@ -462,9 +484,7 @@ namespace cr3_decryption {
 
 				for (uint64_t i = start_pfn; i < end_pfn; i++) {
 					_MMPFN cur_mmpfn;
-					uint64_t virt_address = mm_pfn_database + (0x30 * i);
-
-					if (physmem::runtime::copy_memory_to_constructed_cr3(&cur_mmpfn, (void*)virt_address, sizeof(_MMPFN), physmem::util::get_system_cr3().flags)
+					if (physmem::runtime::copy_memory_to_constructed_cr3(&cur_mmpfn, (void*)&mm_pfn_database[i], sizeof(_MMPFN), physmem::util::get_system_cr3().flags)
 						!= status_success)
 						continue;
 
@@ -473,6 +493,13 @@ namespace cr3_decryption {
 
 					uint64_t decrypted_eprocess = ((cur_mmpfn.flags | 0xF000000000000000) >> 0xd) | 0xFFFF000000000000;
 					uint64_t dirbase = i << 12;
+
+					uint32_t active_threads;
+					if (physmem::runtime::copy_memory_to_constructed_cr3(&active_threads, (void*)(decrypted_eprocess + ACTIVE_THREADS), sizeof(active_threads), physmem::util::get_system_cr3().flags)
+						!= status_success)
+						continue;
+					if (!active_threads)
+						continue;
 
 					uint64_t pid = 0;
 					if (physmem::runtime::copy_memory_to_constructed_cr3(&pid, (void*)(decrypted_eprocess + PID_OFFSET), sizeof(pid), physmem::util::get_system_cr3().flags)
@@ -504,7 +531,9 @@ namespace cr3_decryption {
 						LDR_DATA_TABLE_ENTRY entry;
 						status = physmem::runtime::copy_memory_to_constructed_cr3(&entry, next_link, sizeof(LDR_DATA_TABLE_ENTRY), dirbase);
 						if (status != status_success)
+						{
 							return module_count;
+						}
 
 						module_count++;
 						next_link = (LIST_ENTRY*)entry.InLoadOrderLinks.Flink;
@@ -526,6 +555,8 @@ namespace cr3_decryption {
 			if (status != status_success)
 				return 0;
 
+			logging::root_printf("%s module base %p", data_table_entry.BaseDllName, data_table_entry.DllBase);
+
 			return (uint64_t)data_table_entry.DllBase;
 		}
 
@@ -535,6 +566,8 @@ namespace cr3_decryption {
 			project_status status = get_ldr_data_table_entry(target_pid, module_name, &data_table_entry);
 			if (status != status_success)
 				return 0;
+
+			logging::root_printf("%s module size %p", data_table_entry.BaseDllName, data_table_entry.SizeOfImage);
 
 			return (uint64_t)data_table_entry.SizeOfImage;
 		}

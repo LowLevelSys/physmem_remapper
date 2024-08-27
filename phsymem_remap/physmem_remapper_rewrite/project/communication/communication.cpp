@@ -674,6 +674,7 @@ namespace communication {
             logging::root_printf("Failed unmapping win gadgets memory range");
             return status;
         }
+
         return status;
     }
 };

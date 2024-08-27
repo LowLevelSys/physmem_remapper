@@ -4,6 +4,8 @@
 #include "../project_utility.hpp"
 #include "../communication/shared_structs.hpp"
 
+#define ROOT_MODE_LOGGING
+
 namespace logging {
 	// Initialization
 	project_status init_root_logger();

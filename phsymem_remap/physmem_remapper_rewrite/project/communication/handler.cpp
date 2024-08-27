@@ -106,7 +106,7 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
         if (status != status_success)
             break;
 
-        sub_cmd.module_size = cr3_decryption::peb::get_module_base(sub_cmd.pid, sub_cmd.module_name);
+        sub_cmd.module_size = cr3_decryption::peb::get_module_size(sub_cmd.pid, sub_cmd.module_name);
         if (!sub_cmd.module_size)
             status = status_failure;
 
@@ -189,6 +189,12 @@ extern "C" __int64 __fastcall handler(uint64_t hwnd, uint32_t flags, ULONG_PTR d
     case cmd_ping_driver: {
 
         // Hello usermode
+
+    } break;
+
+    default: {
+
+        logging::root_printf("UNKNOWN CMD %d", cmd.call_type);
 
     } break;
     }

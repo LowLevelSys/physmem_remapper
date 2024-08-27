@@ -9,18 +9,20 @@ void proc_test(void) {
 	// r5apex.exe
 	// DeadByDaylight-Win64-Shipping.exe
 	// notepad.exe
-	std::string proc = "FortniteClient-Win64-Shipping.exe";
-	if (!process::attach_to_proc(proc))
+	std::string proc = "notepad.exe";
+	if (!process::attach_to_proc(proc)) {
 		return;
+	}
 
+	process::testing::speed_test();
 	process::log_modules();
+	physmem::flush_logs();
 
 	return;
 }
 
 int main(void) {
 	proc_test();
-
 	getchar();
 	return 0;
 }

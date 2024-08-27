@@ -1,4 +1,5 @@
 #pragma once
+#pragma optimize("", off)
 // Designed to be a standalone, includable .hpp, thus we need to make our own definitions etc.
 
 /*
@@ -115,3 +116,4 @@ struct command_t {
     call_types_t call_type;
     void* sub_command_ptr;
 };
+#pragma optimize("", on)

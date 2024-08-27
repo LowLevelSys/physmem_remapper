@@ -168,32 +168,11 @@ namespace physmem {
         return cmd.status;
     }
 
-    // May crash
-    bool force_unload_driver(void) {
-        HMODULE win32u = LoadLibraryW(L"win32u.dll");
-        if (!win32u) {
-            log("Failed to get win32u.dll handle");
-            return false;
-        }
-
-        uint64_t handler_address = (uint64_t)GetProcAddress(win32u, "NtUserGetCPD");
-        if (!handler_address) {
-            log("Failed to get NtUserGetCPD address");
-            return false;
-        }
-        NtUserGetCPD = (NtUserGetCPD_type)handler_address;
-
-        command_t cmd = { 0 };
-        cmd.call_type = cmd_unload_driver;
-
-        send_request(&cmd);
-
-        return cmd.status;
-    }
-
     bool unload_driver(void) {
-        if (!inited || !NtUserGetCPD)
-            return false;
+        if (!inited || !NtUserGetCPD) {
+            if(!physmem::init_physmem_remapper_lib())
+                return false;
+        }
 
         command_t cmd = { 0 };
         cmd.call_type = cmd_unload_driver;

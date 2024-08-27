@@ -29,7 +29,6 @@ namespace physmem {
 
     bool hide_driver(void); // <- Should be called upon initialization
     bool unload_driver(void);
-    bool force_unload_driver(void); // <- Only called in dev mode!
     bool ping_driver(void);
     void flush_logs(void);
 
