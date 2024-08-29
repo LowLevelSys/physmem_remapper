@@ -31,6 +31,32 @@ namespace debug {
 		return physmem::hide_driver();
 	}
 
+	bool test_getting_cr3(void) {
+		uint64_t curr_cr3 = physmem::get_cr3(GetCurrentProcessId());
+		if (!curr_cr3)
+			return false;
+
+		return true;
+	}
+
+	bool test_memory_copying(void) {
+		uint64_t curr_cr3 = physmem::get_cr3(GetCurrentProcessId());
+		if (!curr_cr3)
+			return true;
+
+		uint64_t a = 0;
+		uint64_t b = 1;
+
+		if (!physmem::copy_virtual_memory(curr_cr3, curr_cr3, &b, &a, sizeof(uint64_t)))
+			return false;
+
+		return a == b;
+	}
+
+	bool test_unloading() {
+		return physmem::unload_driver();
+	}
+
 	void test_driver(void) {
 		log("Press enter to continue");
 		log("Loading lib...");
@@ -52,11 +78,34 @@ namespace debug {
 		log("Hiding driver...");
 		getchar();
 		if (!test_hiding()) {
-			log("Failed pinging the driver");
+			log("Failed hiding the driver");
+			return;
+		}
+
+		log("Press enter to continue");
+		log("Cr3 getting...");
+		getchar();
+		if (!test_getting_cr3()) {
+			log("Failed getting cr3");
+			return;
+		}
+
+		log("Press enter to continue");
+		log("Memory copying...");
+		getchar();
+		if (!test_memory_copying()) {
+			log("Failed memory copying");
+			return;
+		}
+
+		log("Press enter to continue");
+		log("Unloading driver...");
+		getchar();
+		if (!test_unloading()) {
+			log("Failed unloading the driver");
 			return;
 		}
 
 		log("Sucessfully tested driver");
-		getchar();
 	}
 };

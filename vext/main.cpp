@@ -23,9 +23,7 @@ void proc_test(void) {
 }
 
 int main(void) {
-	//proc_test();
-	//getchar();
-	//physmem::unload_driver();
 	debug::test_driver();
+	getchar();
 	return 0;
 }

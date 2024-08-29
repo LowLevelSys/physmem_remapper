@@ -7,65 +7,11 @@ namespace cr3_decryption {
 	uint64_t pde_base = 0;
 	uint64_t pdpte_base = 0;
 	uint64_t pml4e_base = 0;
-	uint64_t self_ref_idx = MAXUINT32;
+
+	uint64_t cr3_ptebase = 0;
 
 	PPHYSICAL_MEMORY_RANGE memory_ranges = 0;
 	_MMPFN* mm_pfn_database = 0;
-
-	/*
-		Utility
-	*/
-	bool is_kernel_base(uint64_t addr) {
-		IMAGE_DOS_HEADER* dos_header = (IMAGE_DOS_HEADER*)addr;
-
-		if (dos_header->e_magic != IMAGE_DOS_SIGNATURE)
-			return false;
-
-		IMAGE_NT_HEADERS64* nt_headers = (IMAGE_NT_HEADERS64*)(addr + dos_header->e_lfanew);
-
-		if (nt_headers->Signature != IMAGE_NT_SIGNATURE)
-			return false;
-
-		if (nt_headers->FileHeader.Machine != IMAGE_FILE_MACHINE_AMD64)
-			return false;
-
-		IMAGE_EXPORT_DIRECTORY* export_directory = (IMAGE_EXPORT_DIRECTORY*)(addr + nt_headers->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress);
-		char* dll_name = (char*)(addr + export_directory->Name);
-
-		if (!strstr(dll_name, "ntoskrnl.exe"))
-			return false;
-
-		return true;
-	}
-
-	uint64_t get_kernel_base(void) {
-		segment_descriptor_register_64 idt = { 0 };
-		__sidt(&idt);
-		segment_descriptor_interrupt_gate_64* windows_idt = (segment_descriptor_interrupt_gate_64*)idt.base_address;
-
-		segment_descriptor_interrupt_gate_64 isr_divide_error = windows_idt[0];
-		uint64_t pfn_KiDivideErrorFault = ((uintptr_t)isr_divide_error.offset_low) |
-			(((uintptr_t)isr_divide_error.offset_middle) << 16) |
-			(((uintptr_t)isr_divide_error.offset_high) << 32);
-
-		uint64_t aligned_isr = pfn_KiDivideErrorFault & ~(2_MiB - 1);
-		uintptr_t address = aligned_isr;
-
-		while (!is_kernel_base(address)) {
-			address -= 2_MiB;
-		}
-
-		return address;
-	}
-
-	/*
-		Testing
-	*/
-	void log_process_cr3s(void) {
-		if (!initialized)
-			return;
-
-	}
 
 	/*
 		Initialization
@@ -77,8 +23,9 @@ namespace cr3_decryption {
 		}
 
 		// First find MmPfnDataBase
-		uint64_t kernel_base = get_kernel_base();
-		if (!kernel_base) {
+		uint64_t kernel_base;
+		project_status status = utility::get_driver_module_base(L"ntoskrnl.exe", (void*&)kernel_base);
+		if (status != status_success || !kernel_base) {
 			project_log_info("Failed to get kernel base");
 			return status_failure;
 		}
@@ -95,7 +42,7 @@ namespace cr3_decryption {
 
 
 		cr3 sys_cr3;
-		sys_cr3.flags = __readcr3();
+		sys_cr3.flags = __readcr3(); // We do not want to use the kernel cr3, but rather the one that our mapper had or any non kernel one ig
 		uint64_t phys_system_directory = sys_cr3.address_of_page_directory << 12;
 		pml4e_64* system_directory = (pml4e_64*)win_get_virtual_address(phys_system_directory);
 		if (!system_directory)
@@ -106,11 +53,13 @@ namespace cr3_decryption {
 			if (system_directory[i].page_frame_number != sys_cr3.address_of_page_directory)
 				continue;
 
-			pte_base = (i + 0x1FFFE00ui64) << 39ui64;
-			pde_base = (i << 30ui64) + pte_base;
-			pdpte_base = (i << 30ui64) + pte_base + (i << 21ui64);
-			pml4e_base = (i << 12ui64) + pdpte_base;
-			self_ref_idx = i;
+			pml4e_base = (i + 0x1FFFE00ui64) << 39ui64;
+			pdpte_base = (i << 30ui64) + pml4e_base;
+			pde_base = (i << 30ui64) + pml4e_base + (i << 21ui64);
+			pte_base = (i << 12ui64) + pde_base;
+
+			cr3_ptebase = i * 8 + pte_base;
+
 			break;
 		}
 
@@ -119,8 +68,6 @@ namespace cr3_decryption {
 			project_log_info("Failed to get physical memory ranges");
 			return status_failure;
 		}
-
-		log_process_cr3s();
 
 		initialized = true;
 
@@ -132,8 +79,6 @@ namespace cr3_decryption {
 	*/
 	namespace eproc {
 		uint64_t get_cr3(uint64_t target_pid) {
-			uint64_t cr3_ptebase = self_ref_idx * 8 + pml4e_base;
-
 			for (uint32_t mem_range_count = 0; mem_range_count < 512; mem_range_count++) {
 
 				if (!memory_ranges[mem_range_count].BaseAddress.QuadPart &&
@@ -178,8 +123,6 @@ namespace cr3_decryption {
 		}
 
 		uint64_t get_pid(const char* target_process_name) {
-			uint64_t cr3_ptebase = self_ref_idx * 8 + pml4e_base;
-
 			for (uint32_t mem_range_count = 0; mem_range_count < 512; mem_range_count++) {
 
 				if (!memory_ranges[mem_range_count].BaseAddress.QuadPart &&
@@ -278,8 +221,6 @@ namespace cr3_decryption {
 			Core API'S
 		*/
 		project_status get_ldr_data_table_entry(uint64_t target_pid, char* module_name, LDR_DATA_TABLE_ENTRY* module_entry) {
-			uint64_t cr3_ptebase = self_ref_idx * 8 + pml4e_base;
-
 			for (uint32_t mem_range_count = 0; mem_range_count < 512; mem_range_count++) {
 
 				if (!memory_ranges[mem_range_count].BaseAddress.QuadPart &&
@@ -371,7 +312,6 @@ namespace cr3_decryption {
 		*/
 		project_status get_data_table_entry_info(uint64_t target_pid, module_info_t* info_array, uint64_t proc_cr3) {
 			uint64_t curr_info_entry = (uint64_t)info_array;
-			uint64_t cr3_ptebase = self_ref_idx * 8 + pml4e_base;
 
 			for (uint32_t mem_range_count = 0; mem_range_count < 512; mem_range_count++) {
 
@@ -471,8 +411,6 @@ namespace cr3_decryption {
 		}
 
 		uint64_t get_data_table_entry_count(uint64_t target_pid) {
-			uint64_t cr3_ptebase = self_ref_idx * 8 + pml4e_base;
-
 			for (uint32_t mem_range_count = 0; mem_range_count < 512; mem_range_count++) {
 
 				if (!memory_ranges[mem_range_count].BaseAddress.QuadPart &&
